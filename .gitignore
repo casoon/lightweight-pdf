@@ -1,0 +1,8 @@
+/plan/
+/target
+*.wasm
+!assets/**/*.wasm
+.DS_Store
+# Output of `cargo run --example ...` (invoice.pdf, report.pdf) — written
+# to the repo root, never meant to be committed.
+/*.pdf

@@ -1,0 +1,10 @@
+[package]
+name = "lightweight-pdf-fonts"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Font data, metrics and subsetting for lightweight-pdf"
+
+[dependencies]
+ttf-parser = { version = "0.24", default-features = false, features = ["std"] }

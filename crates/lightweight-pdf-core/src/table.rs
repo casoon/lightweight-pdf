@@ -1,0 +1,119 @@
+//! `Table` element (Phase 3, `plan/phases/phase-3-tables.md`): the element
+//! that matters most for invoices. Cells are plain `Element`s so they reuse
+//! the exact same `Layoutable`/text-wrap machinery as everything else —
+//! no separate cell-content model.
+
+use crate::element::Element;
+use crate::style::{Align, Color, Common};
+
+/// A column's width: `fixed(w)` reserves an exact width, `flex(weight)`
+/// shares the leftover space proportionally (taffy `flex-grow` analogy,
+/// ADR-004 / `03-builder-api-design.md`) — the same distribution step as
+/// `Row`, not a generic flex implementation.
+#[derive(Clone, Copy, Debug)]
+pub enum ColumnWidth {
+    Fixed(f32),
+    Flex(f32),
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct TableColumn {
+    pub width: ColumnWidth,
+    pub align: Align,
+}
+
+impl TableColumn {
+    pub fn fixed(width: f32) -> Self {
+        TableColumn {
+            width: ColumnWidth::Fixed(width),
+            align: Align::Start,
+        }
+    }
+
+    pub fn flex(weight: f32) -> Self {
+        TableColumn {
+            width: ColumnWidth::Flex(weight),
+            align: Align::Start,
+        }
+    }
+
+    pub fn align(mut self, align: Align) -> Self {
+        self.align = align;
+        self
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Table {
+    pub columns: Vec<TableColumn>,
+    pub header: Option<Vec<Element>>,
+    pub rows: Vec<Vec<Element>>,
+    /// Alternating row background ("Zebra-Streifen"), see
+    /// `02-elementcatalog-and-features.md`. Applies to data rows only (a
+    /// striped header would be indistinguishable from a striped data row).
+    pub striped: Option<Color>,
+    /// Inner spacing on every side of each cell's content, same default
+    /// (4pt) header and data rows.
+    pub cell_padding: f32,
+    /// Absolute index of `rows[0]` within the *original*, unsplit table —
+    /// 0 unless this `Table` is itself the remainder produced by a
+    /// previous page's `LayoutResult::Split`. Not part of the public
+    /// builder surface; exists purely so `.striped()` keeps alternating
+    /// correctly across a page break instead of resetting per page.
+    pub row_offset: usize,
+    pub common: Common,
+}
+
+impl Table {
+    pub fn new() -> Self {
+        Table {
+            cell_padding: 4.0,
+            ..Default::default()
+        }
+    }
+
+    pub fn columns(mut self, columns: impl IntoIterator<Item = TableColumn>) -> Self {
+        self.columns = columns.into_iter().collect();
+        self
+    }
+
+    pub fn header(mut self, cells: impl IntoIterator<Item = impl Into<Element>>) -> Self {
+        self.header = Some(cells.into_iter().map(Into::into).collect());
+        self
+    }
+
+    pub fn rows(mut self, rows: impl IntoIterator<Item = impl IntoIterator<Item = impl Into<Element>>>) -> Self {
+        self.rows = rows.into_iter().map(|row| row.into_iter().map(Into::into).collect()).collect();
+        self
+    }
+
+    pub fn striped(mut self, color: Color) -> Self {
+        self.striped = Some(color);
+        self
+    }
+
+    pub fn cell_padding(mut self, padding: f32) -> Self {
+        self.cell_padding = padding;
+        self
+    }
+
+    pub fn width(mut self, width: f32) -> Self {
+        self.common.width = Some(width);
+        self
+    }
+
+    pub fn height(mut self, height: f32) -> Self {
+        self.common.height = Some(height);
+        self
+    }
+
+    pub fn flex(mut self, factor: f32) -> Self {
+        self.common.flex = Some(factor);
+        self
+    }
+
+    pub fn keep_with_next(mut self) -> Self {
+        self.common.keep_with_next = true;
+        self
+    }
+}

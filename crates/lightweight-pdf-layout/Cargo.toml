@@ -1,0 +1,10 @@
+[package]
+name = "lightweight-pdf-layout"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Layoutable trait, pagination and text wrapping for lightweight-pdf"
+
+[dependencies]
+lightweight-pdf-core = { path = "../lightweight-pdf-core" }

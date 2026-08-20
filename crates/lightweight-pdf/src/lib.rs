@@ -1,0 +1,39 @@
+//! Public facade for `lightweight-pdf`: re-exports the `lightweight-pdf-core` builder API
+//! and adds `Document::render()` (ADR-002 — this is the crate users add to
+//! `Cargo.toml`, the place `render()` becomes public).
+
+mod fonts;
+mod images;
+mod render;
+
+pub use images::ImageEmbedError;
+pub use lightweight_pdf_core::*;
+pub use lightweight_pdf_layout::{LayoutWarning, LayoutWarningKind};
+pub use render::{DocumentExt, RenderError};
+
+#[cfg(all(feature = "wasm-size-probe", not(feature = "default-fonts")))]
+compile_error!(
+    "wasm-size-probe needs a font source: enable `default-fonts` alongside it (see plan/00a-contracts-and-artifacts.md, point 2)"
+);
+
+/// Internal, non-public measurement export (`plan/00a-contracts-and-artifacts.md`
+/// point 1): renders a small but complete document end-to-end so the real
+/// render path isn't dead-code-eliminated from the size measurement. Not a
+/// public runtime API (ADR-009: no JS-facing API in V1).
+#[cfg(feature = "wasm-size-probe")]
+#[no_mangle]
+pub extern "C" fn lightweight_pdf_wasm_size_probe() -> i32 {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::symmetric(20.0, 18.0));
+    doc.add(Text::new("Hallo Rechnung").size(18.0).bold());
+    doc.add(
+        Row::new()
+            .gap(8.0)
+            .child(Text::new("Menge").size(10.0))
+            .child(Text::new("Preis").size(10.0)),
+    );
+    doc.add(Line::new());
+    match doc.render() {
+        Ok(bytes) => bytes.len() as i32,
+        Err(_) => -1,
+    }
+}

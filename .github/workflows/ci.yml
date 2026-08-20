@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+      - name: Install qpdf + poppler-utils (pdftotext)
+        run: sudo apt-get update && sudo apt-get install -y qpdf poppler-utils
+      - name: cargo fmt --check
+        run: cargo fmt --all --check
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: cargo clippy (png feature)
+        run: cargo clippy -p lightweight-pdf --all-targets --features png -- -D warnings
+      - name: cargo test
+        run: cargo test --workspace
+      - name: cargo test (png feature)
+        run: cargo test -p lightweight-pdf --features png
+      - name: cargo build (native)
+        run: cargo build --workspace
+      - name: cargo build (wasm32)
+        run: cargo build --workspace --target wasm32-unknown-unknown --release
+      - name: cargo run --example invoice
+        run: cargo run -p lightweight-pdf --example invoice
+      - name: cargo run --example report
+        run: cargo run -p lightweight-pdf --example report
+      - name: Crate boundary check (lightweight-pdf-writer must not depend on core/layout)
+        run: |
+          ! cargo tree -p lightweight-pdf-writer | grep -E "lightweight-pdf-core|lightweight-pdf-layout"
+      - name: Crate boundary check (lightweight-pdf-fonts must not depend on core/layout)
+        run: |
+          ! cargo tree -p lightweight-pdf-fonts | grep -E "lightweight-pdf-core|lightweight-pdf-layout"
+
+  wasm-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install binaryen (wasm-opt)
+        run: sudo apt-get update && sudo apt-get install -y binaryen
+      - name: Build Generator config
+        run: cargo build --release --target wasm32-unknown-unknown -p lightweight-pdf --no-default-features --features wasm,wasm-size-probe,default-fonts
+      - name: Measure Generator config
+        run: |
+          f=target/wasm32-unknown-unknown/release/lightweight-pdf.wasm
+          wasm-opt -Oz --all-features "$f" -o /tmp/generator.opt.wasm
+          gzip -9 -c /tmp/generator.opt.wasm > /tmp/generator.opt.wasm.gz
+          echo "### Generator size" >> "$GITHUB_STEP_SUMMARY"
+          echo "raw: $(stat -c%s "$f") bytes" >> "$GITHUB_STEP_SUMMARY"
+          echo "wasm-opt -Oz: $(stat -c%s /tmp/generator.opt.wasm) bytes" >> "$GITHUB_STEP_SUMMARY"
+          echo "gzip -9: $(stat -c%s /tmp/generator.opt.wasm.gz) bytes" >> "$GITHUB_STEP_SUMMARY"
+      - name: Build Standard config
+        run: cargo build --release --target wasm32-unknown-unknown -p lightweight-pdf --no-default-features --features wasm,wasm-size-probe,default-fonts,png
+      - name: Measure Standard config
+        run: |
+          f=target/wasm32-unknown-unknown/release/lightweight-pdf.wasm
+          wasm-opt -Oz --all-features "$f" -o /tmp/standard.opt.wasm
+          gzip -9 -c /tmp/standard.opt.wasm > /tmp/standard.opt.wasm.gz
+          echo "### Standard size" >> "$GITHUB_STEP_SUMMARY"
+          echo "raw: $(stat -c%s "$f") bytes" >> "$GITHUB_STEP_SUMMARY"
+          echo "wasm-opt -Oz: $(stat -c%s /tmp/standard.opt.wasm) bytes" >> "$GITHUB_STEP_SUMMARY"
+          echo "gzip -9: $(stat -c%s /tmp/standard.opt.wasm.gz) bytes" >> "$GITHUB_STEP_SUMMARY"
+      # NOTE: no hard-fail threshold yet for either config (ADR-008: no CI
+      # hard-fail in Phase 0/1; a warn-threshold is introduced once Phase 2
+      # has an accepted baseline in progress.md — see ADR-014 for the
+      # current, over-corridor baseline and why).

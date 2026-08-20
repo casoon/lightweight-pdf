@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/lightweight-pdf-core",
+    "crates/lightweight-pdf-layout",
+    "crates/lightweight-pdf-writer",
+    "crates/lightweight-pdf-fonts",
+    "crates/lightweight-pdf",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/casoon/lightweight-pdf"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
