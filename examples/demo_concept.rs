@@ -1,8 +1,9 @@
-//! Example: a concept/strategy document — cover page (wordmark, title,
-//! colored "CONCEPT · <doc-id>" label, metadata rows, tag pills), a
-//! table-of-contents page, and content pages with numbered headings and a
-//! colored callout box (the "key takeaway" pattern used throughout the
-//! source system's templates for concepts/reports/documentation).
+//! Example: a concept/strategy document — cover page (placeholder logo
+//! image, title, colored "CONCEPT · <doc-id>" label, metadata rows, tag
+//! pills), a table-of-contents page, and content pages with numbered
+//! headings and a colored callout box (the "key takeaway" pattern used
+//! throughout the source system's templates for concepts/reports/
+//! documentation).
 //!
 //! All names, figures and text below are fictional demo data — this file
 //! exists purely to demonstrate layout, not to reproduce any real
@@ -11,6 +12,10 @@
 //! Run: `cargo run -p lightweight-pdf --example demo_concept`
 
 use lightweight_pdf::*;
+
+/// Dummy logo: white "LOGO" lettering on a silver-gray rectangle, baseline
+/// JPEG (560x160px, 3.5:1) so it embeds without the optional `png` feature.
+const LOGO_JPEG: &[u8] = include_bytes!("assets/logo.jpg");
 
 const ACCENT: Color = Color(0xE0, 0x50, 0x40);
 const GRAY_TEXT: Color = Color(0x88, 0x88, 0x88);
@@ -78,7 +83,7 @@ fn main() {
     doc.add(
         Column::new()
             .align(Align::Center)
-            .child(Text::new("SAMPLE STUDIO").bold().size(22.0).color(Color::rgb(0x33, 0x33, 0x33))),
+            .child(Image::new(LOGO_JPEG).expect("valid demo logo JPEG").width(160.0).height(45.7)),
     );
     doc.add(Spacer::new(70.0));
     doc.add(Text::new(title).heading1());

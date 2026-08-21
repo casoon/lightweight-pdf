@@ -2,7 +2,10 @@
 //! envelope layout), an "Inquiries to" contact box paired with invoice
 //! metadata, a position table with an indented detail line under each
 //! item, a right-aligned Subtotal/VAT/Total summary, and a four-column
-//! footer (company / contact / owner+VAT-ID / bank details).
+//! footer (company / contact / owner+VAT-ID / bank details). The
+//! letterhead uses a placeholder logo image (`Image` element, baseline
+//! JPEG — no `png` feature needed to run this example) instead of a text
+//! wordmark.
 //!
 //! All names, addresses, amounts and bank data below are fictional demo
 //! data — this file exists purely to demonstrate layout, not to reproduce
@@ -14,6 +17,10 @@ use lightweight_pdf::*;
 
 /// PDF points per millimeter (72pt / 25.4mm).
 const MM: f32 = 72.0 / 25.4;
+
+/// Dummy logo: white "LOGO" lettering on a silver-gray rectangle, baseline
+/// JPEG (560x160px, 3.5:1) so it embeds without the optional `png` feature.
+const LOGO_JPEG: &[u8] = include_bytes!("assets/logo.jpg");
 
 struct LineItem {
     description: &'static str,
@@ -124,11 +131,11 @@ fn main() {
                 .into()
         }));
 
-    // --- letterhead: wordmark, right-aligned ---------------------------
+    // --- letterhead: logo, right-aligned --------------------------------
     doc.add(
         Column::new()
             .align(Align::End)
-            .child(Text::new("SAMPLE STUDIO").bold().size(18.0).color(Color::rgb(0x33, 0x33, 0x33))),
+            .child(Image::new(LOGO_JPEG).expect("valid demo logo JPEG").width(120.0).height(34.3)),
     );
     doc.add(Spacer::new(10.0 * MM));
 

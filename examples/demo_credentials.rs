@@ -1,9 +1,9 @@
 //! Example: a confidential credentials hand-off document — a cover page
-//! (metadata rows + a bordered "CONFIDENTIAL" warning box, header
-//! suppressed via `.header_visible_from(2)`), then a content page with a
-//! "CONFIDENTIAL · <doc-id>" header band, a labeled key/value settings
-//! box, a ports table, bordered per-credential boxes, and a closing
-//! security-notes box with a bulleted `List`.
+//! (placeholder logo image, metadata rows + a bordered "CONFIDENTIAL"
+//! warning box, header suppressed via `.header_visible_from(2)`), then a
+//! content page with a "CONFIDENTIAL · <doc-id>" header band, a labeled
+//! key/value settings box, a ports table, bordered per-credential boxes,
+//! and a closing security-notes box with a bulleted `List`.
 //!
 //! All names, hosts, IPs and "passwords" below are fictional demo data —
 //! this file exists purely to demonstrate layout, not to reproduce any
@@ -12,6 +12,10 @@
 //! Run: `cargo run -p lightweight-pdf --example demo_credentials`
 
 use lightweight_pdf::*;
+
+/// Dummy logo: white "LOGO" lettering on a silver-gray rectangle, baseline
+/// JPEG (560x160px, 3.5:1) so it embeds without the optional `png` feature.
+const LOGO_JPEG: &[u8] = include_bytes!("assets/logo.jpg");
 
 const ACCENT: Color = Color(0xE0, 0x50, 0x40);
 const GRAY_BG: Color = Color(0xF5, 0xF5, 0xF5);
@@ -92,7 +96,13 @@ fn main() {
         }));
 
     // --- cover page ------------------------------------------------------
-    doc.add(Spacer::new(140.0));
+    doc.add(Spacer::new(60.0));
+    doc.add(
+        Column::new()
+            .align(Align::Center)
+            .child(Image::new(LOGO_JPEG).expect("valid demo logo JPEG").width(160.0).height(45.7)),
+    );
+    doc.add(Spacer::new(50.0));
     doc.add(Text::new("Demo Server Credentials").heading1().align(Align::Center));
     doc.add(Spacer::new(20.0));
     doc.add(
