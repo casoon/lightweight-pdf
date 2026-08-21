@@ -10,10 +10,19 @@ use lightweight_pdf_core::FontKey;
 use lightweight_pdf_fonts::{EmbeddedFontMetrics, FontData, FontError};
 use lightweight_pdf_layout::{FontMetrics, FontResolver};
 
+// Crate-local copy (not the repo-root `assets/fonts/`): `cargo package`
+// only bundles files inside the crate's own directory, so a path reaching
+// outside it (`../../../assets/...`) silently drops the font files from
+// the published tarball — verified missing via `cargo publish --dry-run`,
+// which fails the packaged crate's own build with a "file not found" once
+// it's extracted and compiled in isolation. The repo-root copy stays too
+// (used by `lightweight-pdf-fonts`' own tests and referenced from
+// `README.md`), so this does duplicate ~860KB — the accepted cost of a
+// crate that must be self-contained once published.
 #[cfg(feature = "default-fonts")]
-const SANS_REGULAR_BYTES: &[u8] = include_bytes!("../../../assets/fonts/SourceSans3-Regular.ttf");
+const SANS_REGULAR_BYTES: &[u8] = include_bytes!("../assets/fonts/SourceSans3-Regular.ttf");
 #[cfg(feature = "default-fonts")]
-const SANS_BOLD_BYTES: &[u8] = include_bytes!("../../../assets/fonts/SourceSans3-Bold.ttf");
+const SANS_BOLD_BYTES: &[u8] = include_bytes!("../assets/fonts/SourceSans3-Bold.ttf");
 
 /// Local newtype so `lightweight-pdf-layout`'s `FontMetrics` trait (foreign to this
 /// crate) can be implemented for `lightweight-pdf-fonts`' metrics type (also
