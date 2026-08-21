@@ -149,7 +149,7 @@ fn main() {
         "Every request needs a bearer token in the Authorization header (demo text):",
     ));
     doc.add(Spacer::new(6.0));
-    doc.add(code_block(&["Authorization: Bearer sk_demo_Xy7zK9mN4pQ2wR5tV8bC"]));
+    doc.add(code_block(&["Authorization: Bearer REDACTED-DEMO-PLACEHOLDER"]));
     doc.add(Spacer::new(12.0));
 
     doc.add(Text::new("3 Endpoints").heading2().color(ACCENT));

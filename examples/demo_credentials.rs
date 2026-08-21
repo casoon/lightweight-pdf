@@ -57,13 +57,13 @@ fn main() {
         Credential {
             label: "SSH access for server administration (demo)",
             username: "admin",
-            password: "Demo!2026#Secure",
+            password: "REDACTED-DEMO-PLACEHOLDER",
             kind: "ssh",
         },
         Credential {
             label: "Deployment user (restricted rights, demo)",
             username: "deploy",
-            password: "Deploy$Key!2026",
+            password: "REDACTED-DEMO-PLACEHOLDER",
             kind: "ssh",
         },
     ];
