@@ -3,16 +3,17 @@ name = "lightweight-pdf"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Lightweight, dependency-minimal Rust PDF generation for recurring business documents"
 
 [lib]
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-lightweight-pdf-core = { path = "../lightweight-pdf-core" }
-lightweight-pdf-layout = { path = "../lightweight-pdf-layout" }
-lightweight-pdf-writer = { path = "../lightweight-pdf-writer" }
-lightweight-pdf-fonts = { path = "../lightweight-pdf-fonts" }
+lightweight-pdf-core = { path = "../lightweight-pdf-core", version = "0.1.0" }
+lightweight-pdf-layout = { path = "../lightweight-pdf-layout", version = "0.1.0" }
+lightweight-pdf-writer = { path = "../lightweight-pdf-writer", version = "0.1.0" }
+lightweight-pdf-fonts = { path = "../lightweight-pdf-fonts", version = "0.1.0" }
 png = { version = "0.18.1", optional = true, default-features = false }
 
 [features]
@@ -21,3 +22,27 @@ default-fonts = []
 wasm = []
 wasm-size-probe = []
 png = ["dep:png"]
+
+[[example]]
+name = "demo_invoice"
+path = "../../examples/demo_invoice.rs"
+
+[[example]]
+name = "demo_offer"
+path = "../../examples/demo_offer.rs"
+
+[[example]]
+name = "demo_credentials"
+path = "../../examples/demo_credentials.rs"
+
+[[example]]
+name = "demo_concept"
+path = "../../examples/demo_concept.rs"
+
+[[example]]
+name = "demo_documentation"
+path = "../../examples/demo_documentation.rs"
+
+[[example]]
+name = "demo_report"
+path = "../../examples/demo_report.rs"

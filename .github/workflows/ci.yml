@@ -29,6 +29,15 @@ jobs:
         run: cargo test --workspace
       - name: cargo test (png feature)
         run: cargo test -p lightweight-pdf --features png
+      - name: cargo test (all features)
+        run: cargo test --workspace --all-features
+      - name: cargo build (lib, no default features)
+        # `default-fonts` is currently the only font source in V1 (see
+        # `render.rs`'s doc comment) — `.render()` isn't available without
+        # it, so only the lib target is expected to build in this
+        # configuration, not examples/tests (those call `.render()`
+        # unconditionally and are meant to fail to compile here).
+        run: cargo clippy -p lightweight-pdf --no-default-features --lib -- -D warnings
       - name: cargo build (native)
         run: cargo build --workspace
       - name: cargo build (wasm32)
@@ -43,6 +52,17 @@ jobs:
       - name: Crate boundary check (lightweight-pdf-fonts must not depend on core/layout)
         run: |
           ! cargo tree -p lightweight-pdf-fonts | grep -E "lightweight-pdf-core|lightweight-pdf-layout"
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # `ttf-parser` is flagged unmaintained (RUSTSEC-2026-0192, ADR-015) —
+      # a documented, accepted risk, not a build blocker, so this job
+      # reports advisories without failing the workflow on them.
+      - uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   wasm-size:
     runs-on: ubuntu-latest

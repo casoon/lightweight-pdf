@@ -7,6 +7,16 @@
 //! Unicode text the document contains), then walk the finished render tree
 //! to learn exactly which characters were used, then subset each font
 //! down to just those glyphs before writing the PDF.
+//!
+//! V1 has no custom-font API yet (see `fonts.rs`): `default-fonts` is
+//! currently the only font source, so `DocumentExt` below is `#[cfg]`-gated
+//! on it and everything in this module is unreachable without it — building
+//! `--no-default-features` is not a functional configuration for calling
+//! `.render()` in V1 (only useful for consumers who want the `Document`
+//! builder API without pulling in font bytes). `allow(dead_code)` in that
+//! case is therefore intentional, not a suppressed bug.
+
+#![cfg_attr(not(feature = "default-fonts"), allow(dead_code))]
 
 use crate::fonts::FontRegistry;
 use crate::images::{self, ImageEmbedError};

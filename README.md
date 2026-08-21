@@ -34,7 +34,10 @@ std::fs::write("invoice.pdf", bytes).unwrap();
 
 More complete examples: `crates/lightweight-pdf/examples/invoice.rs` (a
 German DIN-5008-style invoice with a multi-page table) and
-`.../examples/report.rs`.
+`.../examples/report.rs`. `examples/demo_*.rs` at the repo root are further,
+English-language sample documents (invoice, quote, credentials hand-off,
+concept, API documentation, audit report) — run with `cargo run -p
+lightweight-pdf --example demo_invoice` etc.
 
 ## Features
 
@@ -62,7 +65,7 @@ Currently only one page size (A4, portrait); see
 
 | Feature           | Default | Purpose                                                       |
 |--------------------|:-------:|-----------------------------------------------------------------|
-| `default-fonts`     | ✅      | Bundles Source Sans 3 as the default font set.                  |
+| `default-fonts`     | ✅      | Bundles Source Sans 3 as the default font set. Currently the only font source in V1 (no custom-font API yet), so `Document::render()` isn't available without it — `--no-default-features` still compiles the `lib` target, but not the examples/tests. |
 | `png`               |         | PNG decoding/embedding (`Image::from_png`); without this feature, embedding a PNG fails at runtime with `ImageEmbedError::PngFeatureDisabled`. |
 | `wasm`              |         | Targets `wasm32-unknown-unknown`.                                |
 | `wasm-size-probe`   |         | Internal, non-public `extern "C"` function used to measure WASM build size (CI); requires `default-fonts`. |
@@ -93,6 +96,35 @@ cargo test -p lightweight-pdf --features png     # incl. PNG path
 cargo clippy --workspace --all-targets -- -D warnings
 cargo build --workspace --target wasm32-unknown-unknown --release
 ```
+
+## Publishing
+
+All five workspace crates are meant to be published to crates.io (the
+`publish = false` guard that used to sit on the four internal crates was
+only a placeholder for "before v1 ships", not a permanent decision — see
+the local `plan/00-decisions.md`, ADR-002/ADR-015 for context that isn't
+part of this repo's git history). Path dependencies between them now also
+carry a `version` requirement, as `cargo publish` requires.
+
+Because `lightweight-pdf-layout` and `lightweight-pdf` depend on
+not-yet-published sibling crates, a first release must publish in
+dependency order — each step only works once the previous one is live on
+crates.io:
+
+```sh
+cargo publish -p lightweight-pdf-writer
+cargo publish -p lightweight-pdf-core
+cargo publish -p lightweight-pdf-fonts
+cargo publish -p lightweight-pdf-layout   # needs lightweight-pdf-core live
+cargo publish -p lightweight-pdf          # needs all four live
+```
+
+`cargo package -p lightweight-pdf-writer/-core/-fonts --allow-dirty`
+already package and verify cleanly today (no unpublished dependencies).
+`lightweight-pdf-layout` and `lightweight-pdf` will fail `cargo package`/
+`cargo publish --dry-run` until their dependencies actually exist on
+crates.io — that's expected for a first multi-crate release, not a
+configuration error.
 
 ## License
 

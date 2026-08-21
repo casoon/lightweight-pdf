@@ -3,7 +3,7 @@ name = "lightweight-pdf-fonts"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-publish = false
+repository.workspace = true
 description = "Font data, metrics and subsetting for lightweight-pdf"
 
 [dependencies]

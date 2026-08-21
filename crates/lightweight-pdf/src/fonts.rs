@@ -43,6 +43,10 @@ pub struct FontEntry {
 }
 
 impl FontEntry {
+    // Only called from `with_defaults()` below, which is itself `#[cfg]`-gated
+    // on `default-fonts` — see `render.rs`'s doc comment for why an unused
+    // `allow` is intentional here rather than a real bug.
+    #[cfg_attr(not(feature = "default-fonts"), allow(dead_code))]
     fn new(bytes: &[u8], base_font_name: &'static str) -> Result<Self, FontError> {
         let data = FontData::load(bytes.to_vec())?;
         let metrics = EmbeddedFontMetrics::from_font_data(&data)?;
