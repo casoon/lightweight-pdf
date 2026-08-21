@@ -1,8 +1,10 @@
 //! Bridges `lightweight-pdf-fonts::FontData` to `lightweight-pdf-layout::FontResolver`
-//! (ADR-010: "Font-Bridge liegt an der Facade"). V1 only ever resolves the
-//! two default weights (`FontKey::SANS_REGULAR`/`SANS_BOLD`) — a registry
-//! for arbitrary custom fonts is Phase 4+ follow-up scope beyond this
-//! document's two-weight default.
+//! (ADR-010: "Font-Bridge liegt an der Facade"). `FontRegistry` always
+//! resolves exactly the two weights `FontKey::SANS_REGULAR`/`SANS_BOLD` —
+//! either the bundled default (`with_defaults()`, needs the `default-fonts`
+//! feature) or caller-supplied bytes (`with_fonts()`, always available). An
+//! arbitrary-weight/arbitrary-`FontKey` registry beyond this fixed pair is
+//! out of scope here (see the tracking issue linked from `with_fonts`).
 
 use lightweight_pdf_core::FontKey;
 use lightweight_pdf_fonts::{EmbeddedFontMetrics, FontData, FontError};
@@ -43,10 +45,6 @@ pub struct FontEntry {
 }
 
 impl FontEntry {
-    // Only called from `with_defaults()` below, which is itself `#[cfg]`-gated
-    // on `default-fonts` — see `render.rs`'s doc comment for why an unused
-    // `allow` is intentional here rather than a real bug.
-    #[cfg_attr(not(feature = "default-fonts"), allow(dead_code))]
     fn new(bytes: &[u8], base_font_name: &'static str) -> Result<Self, FontError> {
         let data = FontData::load(bytes.to_vec())?;
         let metrics = EmbeddedFontMetrics::from_font_data(&data)?;
@@ -75,6 +73,19 @@ impl FontRegistry {
         Ok(FontRegistry {
             regular: FontEntry::new(SANS_REGULAR_BYTES, "SourceSans3-Subset")?,
             bold: FontEntry::new(SANS_BOLD_BYTES, "SourceSans3-Bold-Subset")?,
+        })
+    }
+
+    /// Builds a registry from caller-supplied static TrueType `glyf` fonts
+    /// (ADR-012, same constraint as the bundled defaults) instead of Source
+    /// Sans 3 — always available, independent of the `default-fonts`
+    /// feature. Still exactly the two-weight `SANS_REGULAR`/`SANS_BOLD`
+    /// model; an arbitrary-weight/arbitrary-`FontKey` registry is tracked
+    /// separately (github.com/casoon/lightweight-pdf/issues/1).
+    pub fn with_fonts(regular_bytes: &[u8], bold_bytes: &[u8]) -> Result<Self, FontError> {
+        Ok(FontRegistry {
+            regular: FontEntry::new(regular_bytes, "CustomFont-Regular-Subset")?,
+            bold: FontEntry::new(bold_bytes, "CustomFont-Bold-Subset")?,
         })
     }
 

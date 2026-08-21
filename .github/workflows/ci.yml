@@ -32,12 +32,14 @@ jobs:
       - name: cargo test (all features)
         run: cargo test --workspace --all-features
       - name: cargo build (lib, no default features)
-        # `default-fonts` is currently the only font source in V1 (see
-        # `render.rs`'s doc comment) — `.render()` isn't available without
-        # it, so only the lib target is expected to build in this
-        # configuration, not examples/tests (those call `.render()`
-        # unconditionally and are meant to fail to compile here).
+        # `render()`/`render_with_diagnostics()` need the bundled
+        # `default-fonts`; most examples/tests call those and are meant to
+        # fail to compile here (the custom-font path — `render_with_fonts()`
+        # + `demo_custom_font` — works fine without the feature, but that's
+        # the exception, not the rule, so this step stays scoped to `--lib`).
         run: cargo clippy -p lightweight-pdf --no-default-features --lib -- -D warnings
+      - name: cargo run --example demo_custom_font (no default features)
+        run: cargo run -p lightweight-pdf --example demo_custom_font --no-default-features
       - name: cargo build (native)
         run: cargo build --workspace
       - name: cargo build (wasm32)
@@ -46,6 +48,8 @@ jobs:
         run: cargo run -p lightweight-pdf --example invoice
       - name: cargo run --example report
         run: cargo run -p lightweight-pdf --example report
+      - name: cargo run --example demo_custom_font
+        run: cargo run -p lightweight-pdf --example demo_custom_font
       - name: Crate boundary check (lightweight-pdf-writer must not depend on core/layout)
         run: |
           ! cargo tree -p lightweight-pdf-writer | grep -E "lightweight-pdf-core|lightweight-pdf-layout"
@@ -96,7 +100,9 @@ jobs:
           echo "raw: $(stat -c%s "$f") bytes" >> "$GITHUB_STEP_SUMMARY"
           echo "wasm-opt -Oz: $(stat -c%s /tmp/standard.opt.wasm) bytes" >> "$GITHUB_STEP_SUMMARY"
           echo "gzip -9: $(stat -c%s /tmp/standard.opt.wasm.gz) bytes" >> "$GITHUB_STEP_SUMMARY"
-      # NOTE: no hard-fail threshold yet for either config (ADR-008: no CI
-      # hard-fail in Phase 0/1; a warn-threshold is introduced once Phase 2
-      # has an accepted baseline in progress.md — see ADR-014 for the
-      # current, over-corridor baseline and why).
+      # NOTE: deliberately no hard-/soft-fail threshold for either config —
+      # measured and written to the job summary for a human to read, never
+      # gated. A solid baseline exists (see ADR-014/ADR-015 in the
+      # local plan/00-decisions.md), but font-data size dominates this
+      # measurement, not generator code, so a threshold would flag normal
+      # font-asset changes as CI failures rather than real regressions.

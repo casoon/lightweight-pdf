@@ -36,7 +36,7 @@ More complete examples: `crates/lightweight-pdf/examples/invoice.rs` (a
 German DIN-5008-style invoice with a multi-page table) and
 `.../examples/report.rs`. `examples/demo_*.rs` at the repo root are further,
 English-language sample documents (invoice, quote, credentials hand-off,
-concept, API documentation, audit report) — run with `cargo run -p
+concept, API documentation, audit report, and a custom-font demo) — run with `cargo run -p
 lightweight-pdf --example demo_invoice` etc.
 
 ## Features
@@ -50,7 +50,12 @@ lightweight-pdf --example demo_invoice` etc.
   with row striping.
 - Own TrueType subsetting (only glyphs actually used are embedded) for
   real Unicode text via Type-0/CIDFontType2; a Source Sans 3 font set is
-  bundled by default (`default-fonts` feature).
+  bundled by default (`default-fonts` feature). Bring your own font instead
+  via `FontRegistry::with_fonts(regular_bytes, bold_bytes)` +
+  `Document::render_with_fonts()` — works without `default-fonts` too, see
+  `examples/demo_custom_font.rs`. Currently a fixed regular/bold pair, not
+  an arbitrary-weight registry (tracked in
+  [#1](https://github.com/casoon/lightweight-pdf/issues/1)).
 - Images: JPEG is passed through unchanged as `DCTDecode`; PNG is decoded
   and re-embedded with a separate `SMask` (alpha channel) — only with the
   `png` feature enabled (see below).
@@ -65,7 +70,7 @@ Currently only one page size (A4, portrait); see
 
 | Feature           | Default | Purpose                                                       |
 |--------------------|:-------:|-----------------------------------------------------------------|
-| `default-fonts`     | ✅      | Bundles Source Sans 3 as the default font set. Currently the only font source in V1 (no custom-font API yet), so `Document::render()` isn't available without it — `--no-default-features` still compiles the `lib` target, but not the examples/tests. |
+| `default-fonts`     | ✅      | Bundles Source Sans 3 as the default font set for `Document::render()`/`render_with_diagnostics()`. Not needed for `render_with_fonts()` (custom fonts) — `--no-default-features` still compiles the `lib` target and the `demo_custom_font` example, just not the other examples/tests, which call `render()` directly. |
 | `png`               |         | PNG decoding/embedding (`Image::from_png`); without this feature, embedding a PNG fails at runtime with `ImageEmbedError::PngFeatureDisabled`. |
 | `wasm`              |         | Targets `wasm32-unknown-unknown`.                                |
 | `wasm-size-probe`   |         | Internal, non-public `extern "C"` function used to measure WASM build size (CI); requires `default-fonts`. |

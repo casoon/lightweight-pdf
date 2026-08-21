@@ -46,3 +46,7 @@ path = "../../examples/demo_documentation.rs"
 [[example]]
 name = "demo_report"
 path = "../../examples/demo_report.rs"
+
+[[example]]
+name = "demo_custom_font"
+path = "../../examples/demo_custom_font.rs"

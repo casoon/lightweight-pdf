@@ -8,13 +8,6 @@
 //! consistent with content streams and embedded fonts elsewhere in V1
 //! (`plan/progress.md`: no Flate encoder implemented, so nothing here
 //! re-compresses either).
-//!
-//! `build_jpeg`/`build_png` are only ever called from `render.rs`'s
-//! `render_node`, which is itself unreachable without `default-fonts` (see
-//! that module's doc comment) — same intentional `allow(dead_code)` reason,
-//! not specific to the `png` feature.
-
-#![cfg_attr(not(feature = "default-fonts"), allow(dead_code))]
 
 use lightweight_pdf_core::ImageFormat;
 use lightweight_pdf_writer::{ColorSpace, ImageDataFilter, PdfImage};

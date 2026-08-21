@@ -6,8 +6,10 @@ mod fonts;
 mod images;
 mod render;
 
+pub use fonts::FontRegistry;
 pub use images::ImageEmbedError;
 pub use lightweight_pdf_core::*;
+pub use lightweight_pdf_fonts::FontError;
 pub use lightweight_pdf_layout::{LayoutWarning, LayoutWarningKind};
 pub use render::{DocumentExt, RenderError};
 

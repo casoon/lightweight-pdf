@@ -8,15 +8,13 @@
 //! to learn exactly which characters were used, then subset each font
 //! down to just those glyphs before writing the PDF.
 //!
-//! V1 has no custom-font API yet (see `fonts.rs`): `default-fonts` is
-//! currently the only font source, so `DocumentExt` below is `#[cfg]`-gated
-//! on it and everything in this module is unreachable without it — building
-//! `--no-default-features` is not a functional configuration for calling
-//! `.render()` in V1 (only useful for consumers who want the `Document`
-//! builder API without pulling in font bytes). `allow(dead_code)` in that
-//! case is therefore intentional, not a suppressed bug.
-
-#![cfg_attr(not(feature = "default-fonts"), allow(dead_code))]
+//! `render()`/`render_with_diagnostics()` need the bundled default fonts
+//! (`default-fonts` feature) and are `#[cfg]`-gated on it accordingly;
+//! `render_with_fonts()`/`render_with_fonts_and_diagnostics()` take an
+//! already-built `FontRegistry` (e.g. `FontRegistry::with_fonts(...)`, see
+//! `fonts.rs`) and work regardless of that feature — so without
+//! `default-fonts`, this module's private render pipeline is still
+//! reachable through those two, not dead code.
 
 use crate::fonts::FontRegistry;
 use crate::images::{self, ImageEmbedError};
@@ -369,29 +367,44 @@ fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec
     Ok((pdf.write(), paginated.warnings))
 }
 
-/// Extension trait adding `render()`/`render_with_diagnostics()` to
-/// `lightweight_pdf_core::Document`. Lives here (not in `lightweight-pdf-core`) because
-/// rendering needs layout, fonts and the PDF writer — `lightweight-pdf-core` must
-/// not depend on any of them (ADR-002). This is the point at which
-/// `render()` becomes public (ADR-002).
+/// Extension trait adding `render()`/`render_with_diagnostics()` (bundled
+/// default fonts) and `render_with_fonts()`/`render_with_fonts_and_diagnostics()`
+/// (caller-supplied fonts, see `fonts.rs::FontRegistry::with_fonts()`) to
+/// `lightweight_pdf_core::Document`. Lives here (not in `lightweight-pdf-core`)
+/// because rendering needs layout, fonts and the PDF writer —
+/// `lightweight-pdf-core` must not depend on any of them (ADR-002). This is
+/// the point at which `render()` becomes public (ADR-002).
 pub trait DocumentExt {
+    // Without `default-fonts` there is no bundled font source, so these two
+    // are simply not part of the trait rather than failing at runtime.
+    #[cfg(feature = "default-fonts")]
     fn render(&self) -> Result<Vec<u8>, RenderError>;
+    #[cfg(feature = "default-fonts")]
     fn render_with_diagnostics(&self) -> Result<(Vec<u8>, Vec<LayoutWarning>), RenderError>;
+
+    fn render_with_fonts(&self, fonts: &FontRegistry) -> Result<Vec<u8>, RenderError>;
+    fn render_with_fonts_and_diagnostics(&self, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec<LayoutWarning>), RenderError>;
 }
 
-// Custom (non-default) font sources are a later follow-up (a general
-// registry beyond the two bundled weights). Without `default-fonts` there
-// is currently no font source at all, so the extension methods are simply
-// not available rather than failing at runtime.
-#[cfg(feature = "default-fonts")]
 impl DocumentExt for Document {
+    #[cfg(feature = "default-fonts")]
     fn render(&self) -> Result<Vec<u8>, RenderError> {
         let (bytes, _warnings) = self.render_with_diagnostics()?;
         Ok(bytes)
     }
 
+    #[cfg(feature = "default-fonts")]
     fn render_with_diagnostics(&self) -> Result<(Vec<u8>, Vec<LayoutWarning>), RenderError> {
         let fonts = FontRegistry::with_defaults()?;
         render_document(self, &fonts)
+    }
+
+    fn render_with_fonts(&self, fonts: &FontRegistry) -> Result<Vec<u8>, RenderError> {
+        let (bytes, _warnings) = self.render_with_fonts_and_diagnostics(fonts)?;
+        Ok(bytes)
+    }
+
+    fn render_with_fonts_and_diagnostics(&self, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec<LayoutWarning>), RenderError> {
+        render_document(self, fonts)
     }
 }
