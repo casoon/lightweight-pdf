@@ -1,13 +1,17 @@
-//! Own TrueType subsetting code (Phase 4, `ttf-parser` only parses — it
-//! does not subset, ADR-003). Rewrites `glyf`, `loca`, `hmtx`, `head`,
-//! `hhea`, `maxp` and `cmap` for exactly the glyphs a document uses (plus
-//! `.notdef` and the full composite-glyph closure), with correct 4-byte
-//! table alignment and `head.checkSumAdjustment` (plan/phases/
-//! phase-4-fonts-subsetting.md, step 4).
+//! Own TrueType subsetting code (Phase 4, `skrifa`/`read-fonts` only parse —
+//! they don't subset, ADR-003/ADR-015). Rewrites `glyf`, `loca`, `hmtx`,
+//! `head`, `hhea`, `maxp` and `cmap` for exactly the glyphs a document uses
+//! (plus `.notdef` and the full composite-glyph closure), with correct
+//! 4-byte table alignment and `head.checkSumAdjustment` (plan/phases/
+//! phase-4-fonts-subsetting.md, step 4). All of this operates on raw table
+//! bytes obtained via `TableProvider::data_for_tag` — `skrifa` is only used
+//! to locate those tables and to resolve `cmap`/`maxp`/`head`/`hhea`
+//! metadata, not for the byte-level rewriting itself.
 
 use crate::font::{FontData, FontError};
+use skrifa::raw::TableProvider;
+use skrifa::{MetadataProvider, Tag};
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
-use ttf_parser::Tag;
 
 /// Result of subsetting: a standalone, valid sfnt binary plus the mapping
 /// from each requested character to its *new* glyph ID in that binary
@@ -275,32 +279,35 @@ fn sfnt_search_params_16(count: u16) -> (u16, u16, u16) {
 /// font has no glyph for are silently omitted from the result — the
 /// caller decides how to handle that (see the facade's `?` fallback).
 pub fn subset_font(font: &FontData, chars: &BTreeSet<char>) -> Result<FontSubset, FontError> {
-    font.with_face(|face| -> Result<FontSubset, FontError> {
-        let raw = face.raw_face();
-        let glyf_raw = raw.table(Tag::from_bytes(b"glyf")).ok_or(FontError::UnsupportedFont)?;
-        let loca_raw = raw.table(Tag::from_bytes(b"loca")).ok_or(FontError::UnsupportedFont)?;
-        let hmtx_raw = raw.table(Tag::from_bytes(b"hmtx")).ok_or(FontError::UnsupportedFont)?;
-        let head_raw = raw.table(Tag::from_bytes(b"head")).ok_or(FontError::MalformedFont)?;
-        let hhea_raw = raw.table(Tag::from_bytes(b"hhea")).ok_or(FontError::MalformedFont)?;
-        let maxp_raw = raw.table(Tag::from_bytes(b"maxp")).ok_or(FontError::MalformedFont)?;
+    font.with_font(|font| -> Result<FontSubset, FontError> {
+        let glyf_raw = font.data_for_tag(Tag::new(b"glyf")).ok_or(FontError::UnsupportedFont)?.as_bytes();
+        let loca_raw = font.data_for_tag(Tag::new(b"loca")).ok_or(FontError::UnsupportedFont)?.as_bytes();
+        let hmtx_raw = font.data_for_tag(Tag::new(b"hmtx")).ok_or(FontError::UnsupportedFont)?.as_bytes();
+        let head_raw = font.data_for_tag(Tag::new(b"head")).ok_or(FontError::MalformedFont)?.as_bytes();
+        let hhea_raw = font.data_for_tag(Tag::new(b"hhea")).ok_or(FontError::MalformedFont)?.as_bytes();
+        let maxp_raw = font.data_for_tag(Tag::new(b"maxp")).ok_or(FontError::MalformedFont)?.as_bytes();
 
-        let num_glyphs_orig = face.tables().maxp.number_of_glyphs.get();
-        let long_loca = face.tables().head.index_to_location_format == ttf_parser::head::IndexToLocationFormat::Long;
+        let head = font.head().map_err(|_| FontError::MalformedFont)?;
+        let hhea = font.hhea().map_err(|_| FontError::MalformedFont)?;
+        let num_glyphs_orig = font.maxp().map_err(|_| FontError::MalformedFont)?.num_glyphs();
+        let long_loca = head.index_to_loc_format() == 1;
         let loca = parse_loca(loca_raw, num_glyphs_orig, long_loca)?;
-        let num_hmetrics = face.tables().hhea.number_of_metrics;
+        let num_hmetrics = hhea.number_of_h_metrics();
         if num_hmetrics == 0 {
             return Err(FontError::MalformedFont);
         }
 
         // Characters -> original glyph IDs (unrepresentable characters are
         // simply omitted, not an error).
+        let charmap = font.charmap();
         let mut char_to_orig_gid: BTreeMap<char, u16> = BTreeMap::new();
         let mut used: BTreeSet<u16> = BTreeSet::new();
         used.insert(0); // .notdef, always included
         for &ch in chars {
-            if let Some(gid) = face.glyph_index(ch) {
-                char_to_orig_gid.insert(ch, gid.0);
-                used.insert(gid.0);
+            if let Some(gid) = charmap.map(ch) {
+                let gid = gid.to_u32() as u16;
+                char_to_orig_gid.insert(ch, gid);
+                used.insert(gid);
             }
         }
 
@@ -370,7 +377,7 @@ pub fn subset_font(font: &FontData, chars: &BTreeSet<char>) -> Result<FontSubset
                 (advance, lsb)
             }
         };
-        let upem = face.units_per_em() as f32;
+        let upem = head.units_per_em() as f32;
         let mut new_hmtx = Vec::with_capacity(ordered.len() * 4);
         let mut widths_1000 = Vec::with_capacity(ordered.len());
         for &orig_gid in &ordered {
@@ -428,6 +435,7 @@ pub fn subset_font(font: &FontData, chars: &BTreeSet<char>) -> Result<FontSubset
 mod tests {
     use super::*;
     use crate::font::EmbeddedFontMetrics;
+    use skrifa::GlyphId;
 
     fn regular() -> FontData {
         let bytes = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/fonts/SourceSans3-Regular.ttf")).unwrap();
@@ -451,13 +459,13 @@ mod tests {
     }
 
     #[test]
-    fn subset_round_trips_through_ttf_parser_and_is_internally_consistent() {
+    fn subset_round_trips_through_skrifa_and_is_internally_consistent() {
         let font = regular();
         let subset = subset_font(&font, &chars("Hallo Rechnung äöüßÄÖÜ€")).unwrap();
         let reloaded = FontData::load(subset.font_data.clone()).expect("subset must itself be a valid, loadable static glyf TTF");
         reloaded
-            .with_face(|face| {
-                assert_eq!(face.tables().maxp.number_of_glyphs.get(), subset.num_glyphs);
+            .with_font(|font| {
+                assert_eq!(font.maxp().unwrap().num_glyphs(), subset.num_glyphs);
             })
             .unwrap();
     }
@@ -483,9 +491,11 @@ mod tests {
             let new_gid = *subset.char_to_gid.get(&ch).unwrap();
             let original_advance = metrics.advance_1000(ch).unwrap();
             let subset_advance = reloaded
-                .with_face(|face| {
-                    let upem = face.units_per_em() as f32;
-                    face.glyph_hor_advance(ttf_parser::GlyphId(new_gid))
+                .with_font(|font| {
+                    let upem = font.head().unwrap().units_per_em() as f32;
+                    font.hmtx()
+                        .ok()
+                        .and_then(|hmtx| hmtx.advance(GlyphId::new(new_gid as u32)))
                         .map(|a| a as f32 * 1000.0 / upem)
                 })
                 .unwrap()
@@ -508,10 +518,10 @@ mod tests {
         let subset = subset_font(&font, &used).unwrap();
         let reloaded = FontData::load(subset.font_data.clone()).unwrap();
         reloaded
-            .with_face(|face| {
+            .with_font(|font| {
                 for (&ch, &expected_gid) in &subset.char_to_gid {
-                    let gid = face.glyph_index(ch).expect("subset cmap must resolve every included character");
-                    assert_eq!(gid.0, expected_gid, "cmap lookup mismatch for {ch:?}");
+                    let gid = font.charmap().map(ch).expect("subset cmap must resolve every included character");
+                    assert_eq!(gid.to_u32() as u16, expected_gid, "cmap lookup mismatch for {ch:?}");
                 }
             })
             .unwrap();
@@ -563,9 +573,9 @@ mod tests {
         assert!(subset.font_data.len() < font.bytes().len());
         let reloaded = FontData::load(subset.font_data).expect("custom font subset must also be valid");
         reloaded
-            .with_face(|face| {
+            .with_font(|font| {
                 for (&ch, &gid) in &subset.char_to_gid {
-                    assert_eq!(face.glyph_index(ch).unwrap().0, gid);
+                    assert_eq!(font.charmap().map(ch).unwrap().to_u32() as u16, gid);
                 }
             })
             .unwrap();

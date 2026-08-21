@@ -7,7 +7,7 @@ Worker. No generic typesetting system, no parser for a custom markup
 language — a builder pattern over a fixed set of layout primitives.
 
 Own PDF writer (objects/xref/streams) and own TrueType subsetter; the only
-required external dependency is `ttf-parser` for font parsing.
+required external dependency is `skrifa` for font parsing.
 
 ## Example
 
@@ -77,7 +77,7 @@ crates/
   lightweight-pdf-core/    Document model, elements, builder API
   lightweight-pdf-layout/  Layoutable trait, pagination, text wrapping
   lightweight-pdf-writer/  PDF writer core (objects, xref, streams, fonts)
-  lightweight-pdf-fonts/   Font metrics/parsing (ttf-parser), subsetting
+  lightweight-pdf-fonts/   Font metrics/parsing (skrifa), subsetting
   lightweight-pdf/         Facade crate, public API + wasm feature
 ```
 

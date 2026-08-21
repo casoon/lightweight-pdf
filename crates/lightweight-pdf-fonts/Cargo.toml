@@ -7,4 +7,8 @@ repository.workspace = true
 description = "Font data, metrics and subsetting for lightweight-pdf"
 
 [dependencies]
-ttf-parser = { version = "0.24", default-features = false, features = ["std"] }
+# ADR-015: replaces `ttf-parser` (unmaintained, RUSTSEC-2026-0192). Actively
+# maintained (Google Fonts "oxidize"/fontations project); default features
+# (`std`, `autohint_shaping`) are both cheap — `autohint_shaping` gates no
+# extra dependencies, it's a plain cfg flag — so left at their defaults.
+skrifa = "0.46"

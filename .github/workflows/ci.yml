@@ -57,9 +57,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # `ttf-parser` is flagged unmaintained (RUSTSEC-2026-0192, ADR-015) —
-      # a documented, accepted risk, not a build blocker, so this job
-      # reports advisories without failing the workflow on them.
+      # No `deny-warnings`: reports advisories without failing the workflow
+      # on informational-only findings (see ADR-015 — the unmaintained
+      # `ttf-parser` finding that motivated this job was resolved by
+      # switching to `skrifa`, but this job stays as a standing check).
       - uses: rustsec/audit-check@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

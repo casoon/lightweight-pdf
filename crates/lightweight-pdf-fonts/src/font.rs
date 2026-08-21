@@ -2,17 +2,22 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use skrifa::attribute::Style;
+use skrifa::raw::TableProvider;
+use skrifa::{FontRef, MetadataProvider, Tag};
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FontError {
     /// Not a static TrueType `glyf` font (ADR-012: variable fonts and
     /// CFF/OTF are explicitly rejected in V1).
     UnsupportedFont,
-    /// Malformed font data that `ttf-parser` could not parse at all.
+    /// Malformed font data that `skrifa` could not parse at all.
     ParseError,
     /// Structurally inconsistent font tables discovered while subsetting
-    /// (e.g. a `loca`/`glyf`/`maxp` mismatch) — distinct from `ParseError`
-    /// because `ttf-parser` itself accepted the font; this is caught by
-    /// lightweight-pdf's own table walking.
+    /// (e.g. a `loca`/`glyf`/`maxp` mismatch, or a mandatory table `skrifa`
+    /// couldn't decode) — distinct from `ParseError` because the font's
+    /// sfnt directory itself parsed fine; this is caught by lightweight-pdf's
+    /// own table walking.
     MalformedFont,
 }
 
@@ -26,8 +31,8 @@ impl core::fmt::Display for FontError {
     }
 }
 
-/// Owns font bytes; a `ttf_parser::Face` is only ever created transiently
-/// on access, never stored self-referentially (ADR-010 / contract point 3).
+/// Owns font bytes; a `skrifa::FontRef` is only ever created transiently on
+/// access, never stored self-referentially (ADR-010 / contract point 3).
 #[derive(Clone, Debug)]
 pub struct FontData {
     bytes: Arc<[u8]>,
@@ -35,13 +40,16 @@ pub struct FontData {
 
 impl FontData {
     /// Accepts only static TrueType fonts with `glyf` outlines (ADR-012).
+    /// `FontRef::new` only validates the sfnt directory itself — presence of
+    /// `glyf` and absence of `fvar` (the standard variable-font marker) are
+    /// checked explicitly here, same as before.
     pub fn load(bytes: impl Into<Arc<[u8]>>) -> Result<Self, FontError> {
         let bytes: Arc<[u8]> = bytes.into();
-        let face = ttf_parser::Face::parse(&bytes, 0).map_err(|_| FontError::ParseError)?;
-        if face.tables().glyf.is_none() {
+        let font = FontRef::new(&bytes).map_err(|_| FontError::ParseError)?;
+        if font.data_for_tag(Tag::new(b"glyf")).is_none() {
             return Err(FontError::UnsupportedFont);
         }
-        if face.is_variable() {
+        if font.data_for_tag(Tag::new(b"fvar")).is_some() {
             return Err(FontError::UnsupportedFont);
         }
         Ok(FontData { bytes })
@@ -51,9 +59,9 @@ impl FontData {
         &self.bytes
     }
 
-    pub fn with_face<R>(&self, f: impl FnOnce(&ttf_parser::Face) -> R) -> Result<R, FontError> {
-        let face = ttf_parser::Face::parse(&self.bytes, 0).map_err(|_| FontError::ParseError)?;
-        Ok(f(&face))
+    pub fn with_font<R>(&self, f: impl FnOnce(&FontRef) -> R) -> Result<R, FontError> {
+        let font = FontRef::new(&self.bytes).map_err(|_| FontError::ParseError)?;
+        Ok(f(&font))
     }
 }
 
@@ -97,30 +105,41 @@ impl Clone for EmbeddedFontMetrics {
 
 impl EmbeddedFontMetrics {
     pub fn from_font_data(data: &FontData) -> Result<Self, FontError> {
-        data.with_face(|face| {
-            let upem = face.units_per_em() as f32;
+        data.with_font(|font| -> Result<Self, FontError> {
+            let head = font.head().map_err(|_| FontError::MalformedFont)?;
+            let hhea = font.hhea().map_err(|_| FontError::MalformedFont)?;
+            let upem = head.units_per_em() as f32;
             let scale = 1000.0 / upem;
-            let bb = face.global_bounding_box();
-            EmbeddedFontMetrics {
+            let ascent = hhea.ascender().to_i16() as f32 * scale;
+            let cap_height = font
+                .os2()
+                .ok()
+                .and_then(|os2| os2.s_cap_height())
+                .map(|c| c as f32 * scale)
+                .unwrap_or(ascent);
+            let italic_angle = font.post().ok().map(|post| post.italic_angle().to_f64() as f32).unwrap_or(0.0);
+            // `Style::Oblique` counts as italic too (skrifa's attribute model
+            // distinguishes the two; ttf-parser's narrower `is_italic()`
+            // only covered the ITALIC bit — a deliberate, documented
+            // widening, not a bug, see ADR-015).
+            let attrs = font.attributes();
+            Ok(EmbeddedFontMetrics {
                 font: data.clone(),
                 advance_cache: RefCell::new(HashMap::new()),
-                ascent: face.ascender() as f32 * scale,
-                descent: face.descender() as f32 * scale,
-                cap_height: face
-                    .capital_height()
-                    .map(|c| c as f32 * scale)
-                    .unwrap_or(face.ascender() as f32 * scale),
-                italic_angle: face.italic_angle().unwrap_or(0.0),
+                ascent,
+                descent: hhea.descender().to_i16() as f32 * scale,
+                cap_height,
+                italic_angle,
                 bbox: (
-                    bb.x_min as f32 * scale,
-                    bb.y_min as f32 * scale,
-                    bb.x_max as f32 * scale,
-                    bb.y_max as f32 * scale,
+                    head.x_min() as f32 * scale,
+                    head.y_min() as f32 * scale,
+                    head.x_max() as f32 * scale,
+                    head.y_max() as f32 * scale,
                 ),
-                is_italic: face.is_italic(),
-                is_bold: face.is_bold(),
-            }
-        })
+                is_italic: attrs.style != Style::Normal,
+                is_bold: attrs.weight >= skrifa::attribute::Weight::BOLD,
+            })
+        })?
     }
 
     /// Advance width for a character in 1/1000 em units, or `None` if the
@@ -131,11 +150,10 @@ impl EmbeddedFontMetrics {
         }
         let advance = self
             .font
-            .with_face(|face| {
-                let upem = face.units_per_em() as f32;
-                face.glyph_index(ch)
-                    .and_then(|gid| face.glyph_hor_advance(gid))
-                    .map(|a| a as f32 * 1000.0 / upem)
+            .with_font(|font| {
+                let upem = font.head().ok()?.units_per_em() as f32;
+                let gid = font.charmap().map(ch)?;
+                font.hmtx().ok()?.advance(gid).map(|a| a as f32 * 1000.0 / upem)
             })
             .ok()
             .flatten();
@@ -149,7 +167,10 @@ impl EmbeddedFontMetrics {
     /// glyph for it. Used by the subsetter (`subset::subset_font`) to
     /// determine exactly which glyphs a document needs.
     pub fn glyph_id(&self, ch: char) -> Option<u16> {
-        self.font.with_face(|face| face.glyph_index(ch).map(|g| g.0)).ok().flatten()
+        self.font
+            .with_font(|font| font.charmap().map(ch).map(|g| g.to_u32() as u16))
+            .ok()
+            .flatten()
     }
 }
 
