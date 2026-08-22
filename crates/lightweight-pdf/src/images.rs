@@ -1,4 +1,4 @@
-//! Bridges validated `lightweight-pdf-core::Image` data to `lightweight-pdf-writer::PdfImage`
+//! Bridges validated `lightweight-pdf-core::Image` data to `lightweight-pdf-writer::ImageXObject`
 //! (Phase 5, `plan/phases/phase-5-images.md` steps 2-3). JPEG passes
 //! through byte-for-byte as `DCTDecode` (`Image::new` already validated
 //! baseline-ness/color type in `lightweight-pdf-core`, no re-encoding). PNG is
@@ -10,7 +10,7 @@
 //! re-compresses either).
 
 use lightweight_pdf_core::ImageFormat;
-use lightweight_pdf_writer::{ColorSpace, ImageDataFilter, PdfImage};
+use lightweight_pdf_writer::{ColorSpace, ImageDataFilter, ImageXObject};
 
 #[derive(Debug)]
 pub enum ImageEmbedError {
@@ -38,20 +38,20 @@ impl core::fmt::Display for ImageEmbedError {
 #[cfg(feature = "png")]
 const MAX_DECOMPRESSED_BYTES: usize = 200_000_000;
 
-pub fn build_pdf_image(bytes: &[u8], format: ImageFormat, components: u8) -> Result<PdfImage, ImageEmbedError> {
+pub fn build_pdf_image(bytes: &[u8], format: ImageFormat, components: u8) -> Result<ImageXObject, ImageEmbedError> {
     match format {
         ImageFormat::Jpeg => Ok(build_jpeg(bytes, components)),
         ImageFormat::Png => build_png(bytes),
     }
 }
 
-fn build_jpeg(bytes: &[u8], components: u8) -> PdfImage {
+fn build_jpeg(bytes: &[u8], components: u8) -> ImageXObject {
     let color_space = if components == 1 {
         ColorSpace::DeviceGray
     } else {
         ColorSpace::DeviceRgb
     };
-    PdfImage {
+    ImageXObject {
         // Width/Height are read from the same validated header
         // `lightweight-pdf-core::Image` already parsed; re-deriving them from the
         // JPEG SOF marker a second time here would just duplicate that
@@ -63,13 +63,13 @@ fn build_jpeg(bytes: &[u8], components: u8) -> PdfImage {
         color_space,
         bits_per_component: 8,
         filter: ImageDataFilter::DctDecode,
-        data: bytes.to_vec(),
+        bytes: bytes.to_vec(),
         smask: None,
     }
 }
 
 #[cfg(feature = "png")]
-fn build_png(bytes: &[u8]) -> Result<PdfImage, ImageEmbedError> {
+fn build_png(bytes: &[u8]) -> Result<ImageXObject, ImageEmbedError> {
     let limits = png::Limits {
         bytes: MAX_DECOMPRESSED_BYTES,
     };
@@ -80,39 +80,50 @@ fn build_png(bytes: &[u8]) -> Result<PdfImage, ImageEmbedError> {
     let pixels = &buf[..info.buffer_size()];
 
     match info.color_type {
-        png::ColorType::Rgb => Ok(PdfImage {
+        png::ColorType::Rgb => Ok(ImageXObject {
             width_px: info.width,
             height_px: info.height,
             color_space: ColorSpace::DeviceRgb,
             bits_per_component: 8,
             filter: ImageDataFilter::None,
-            data: pixels.to_vec(),
+            bytes: pixels.to_vec(),
             smask: None,
         }),
         png::ColorType::Rgba => {
-            let pixel_count = (info.width as usize) * (info.height as usize);
+            // `info.width`/`info.height` are `u32`; `usize` is only
+            // guaranteed to be at least 16 bits, so the widening is made
+            // explicit and fallible rather than an `as` cast. The
+            // multiplication is a different story: both values come from
+            // the PNG header (caller-supplied, not internally controlled),
+            // so a pathological image could overflow `usize` on a 32-bit
+            // target — `checked_mul` fails closed via `ImageEmbedError`
+            // instead of panicking (debug) or silently wrapping to an
+            // undersized allocation (release).
+            let width = usize::try_from(info.width).expect("u32 width fits in usize on every supported target");
+            let height = usize::try_from(info.height).expect("u32 height fits in usize on every supported target");
+            let pixel_count = width.checked_mul(height).ok_or(ImageEmbedError::DecodeFailed)?;
             let mut rgb = Vec::with_capacity(pixel_count * 3);
             let mut alpha = Vec::with_capacity(pixel_count);
             for px in pixels.chunks_exact(4) {
                 rgb.extend_from_slice(&px[0..3]);
                 alpha.push(px[3]);
             }
-            let smask = PdfImage {
+            let smask = ImageXObject {
                 width_px: info.width,
                 height_px: info.height,
                 color_space: ColorSpace::DeviceGray,
                 bits_per_component: 8,
                 filter: ImageDataFilter::None,
-                data: alpha,
+                bytes: alpha,
                 smask: None,
             };
-            Ok(PdfImage {
+            Ok(ImageXObject {
                 width_px: info.width,
                 height_px: info.height,
                 color_space: ColorSpace::DeviceRgb,
                 bits_per_component: 8,
                 filter: ImageDataFilter::None,
-                data: rgb,
+                bytes: rgb,
                 smask: Some(Box::new(smask)),
             })
         }
@@ -124,6 +135,6 @@ fn build_png(bytes: &[u8]) -> Result<PdfImage, ImageEmbedError> {
 }
 
 #[cfg(not(feature = "png"))]
-fn build_png(_bytes: &[u8]) -> Result<PdfImage, ImageEmbedError> {
+fn build_png(_bytes: &[u8]) -> Result<ImageXObject, ImageEmbedError> {
     Err(ImageEmbedError::PngFeatureDisabled)
 }

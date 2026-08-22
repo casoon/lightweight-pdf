@@ -4,7 +4,7 @@
 //! longer than one page repeats its header without losing or duplicating
 //! rows.
 
-mod support;
+use lightweight_pdf_test_support as support;
 
 use lightweight_pdf::*;
 
@@ -53,10 +53,10 @@ fn renders_the_invoice_table_example() {
     );
 
     let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
-    let (ok, log) = support::qpdf_check(&bytes);
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf --check failed:\n{log}");
 
-    let text = support::pdftotext(&bytes);
+    let text = support::pdftotext(&bytes).unwrap();
     assert!(text.contains("Beschreibung"), "missing header, got:\n{text}");
     assert!(text.contains("Beratung"));
     assert!(text.contains("Lizenz"));
@@ -78,13 +78,13 @@ fn table_spanning_multiple_pages_repeats_header_without_losing_rows() {
     );
 
     let bytes = doc.render().expect("render should succeed");
-    let (ok, log) = support::qpdf_check(&bytes);
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf --check failed:\n{log}");
 
-    let n = support::page_count(&bytes);
+    let n = support::page_count(&bytes).unwrap();
     assert!(n > 1, "expected the table to span multiple pages");
 
-    let full_text = support::pdftotext(&bytes);
+    let full_text = support::pdftotext(&bytes).unwrap();
     let header_count = full_text.matches("Beschreibung").count();
     assert_eq!(header_count, n, "header must repeat exactly once per page");
     for i in [0, 30, 59] {

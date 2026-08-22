@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use skrifa::attribute::Style;
+use skrifa::raw::tables::head::Head;
+use skrifa::raw::tables::hhea::Hhea;
 use skrifa::raw::TableProvider;
 use skrifa::{FontRef, MetadataProvider, Tag};
 
@@ -29,6 +31,27 @@ impl core::fmt::Display for FontError {
             FontError::MalformedFont => write!(f, "malformed or inconsistent font tables"),
         }
     }
+}
+
+/// Resolves a mandatory sfnt table lookup (`head`/`hhea`/`maxp`/...),
+/// mapping `skrifa`'s per-table parse failure to `FontError::MalformedFont`
+/// — the sfnt directory itself already parsed fine at this point (that's
+/// `FontData::load`'s job), so a table that fails to decode here means the
+/// font's tables are internally inconsistent, not merely unsupported.
+/// Shared by `EmbeddedFontMetrics::from_font_data` and `subset::subset_font`,
+/// which both resolve `head`/`hhea`/`maxp` this same way.
+pub(crate) fn require_table<T>(table: Result<T, skrifa::raw::ReadError>) -> Result<T, FontError> {
+    table.map_err(|_| FontError::MalformedFont)
+}
+
+/// Resolves the `head` and `hhea` tables together, via `require_table`.
+/// Shared by `EmbeddedFontMetrics::from_font_data` and `subset::subset_font`,
+/// which both need exactly this pair (`subset_font` additionally resolves
+/// `maxp` on its own, since `from_font_data` doesn't need it).
+pub(crate) fn require_head_hhea<'a>(font: &FontRef<'a>) -> Result<(Head<'a>, Hhea<'a>), FontError> {
+    let head = require_table(font.head())?;
+    let hhea = require_table(font.hhea())?;
+    Ok((head, hhea))
 }
 
 /// Owns font bytes; a `skrifa::FontRef` is only ever created transiently on
@@ -106,8 +129,7 @@ impl Clone for EmbeddedFontMetrics {
 impl EmbeddedFontMetrics {
     pub fn from_font_data(data: &FontData) -> Result<Self, FontError> {
         data.with_font(|font| -> Result<Self, FontError> {
-            let head = font.head().map_err(|_| FontError::MalformedFont)?;
-            let hhea = font.hhea().map_err(|_| FontError::MalformedFont)?;
+            let (head, hhea) = require_head_hhea(font)?;
             let upem = head.units_per_em() as f32;
             let scale = 1000.0 / upem;
             let ascent = hhea.ascender().to_i16() as f32 * scale;
@@ -168,7 +190,14 @@ impl EmbeddedFontMetrics {
     /// determine exactly which glyphs a document needs.
     pub fn glyph_id(&self, ch: char) -> Option<u16> {
         self.font
-            .with_font(|font| font.charmap().map(ch).map(|g| g.to_u32() as u16))
+            .with_font(|font| {
+                // A static TrueType font's glyph IDs are inherently <=
+                // `maxp.numGlyphs`, itself a u16 field, so this conversion
+                // should never fail in practice — but since `glyph_id`
+                // already returns `Option`, a failure is folded into `None`
+                // rather than reached via a panic.
+                font.charmap().map(ch).and_then(|g| u16::try_from(g.to_u32()).ok())
+            })
             .ok()
             .flatten()
     }

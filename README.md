@@ -79,11 +79,14 @@ Currently only one page size (A4, portrait); see
 
 ```
 crates/
-  lightweight-pdf-core/    Document model, elements, builder API
-  lightweight-pdf-layout/  Layoutable trait, pagination, text wrapping
-  lightweight-pdf-writer/  PDF writer core (objects, xref, streams, fonts)
-  lightweight-pdf-fonts/   Font metrics/parsing (skrifa), subsetting
-  lightweight-pdf/         Facade crate, public API + wasm feature
+  lightweight-pdf-core/         Document model, elements, builder API
+  lightweight-pdf-layout/       Layoutable trait, pagination, text wrapping
+  lightweight-pdf-writer/       PDF writer core (objects, xref, streams, fonts)
+  lightweight-pdf-fonts/        Font metrics/parsing (skrifa), subsetting
+  lightweight-pdf/              Facade crate, public API + wasm feature
+  lightweight-pdf-test-support/ Internal (publish = false): shared qpdf/pdftotext
+                                 shell-out helpers for lightweight-pdf's integration
+                                 tests, a dev-dependency only.
 ```
 
 Dependency direction is strictly one-way: `core ← layout ← facade`;
@@ -104,17 +107,19 @@ cargo build --workspace --target wasm32-unknown-unknown --release
 
 ## Publishing
 
-All five workspace crates are meant to be published to crates.io (the
-`publish = false` guard that used to sit on the four internal crates was
-only a placeholder for "before v1 ships", not a permanent decision — see
-the local `plan/00-decisions.md`, ADR-002/ADR-015 for context that isn't
-part of this repo's git history). Path dependencies between them now also
-carry a `version` requirement, as `cargo publish` requires.
+All five published workspace crates (everything except the internal,
+`publish = false` `lightweight-pdf-test-support`) are live on crates.io.
+They share one workspace version (`workspace.package.version`), so a
+release bumps all five together, even if only one crate actually changed —
+simpler than tracking independent versions for a one-way dependency chain
+this shallow. Path dependencies between them carry a matching `version`
+requirement, as `cargo publish` requires.
 
-Because `lightweight-pdf-layout` and `lightweight-pdf` depend on
-not-yet-published sibling crates, a first release must publish in
-dependency order — each step only works once the previous one is live on
-crates.io:
+Because `lightweight-pdf-layout` and `lightweight-pdf` depend on sibling
+crates, a release must publish in dependency order — each step only works
+once the previous one is live on crates.io (crates.io's index needs a
+moment to catch up after each publish; retry the next step if it fails
+immediately with "no matching package found"):
 
 ```sh
 cargo publish -p lightweight-pdf-writer
@@ -123,13 +128,6 @@ cargo publish -p lightweight-pdf-fonts
 cargo publish -p lightweight-pdf-layout   # needs lightweight-pdf-core live
 cargo publish -p lightweight-pdf          # needs all four live
 ```
-
-`cargo package -p lightweight-pdf-writer/-core/-fonts --allow-dirty`
-already package and verify cleanly today (no unpublished dependencies).
-`lightweight-pdf-layout` and `lightweight-pdf` will fail `cargo package`/
-`cargo publish --dry-run` until their dependencies actually exist on
-crates.io — that's expected for a first multi-crate release, not a
-configuration error.
 
 ## License
 

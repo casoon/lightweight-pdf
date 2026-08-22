@@ -47,7 +47,10 @@ impl PdfWriter {
     }
 
     fn record_offset(&mut self, id: Ref) {
-        let idx = (id.0 - 1) as usize;
+        // `id.0` is a `u32` object id; `usize` is at least 32 bits on every
+        // platform this crate targets, so this widening conversion never
+        // fails.
+        let idx = usize::try_from(id.0 - 1).expect("PDF object ids fit in usize for any realistic document, see round 2 rationale");
         if self.offsets.len() <= idx {
             self.offsets.resize(idx + 1, 0);
         }
@@ -74,13 +77,20 @@ impl PdfWriter {
     }
 
     /// Writes the xref table, trailer and `%%EOF`, consuming the writer.
-    pub fn finish(mut self, root: Ref) -> Vec<u8> {
+    /// Crate-internal: only [`crate::doc::PdfDocument::write`] calls this —
+    /// `PdfWriter` is `PdfDocument`'s implementation detail, not part of
+    /// this crate's public surface.
+    pub(crate) fn finish(mut self, root: Ref) -> Vec<u8> {
         let xref_offset = self.buf.len();
         let count = self.next_id; // includes object 0
         self.buf.extend_from_slice(format!("xref\n0 {count}\n").as_bytes());
         self.buf.extend_from_slice(b"0000000000 65535 f \n");
         for i in 0..(count - 1) {
-            let offset = *self.offsets.get(i as usize).unwrap_or(&0);
+            // `i` is a `u32` object index; `usize` is at least 32 bits on
+            // every platform this crate targets, so this widening
+            // conversion never fails.
+            let idx = usize::try_from(i).expect("PDF object counts fit in usize for any realistic document, see round 2 rationale");
+            let offset = *self.offsets.get(idx).unwrap_or(&0);
             self.buf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
         }
         self.buf.extend_from_slice(

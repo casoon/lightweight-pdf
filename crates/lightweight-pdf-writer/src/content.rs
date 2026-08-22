@@ -7,8 +7,36 @@ use crate::writer::fmt_num;
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Rgb(pub u8, pub u8, pub u8);
 
+/// The position/orientation operands for [`ContentBuilder::text_rotated`],
+/// grouped into one argument so the method stays under clippy's
+/// too-many-arguments threshold without merging it into [`ContentBuilder::text`].
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct TextRotation {
+    /// Rotation center, x.
+    pub cx: f32,
+    /// Rotation center, y.
+    pub cy: f32,
+    /// Counter-clockwise rotation angle in degrees.
+    pub angle_deg: f32,
+    /// Half the text run's width, used to horizontally center it on `cx`.
+    pub half_width: f32,
+}
+
 fn color_component(c: u8) -> String {
     fmt_num(c as f32 / 255.0)
+}
+
+/// Formats a color-setting operator, e.g. `"0 0 0 rg"` (fill) or
+/// `"0.5 0.5 0.5 RG"` (stroke) — shared by every drawing/text primitive
+/// below that sets a fill or stroke color.
+fn color_op(color: Rgb, op: &str) -> String {
+    format!(
+        "{} {} {} {}",
+        color_component(color.0),
+        color_component(color.1),
+        color_component(color.2),
+        op
+    )
 }
 
 pub struct ContentBuilder {
@@ -41,46 +69,42 @@ impl ContentBuilder {
         self.op("Q");
     }
 
+    /// Formats `<x> <y> <w> <h>` — the rectangle-operand pair shared by
+    /// every rectangle-drawing primitive ([`Self::clip_rect`],
+    /// [`Self::rect_op`], and transitively [`Self::fill_rect`]/
+    /// [`Self::stroke_rect`]) ahead of their `re` operator.
+    fn rect_operands(x: f32, y: f32, w: f32, h: f32) -> String {
+        format!("{} {} {} {}", fmt_num(x), fmt_num(y), fmt_num(w), fmt_num(h))
+    }
+
     /// Intersects the clip path with a rectangle: `re W n`. Must be called
     /// right after `save()` and before any drawing in that scope
     /// (Grundprinzip 4: a clip set at the end protects nothing).
     pub fn clip_rect(&mut self, x: f32, y: f32, w: f32, h: f32) {
-        self.op(&format!("{} {} {} {} re W n", fmt_num(x), fmt_num(y), fmt_num(w), fmt_num(h)));
+        self.op(&format!("{} re W n", Self::rect_operands(x, y, w, h)));
+    }
+
+    /// Emits `<rect_prefix> <x> <y> <w> <h> re <op>` — the rectangle-operand
+    /// skeleton shared by [`Self::fill_rect`] (`rect_prefix` is just the
+    /// fill color operator, `op` is `"f"`) and [`Self::stroke_rect`]
+    /// (`rect_prefix` also carries the line width, `op` is `"S"`).
+    fn rect_op(&mut self, rect_prefix: &str, x: f32, y: f32, w: f32, h: f32, op: &str) {
+        self.op(&format!("{} {} re {}", rect_prefix, Self::rect_operands(x, y, w, h), op));
     }
 
     pub fn fill_rect(&mut self, x: f32, y: f32, w: f32, h: f32, color: Rgb) {
-        self.op(&format!(
-            "{} {} {} rg {} {} {} {} re f",
-            color_component(color.0),
-            color_component(color.1),
-            color_component(color.2),
-            fmt_num(x),
-            fmt_num(y),
-            fmt_num(w),
-            fmt_num(h)
-        ));
+        self.rect_op(&color_op(color, "rg"), x, y, w, h, "f");
     }
 
     pub fn stroke_rect(&mut self, x: f32, y: f32, w: f32, h: f32, line_width: f32, color: Rgb) {
-        self.op(&format!(
-            "{} {} {} RG {} w {} {} {} {} re S",
-            color_component(color.0),
-            color_component(color.1),
-            color_component(color.2),
-            fmt_num(line_width),
-            fmt_num(x),
-            fmt_num(y),
-            fmt_num(w),
-            fmt_num(h)
-        ));
+        let prefix = format!("{} {} w", color_op(color, "RG"), fmt_num(line_width));
+        self.rect_op(&prefix, x, y, w, h, "S");
     }
 
     pub fn line(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, line_width: f32, color: Rgb) {
         self.op(&format!(
-            "{} {} {} RG {} w {} {} m {} {} l S",
-            color_component(color.0),
-            color_component(color.1),
-            color_component(color.2),
+            "{} {} w {} {} m {} {} l S",
+            color_op(color, "RG"),
             fmt_num(line_width),
             fmt_num(x1),
             fmt_num(y1),
@@ -96,23 +120,38 @@ impl ContentBuilder {
     /// binary-safe by construction, no escaping and no UTF-8 involved (CIDs
     /// are not Unicode and must never be routed through `str`/`String`).
     pub fn text(&mut self, font_resource: &str, size: f32, x: f32, y: f32, color: Rgb, encoded_bytes: &[u8]) {
-        self.buf.extend_from_slice(
-            format!(
-                "BT /{} {} Tf {} {} {} rg {} {} Td <",
-                font_resource,
-                fmt_num(size),
-                color_component(color.0),
-                color_component(color.1),
-                color_component(color.2),
-                fmt_num(x),
-                fmt_num(y),
-            )
-            .as_bytes(),
-        );
+        self.text_block(font_resource, size, color, x, y, encoded_bytes);
+        self.buf.push(b'\n');
+    }
+
+    /// Writes `encoded_bytes` as a PDF hex string body (without the
+    /// surrounding `<`/`>` delimiters) — shared by [`Self::text`] and
+    /// [`Self::text_rotated`], the two text-showing primitives.
+    fn write_hex_string(&mut self, encoded_bytes: &[u8]) {
         for b in encoded_bytes {
             self.buf.extend_from_slice(format!("{b:02X}").as_bytes());
         }
-        self.buf.extend_from_slice(b"> Tj ET\n");
+    }
+
+    /// Emits the `BT /{font} {size} Tf {color} {tx} {ty} Td <hex> Tj ET`
+    /// text-showing skeleton — shared by [`Self::text`] (called with no
+    /// surrounding matrix) and [`Self::text_rotated`] (called inside a
+    /// `q <matrix> cm` / `Q` rotation scope). `tx`/`ty` are the raw `Td`
+    /// operands, formatted here so neither caller repeats the formatting.
+    fn text_block(&mut self, font_resource: &str, size: f32, color: Rgb, tx: f32, ty: f32, encoded_bytes: &[u8]) {
+        self.buf.extend_from_slice(
+            format!(
+                "BT /{} {} Tf {} {} {} Td <",
+                font_resource,
+                fmt_num(size),
+                color_op(color, "rg"),
+                fmt_num(tx),
+                fmt_num(ty),
+            )
+            .as_bytes(),
+        );
+        self.write_hex_string(encoded_bytes);
+        self.buf.extend_from_slice(b"> Tj ET");
     }
 
     /// Writes one text-showing run rotated around `(cx, cy)` (Phase 6
@@ -123,43 +162,24 @@ impl ContentBuilder {
     /// the text on `cx` (the baseline sits exactly on `cy` in the rotated
     /// frame — a documented, deliberately simple approximation of vertical
     /// centering, adequate for a decorative diagonal stamp).
-    #[allow(clippy::too_many_arguments)]
-    pub fn text_rotated(
-        &mut self,
-        font_resource: &str,
-        size: f32,
-        cx: f32,
-        cy: f32,
-        angle_deg: f32,
-        half_width: f32,
-        color: Rgb,
-        encoded_bytes: &[u8],
-    ) {
-        let rad = angle_deg.to_radians();
+    pub fn text_rotated(&mut self, font_resource: &str, size: f32, rotation: TextRotation, color: Rgb, encoded_bytes: &[u8]) {
+        let rad = rotation.angle_deg.to_radians();
         let cos = rad.cos();
         let sin = rad.sin();
         self.buf.extend_from_slice(
             format!(
-                "q {} {} {} {} {} {} cm BT /{} {} Tf {} {} {} rg {} 0 Td <",
+                "q {} {} {} {} {} {} cm ",
                 fmt_num(cos),
                 fmt_num(sin),
                 fmt_num(-sin),
                 fmt_num(cos),
-                fmt_num(cx),
-                fmt_num(cy),
-                font_resource,
-                fmt_num(size),
-                color_component(color.0),
-                color_component(color.1),
-                color_component(color.2),
-                fmt_num(-half_width),
+                fmt_num(rotation.cx),
+                fmt_num(rotation.cy),
             )
             .as_bytes(),
         );
-        for b in encoded_bytes {
-            self.buf.extend_from_slice(format!("{b:02X}").as_bytes());
-        }
-        self.buf.extend_from_slice(b"> Tj ET Q\n");
+        self.text_block(font_resource, size, color, -rotation.half_width, 0.0, encoded_bytes);
+        self.buf.extend_from_slice(b" Q\n");
     }
 
     /// Draws a registered image XObject into the unit square, scaled to
@@ -213,7 +233,18 @@ mod tests {
     #[test]
     fn text_rotated_emits_a_rotation_matrix_and_centers_horizontally() {
         let mut c = ContentBuilder::new();
-        c.text_rotated("F1", 72.0, 300.0, 400.0, 45.0, 50.0, Rgb(210, 210, 210), &[0x00, 0x01]);
+        c.text_rotated(
+            "F1",
+            72.0,
+            TextRotation {
+                cx: 300.0,
+                cy: 400.0,
+                angle_deg: 45.0,
+                half_width: 50.0,
+            },
+            Rgb(210, 210, 210),
+            &[0x00, 0x01],
+        );
         let s = String::from_utf8(c.into_bytes()).unwrap();
         // cos(45)=sin(45)=0.707
         assert!(s.contains("0.707 0.707 -0.707 0.707 300 400 cm"));

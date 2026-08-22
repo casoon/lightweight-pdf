@@ -3,7 +3,7 @@
 //! correctly, and the documented edge cases don't overlap or escape the
 //! page.
 
-mod support;
+use lightweight_pdf_test_support as support;
 
 use lightweight_pdf::*;
 
@@ -34,10 +34,10 @@ fn renders_mixed_content_document() {
     let doc = sample_doc();
     let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
 
-    let (ok, log) = support::qpdf_check(&bytes);
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf --check failed:\n{log}");
 
-    let text = support::pdftotext(&bytes);
+    let text = support::pdftotext(&bytes).unwrap();
     assert!(text.contains("Rechnung"), "missing heading, got:\n{text}");
     assert!(text.contains("RE-2026-0042"));
     assert!(text.contains("Muster GmbH"));
@@ -52,7 +52,7 @@ fn hard_break_handles_a_token_wider_than_the_page() {
     let (bytes, _warnings) = doc
         .render_with_diagnostics()
         .expect("render should succeed even with a token wider than the column");
-    let (ok, log) = support::qpdf_check(&bytes);
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf --check failed:\n{log}");
 }
 
@@ -65,7 +65,7 @@ fn fixed_size_element_clips_and_reports_a_warning() {
             .height(12.0),
     );
     let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
-    let (ok, log) = support::qpdf_check(&bytes);
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf --check failed:\n{log}");
     assert!(
         warnings.iter().any(|w| w.kind == LayoutWarningKind::TextClipped),

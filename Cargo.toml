@@ -6,10 +6,11 @@ members = [
     "crates/lightweight-pdf-writer",
     "crates/lightweight-pdf-fonts",
     "crates/lightweight-pdf",
+    "crates/lightweight-pdf-test-support",
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/casoon/lightweight-pdf"

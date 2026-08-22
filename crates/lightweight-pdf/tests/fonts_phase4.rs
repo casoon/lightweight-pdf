@@ -4,7 +4,7 @@
 //! source font), and extracted text round-trips through the `ToUnicode`
 //! CMap / CID mapping.
 
-mod support;
+use lightweight_pdf_test_support as support;
 
 use lightweight_pdf::*;
 
@@ -22,10 +22,10 @@ fn german_special_characters_render_and_extract_correctly() {
     let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
     assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
 
-    let (ok, log) = support::qpdf_check(&bytes);
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf --check failed:\n{log}");
 
-    let text = support::pdftotext(&bytes);
+    let text = support::pdftotext(&bytes).unwrap();
     for expected in ["äöüÄÖÜß", "1.234,56 €", "„Zitat“", "–", "äöü €"] {
         assert!(text.contains(expected), "missing {expected:?} in extracted text:\n{text}");
     }
@@ -38,7 +38,7 @@ fn embedded_fonts_are_subset_not_fully_embedded() {
     doc.add(Text::new("Fett").bold().size(14.0));
 
     let bytes = doc.render().expect("render should succeed");
-    let (ok, log) = support::qpdf_check(&bytes);
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf --check failed:\n{log}");
 
     // A handful of glyphs subset from each weight must add up to a small

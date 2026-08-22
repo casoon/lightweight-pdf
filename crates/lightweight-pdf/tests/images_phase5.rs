@@ -2,7 +2,7 @@
 //! PNG logo (with real transparency) both embed and render correctly, at
 //! their *layout* target size (not their natural pixel size).
 
-mod support;
+use lightweight_pdf_test_support as support;
 
 use lightweight_pdf::*;
 use std::sync::Arc;
@@ -21,7 +21,7 @@ fn baseline_jpeg_logo_renders_at_its_target_size() {
     let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
     assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
 
-    let (ok, log) = support::qpdf_check(&bytes);
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf --check failed:\n{log}");
 
     let text = String::from_utf8_lossy(&bytes);
@@ -50,7 +50,7 @@ mod with_png_feature {
         let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
         assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
 
-        let (ok, log) = support::qpdf_check(&bytes);
+        let (ok, log) = support::qpdf_check(&bytes).unwrap();
         assert!(ok, "qpdf --check failed:\n{log}");
 
         let text = String::from_utf8_lossy(&bytes);
@@ -67,7 +67,7 @@ mod with_png_feature {
         doc.add(Element::from(logo.width(40.0).height(30.0)));
 
         let bytes = doc.render().expect("render should succeed");
-        let (ok, log) = support::qpdf_check(&bytes);
+        let (ok, log) = support::qpdf_check(&bytes).unwrap();
         assert!(ok, "qpdf --check failed:\n{log}");
         assert!(
             !String::from_utf8_lossy(&bytes).contains("/SMask"),
@@ -84,7 +84,7 @@ mod with_png_feature {
         doc.add(Element::from(logo));
 
         let bytes = doc.render().expect("render should succeed");
-        let (ok, log) = support::qpdf_check(&bytes);
+        let (ok, log) = support::qpdf_check(&bytes).unwrap();
         assert!(ok, "qpdf --check failed:\n{log}");
     }
 }

@@ -10,6 +10,12 @@ pub fn text_width_pt(resolver: &dyn FontResolver, font: FontKey, size: f32, text
     text.chars().map(|c| m.advance(c)).sum::<f32>() / 1000.0 * size
 }
 
+/// `text_width_pt` for a `TextStyle`'s font/size — the `style.font,
+/// style.size` pair otherwise repeats at every measurement call site below.
+fn styled_width_pt(resolver: &dyn FontResolver, style: &TextStyle, text: &str) -> f32 {
+    text_width_pt(resolver, style.font, style.size, text)
+}
+
 /// Splits a single word into pieces that each fit `max_width`, breaking on
 /// character boundaries as a last resort (never truncated, never drawn
 /// past the edge).
@@ -19,7 +25,7 @@ fn hard_break_word(resolver: &dyn FontResolver, style: &TextStyle, word: &str, m
     for ch in word.chars() {
         let mut candidate = current.clone();
         candidate.push(ch);
-        let w = text_width_pt(resolver, style.font, style.size, &candidate);
+        let w = styled_width_pt(resolver, style, &candidate);
         if w > max_width && !current.is_empty() {
             pieces.push(std::mem::take(&mut current));
         }
@@ -29,6 +35,26 @@ fn hard_break_word(resolver: &dyn FontResolver, style: &TextStyle, word: &str, m
         pieces.push(current);
     }
     pieces
+}
+
+/// Starts a fresh line with `word`: if it fits `max_width` whole, it
+/// becomes the line's only content so far; otherwise it's hard-broken,
+/// with all but the last piece pushed straight into `lines` and the last
+/// piece returned as the new line-in-progress. Shared by both places
+/// `wrap_text` begins a line (the very first word of a paragraph, and the
+/// word right after a line-full break).
+fn start_line(resolver: &dyn FontResolver, style: &TextStyle, word: &str, max_width: f32, lines: &mut Vec<String>) -> String {
+    let w = styled_width_pt(resolver, style, word);
+    if w <= max_width {
+        return word.to_string();
+    }
+    let mut pieces = hard_break_word(resolver, style, word, max_width);
+    // `hard_break_word` always returns at least one piece (it pushes
+    // `current` unconditionally when `pieces` would otherwise be empty),
+    // so popping the last one off can never actually hit the default.
+    let last = pieces.pop().expect("hard_break_word always returns at least one piece");
+    lines.extend(pieces);
+    last
 }
 
 /// Wraps `text` to `max_width` points. Explicit `\n` in the source text
@@ -45,32 +71,16 @@ pub fn wrap_text(resolver: &dyn FontResolver, style: &TextStyle, text: &str, max
         let mut current = String::new();
         for word in words {
             if current.is_empty() {
-                let w = text_width_pt(resolver, style.font, style.size, word);
-                if w > max_width {
-                    let mut pieces = hard_break_word(resolver, style, word, max_width);
-                    let last = pieces.pop().unwrap_or_default();
-                    lines.extend(pieces);
-                    current = last;
-                } else {
-                    current = word.to_string();
-                }
+                current = start_line(resolver, style, word, max_width, &mut lines);
                 continue;
             }
             let candidate = format!("{current} {word}");
-            let w = text_width_pt(resolver, style.font, style.size, &candidate);
+            let w = styled_width_pt(resolver, style, &candidate);
             if w <= max_width {
                 current = candidate;
             } else {
                 lines.push(std::mem::take(&mut current));
-                let word_width = text_width_pt(resolver, style.font, style.size, word);
-                if word_width > max_width {
-                    let mut pieces = hard_break_word(resolver, style, word, max_width);
-                    let last = pieces.pop().unwrap_or_default();
-                    lines.extend(pieces);
-                    current = last;
-                } else {
-                    current = word.to_string();
-                }
+                current = start_line(resolver, style, word, max_width, &mut lines);
             }
         }
         lines.push(current);

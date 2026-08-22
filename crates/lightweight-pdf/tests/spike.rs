@@ -1,7 +1,7 @@
 //! Phase 0 DoD (`plan/phases/phase-0-spike.md`): a minimal document with one
 //! embedded font and fixed text renders to a valid, byte-stable PDF.
 
-mod support;
+use lightweight_pdf_test_support as support;
 
 use lightweight_pdf::*;
 
@@ -19,10 +19,10 @@ fn renders_valid_pdf_with_expected_text() {
     assert!(bytes.starts_with(b"%PDF-1.7"));
     assert!(bytes.ends_with(b"%%EOF"));
 
-    let (ok, log) = support::qpdf_check(&bytes);
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf --check failed:\n{log}");
 
-    let text = support::pdftotext(&bytes);
+    let text = support::pdftotext(&bytes).unwrap();
     assert!(text.contains("Hallo Rechnung"), "pdftotext output was:\n{text}");
 }
 

@@ -3,7 +3,7 @@
 //! text page must not make any letter unreadable and must not bleed into
 //! the header/footer bands.
 
-mod support;
+use lightweight_pdf_test_support as support;
 
 use lightweight_pdf::*;
 
@@ -19,10 +19,10 @@ fn list_renders_bullets_and_numbers() {
 
     let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
     assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
-    let (ok, log) = support::qpdf_check(&bytes);
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf --check failed:\n{log}");
 
-    let text = support::pdftotext(&bytes);
+    let text = support::pdftotext(&bytes).unwrap();
     assert!(text.contains("Erste Position"));
     assert!(text.contains("1."));
     assert!(text.contains("Zweite Position"));
@@ -37,9 +37,9 @@ fn heading_presets_render_larger_and_bold() {
     doc.add(Text::new("Ein Absatz direkt danach, damit keep_with_next nichts verschiebt."));
 
     let bytes = doc.render().expect("render should succeed");
-    let (ok, log) = support::qpdf_check(&bytes);
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf --check failed:\n{log}");
-    let text = support::pdftotext(&bytes);
+    let text = support::pdftotext(&bytes).unwrap();
     assert!(text.contains("Kapitel 1"));
 }
 
@@ -73,7 +73,7 @@ fn watermark_does_not_obscure_body_text_and_stays_within_the_body_box() {
         "header/footer must render normally alongside the watermark: {warnings:?}"
     );
 
-    let (ok, log) = support::qpdf_check(&bytes);
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf --check failed:\n{log}");
 
     // Both the watermark text and ordinary body text must be extractable —
@@ -82,14 +82,14 @@ fn watermark_does_not_obscure_body_text_and_stays_within_the_body_box() {
     // poppler heuristic quirk, not a rendering bug) — `-raw` mode preserves
     // content-stream glyph order, so stripping whitespace before matching
     // reassembles the diagonal run into contiguous "ENTWURF".
-    let raw = support::pdftotext_raw(&bytes);
+    let raw = support::pdftotext_raw(&bytes).unwrap();
     let raw_no_whitespace: String = raw.chars().filter(|c| !c.is_whitespace()).collect();
     assert!(
         raw_no_whitespace.contains("ENTWURF"),
         "watermark text missing from extracted output:\n{raw}"
     );
 
-    let text = support::pdftotext(&bytes);
+    let text = support::pdftotext(&bytes).unwrap();
     assert!(text.contains("Zeile 0"), "body text missing from extracted output:\n{text}");
     assert!(text.contains("Kopfzeile Firma GmbH"), "header text missing");
     assert!(text.contains("Seite 1 von"), "footer text missing");

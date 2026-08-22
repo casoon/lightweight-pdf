@@ -4,8 +4,8 @@
 //! (ADR-011) — the body content-box is therefore identical across both
 //! passes and every page, which is what makes the page count invariant.
 
-use crate::geometry::{Constraints, Rect};
-use crate::layoutable::{LayoutCtx, LayoutResult, Layoutable};
+use crate::geometry::Rect;
+use crate::layoutable::{coerce_to_fit, measure_at_width, push_warning, LayoutCtx, LayoutResult, Layoutable};
 use crate::render_node::RenderNode;
 use crate::warnings::{LayoutWarning, LayoutWarningKind};
 use lightweight_pdf_core::{Align, Column, Common, Document, Element, PageContext};
@@ -67,26 +67,18 @@ pub fn paginate_body(children: &[Element], body_area: Rect, ctx: &LayoutCtx, war
 }
 
 fn layout_band(el: &Element, area: Rect, ctx: &LayoutCtx, warnings: &mut Vec<LayoutWarning>, page: usize) -> RenderNode {
-    let natural = el.measure(
-        ctx,
-        Constraints {
-            max_width: area.width,
-            max_height: f32::INFINITY,
-        },
-    );
+    let natural = measure_at_width(ctx, el, area.width);
     if natural.height > area.height + EPS {
-        warnings.push(LayoutWarning {
-            kind: LayoutWarningKind::HeaderFooterOverflow,
+        push_warning(
+            warnings,
+            LayoutWarningKind::HeaderFooterOverflow,
             page,
-            element_hint: "Header/Footer content taller than reserved band".to_string(),
-        });
+            "Header/Footer content taller than reserved band",
+        );
     }
-    match el.layout(ctx, area, warnings, page) {
-        LayoutResult::Fit(node) => node,
-        // Header/Footer never spans pages: keep whatever fit, the overflow
-        // warning above already flagged the clipped remainder.
-        LayoutResult::Split { current, .. } => current,
-    }
+    // Header/Footer never spans pages: keep whatever fit, the overflow
+    // warning above already flagged the clipped remainder.
+    coerce_to_fit(el.layout(ctx, area, warnings, page))
 }
 
 pub fn paginate(doc: &Document, ctx: &LayoutCtx) -> PaginatedDocument {

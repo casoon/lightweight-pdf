@@ -50,17 +50,22 @@ pub enum ImageDataFilter {
     DctDecode,
 }
 
-/// One embeddable raster image XObject. `smask`, if present, is itself a
-/// `PdfImage` (always `DeviceGray`, `filter: None`, no further `smask`) —
-/// PNG alpha, per ADR-013.
-pub struct PdfImage {
+/// One embeddable `/Subtype /Image` XObject (ISO 32000-1 8.9.5), named for
+/// that specific PDF construct the same way `CidFont` is named for its
+/// (`Type0`/`CIDFontType2`) construct, rather than for the generic Pdf-noun
+/// pattern used by [`PdfPage`]/[`PdfDocument`]/[`PdfWriter`] (those name the
+/// crate's document-structure types; this and `CidFont` name embeddable
+/// resource types). `smask`, if present, is itself an `ImageXObject`
+/// (always `DeviceGray`, `filter: None`, no further `smask`) — PNG alpha,
+/// per ADR-013.
+pub struct ImageXObject {
     pub width_px: u32,
     pub height_px: u32,
     pub color_space: ColorSpace,
     pub bits_per_component: u8,
     pub filter: ImageDataFilter,
-    pub data: Vec<u8>,
-    pub smask: Option<Box<PdfImage>>,
+    pub bytes: Vec<u8>,
+    pub smask: Option<Box<ImageXObject>>,
 }
 
 pub struct PdfPage {
@@ -72,7 +77,7 @@ pub struct PdfPage {
 #[derive(Default)]
 pub struct PdfDocument {
     fonts: Vec<CidFont>,
-    images: Vec<PdfImage>,
+    images: Vec<ImageXObject>,
     pages: Vec<PdfPage>,
 }
 
@@ -95,7 +100,7 @@ impl PdfDocument {
 
     /// Registers an image, returning its index (used to build the
     /// resource name `Im{index + 1}`).
-    pub fn add_image(&mut self, image: PdfImage) -> usize {
+    pub fn add_image(&mut self, image: ImageXObject) -> usize {
         self.images.push(image);
         self.images.len() - 1
     }
@@ -149,14 +154,19 @@ impl PdfDocument {
 
     /// Writes one image XObject (recursing once for `smask`, PNG alpha)
     /// and returns its object reference.
-    fn write_image(w: &mut PdfWriter, image: &PdfImage) -> Ref {
+    fn write_image(w: &mut PdfWriter, image: &ImageXObject) -> Ref {
         let smask_ref = image.smask.as_deref().map(|m| Self::write_image(w, m));
         let image_ref = w.alloc();
         let filter = match image.filter {
             ImageDataFilter::None => String::new(),
             ImageDataFilter::DctDecode => " /Filter /DCTDecode".to_string(),
         };
-        let smask_entry = smask_ref.map(|r| format!(" /SMask {}", r.write())).unwrap_or_default();
+        // `smask` is a genuinely optional field (most images carry no alpha
+        // mask) — omitting `/SMask` when absent is not a swallowed error.
+        let smask_entry = match smask_ref {
+            Some(r) => format!(" /SMask {}", r.write()),
+            None => String::new(),
+        };
         let dict = format!(
             "/Type /XObject /Subtype /Image /Width {w} /Height {h} /ColorSpace /{cs} /BitsPerComponent {bpc}{filter}{smask}",
             w = image.width_px,
@@ -166,36 +176,40 @@ impl PdfDocument {
             filter = filter,
             smask = smask_entry,
         );
-        w.stream(image_ref, &dict, &image.data);
+        w.stream(image_ref, &dict, &image.bytes);
         image_ref
     }
 
-    /// Assembles the full PDF byte stream: Catalog, Pages, Page objects,
-    /// content streams, fonts (Type0 + CIDFontType2 + FontDescriptor +
-    /// embedded subset FontFile2 + ToUnicode), images (XObjects + optional
-    /// SMask), xref and trailer.
-    pub fn write(&self) -> Vec<u8> {
-        let mut w = PdfWriter::new();
+    /// Maps each item through `f` and joins the results with a single
+    /// space — shared by [`Self::write_fonts`]'s glyph-width array and
+    /// [`Self::write`]'s `/Kids` array.
+    fn join_with_space<T>(items: &[T], f: impl Fn(&T) -> String) -> String {
+        items.iter().map(f).collect::<Vec<_>>().join(" ")
+    }
 
-        let catalog_ref = w.alloc();
-        let pages_ref = w.alloc();
-
-        let image_refs: Vec<Ref> = self.images.iter().map(|img| Self::write_image(&mut w, img)).collect();
-        let image_resources = self
-            .images
-            .iter()
+    /// Formats `/Name Ref` resource-dictionary entries (space-joined) for a
+    /// sequence of object refs — shared by [`Self::write_fonts`]'s `/Font`
+    /// entries and [`Self::write`]'s `/XObject` entries.
+    fn resource_entries(refs: &[Ref], name_fn: impl Fn(usize) -> String) -> String {
+        refs.iter()
             .enumerate()
-            .map(|(i, _)| format!("/{} {}", Self::image_resource_name(i), image_refs[i].write()))
+            .map(|(i, r)| format!("/{} {}", name_fn(i), r.write()))
             .collect::<Vec<_>>()
-            .join(" ");
+            .join(" ")
+    }
 
-        let font_refs: Vec<(Ref, Ref, Ref, Ref)> = self.fonts.iter().map(|_| (w.alloc(), w.alloc(), w.alloc(), w.alloc())).collect();
+    /// Writes all font objects (Type0 + CIDFontType2 + FontDescriptor +
+    /// embedded subset FontFile2 + ToUnicode) and returns the `/Font`
+    /// resource-dictionary entries for the page objects. Zips `fonts` with
+    /// their pre-allocated refs rather than indexing by position, so the
+    /// pairing can't panic even if the two ever fell out of step.
+    fn write_fonts(w: &mut PdfWriter, fonts: &[CidFont]) -> String {
+        let font_refs: Vec<(Ref, Ref, Ref, Ref)> = fonts.iter().map(|_| (w.alloc(), w.alloc(), w.alloc(), w.alloc())).collect();
 
-        for (i, font) in self.fonts.iter().enumerate() {
-            let (type0_ref, cid_ref, descriptor_ref, file_ref) = font_refs[i];
+        for (font, &(type0_ref, cid_ref, descriptor_ref, file_ref)) in fonts.iter().zip(&font_refs) {
             let to_unicode_ref = w.alloc();
 
-            let widths_str = font.widths.iter().map(|w| fmt_num(*w)).collect::<Vec<_>>().join(" ");
+            let widths_str = Self::join_with_space(&font.widths, |w| fmt_num(*w));
 
             w.object(
                 type0_ref,
@@ -237,20 +251,22 @@ impl PdfDocument {
             w.stream(to_unicode_ref, "", &Self::to_unicode_cmap(font));
         }
 
-        let font_resources = self
-            .fonts
-            .iter()
-            .enumerate()
-            .map(|(i, _)| format!("/{} {}", Self::font_resource_name(i), font_refs[i].0.write()))
-            .collect::<Vec<_>>()
-            .join(" ");
+        let type0_refs: Vec<Ref> = font_refs.iter().map(|&(t, ..)| t).collect();
+        Self::resource_entries(&type0_refs, Self::font_resource_name)
+    }
 
-        let page_refs: Vec<Ref> = (0..self.pages.len()).map(|_| w.alloc()).collect();
-        let content_refs: Vec<Ref> = (0..self.pages.len()).map(|_| w.alloc()).collect();
+    /// Writes each page's `/Page` object and content stream and returns the
+    /// page object refs (used by the caller to build the `/Pages /Kids`
+    /// array). Zips `pages` with their pre-allocated refs rather than
+    /// indexing by position, so the pairing can't panic even if the two
+    /// ever fell out of step.
+    fn write_pages(w: &mut PdfWriter, pages: &[PdfPage], pages_ref: Ref, font_resources: &str, image_resources: &str) -> Vec<Ref> {
+        let page_refs: Vec<Ref> = (0..pages.len()).map(|_| w.alloc()).collect();
+        let content_refs: Vec<Ref> = (0..pages.len()).map(|_| w.alloc()).collect();
 
-        for (i, page) in self.pages.iter().enumerate() {
+        for ((page, &page_ref), &content_ref) in pages.iter().zip(&page_refs).zip(&content_refs) {
             w.object(
-                page_refs[i],
+                page_ref,
                 &format!(
                     "<< /Type /Page /Parent {parent} /MediaBox [0 0 {w} {h}] /Resources << /Font << {fonts} >> /XObject << {images} >> >> /Contents {content} >>",
                     parent = pages_ref.write(),
@@ -258,13 +274,32 @@ impl PdfDocument {
                     h = fmt_num(page.height),
                     fonts = font_resources,
                     images = image_resources,
-                    content = content_refs[i].write(),
+                    content = content_ref.write(),
                 ),
             );
-            w.stream(content_refs[i], "", &page.content);
+            w.stream(content_ref, "", &page.content);
         }
 
-        let kids = page_refs.iter().map(|r| r.write()).collect::<Vec<_>>().join(" ");
+        page_refs
+    }
+
+    /// Assembles the full PDF byte stream: Catalog, Pages, Page objects,
+    /// content streams, fonts (Type0 + CIDFontType2 + FontDescriptor +
+    /// embedded subset FontFile2 + ToUnicode), images (XObjects + optional
+    /// SMask), xref and trailer.
+    pub fn write(&self) -> Vec<u8> {
+        let mut w = PdfWriter::new();
+
+        let catalog_ref = w.alloc();
+        let pages_ref = w.alloc();
+
+        let image_refs: Vec<Ref> = self.images.iter().map(|img| Self::write_image(&mut w, img)).collect();
+        let image_resources = Self::resource_entries(&image_refs, Self::image_resource_name);
+
+        let font_resources = Self::write_fonts(&mut w, &self.fonts);
+        let page_refs = Self::write_pages(&mut w, &self.pages, pages_ref, &font_resources, &image_resources);
+
+        let kids = Self::join_with_space(&page_refs, |r| r.write());
         w.object(pages_ref, &format!("<< /Type /Pages /Kids [{kids}] /Count {} >>", self.pages.len()));
         w.object(catalog_ref, &format!("<< /Type /Catalog /Pages {} >>", pages_ref.write()));
 
@@ -330,20 +365,20 @@ mod tests {
     #[test]
     fn writes_image_xobject_with_smask() {
         let mut doc = PdfDocument::new();
-        doc.add_image(PdfImage {
+        doc.add_image(ImageXObject {
             width_px: 4,
             height_px: 4,
             color_space: ColorSpace::DeviceRgb,
             bits_per_component: 8,
             filter: ImageDataFilter::None,
-            data: vec![0u8; 4 * 4 * 3],
-            smask: Some(Box::new(PdfImage {
+            bytes: vec![0u8; 4 * 4 * 3],
+            smask: Some(Box::new(ImageXObject {
                 width_px: 4,
                 height_px: 4,
                 color_space: ColorSpace::DeviceGray,
                 bits_per_component: 8,
                 filter: ImageDataFilter::None,
-                data: vec![255u8; 4 * 4],
+                bytes: vec![255u8; 4 * 4],
                 smask: None,
             })),
         });
@@ -364,13 +399,13 @@ mod tests {
     #[test]
     fn writes_jpeg_image_with_dct_decode_filter() {
         let mut doc = PdfDocument::new();
-        doc.add_image(PdfImage {
+        doc.add_image(ImageXObject {
             width_px: 10,
             height_px: 10,
             color_space: ColorSpace::DeviceRgb,
             bits_per_component: 8,
             filter: ImageDataFilter::DctDecode,
-            data: vec![0xFF, 0xD8, 0xFF, 0xD9], // stand-in bytes, structure only
+            bytes: vec![0xFF, 0xD8, 0xFF, 0xD9], // stand-in bytes, structure only
             smask: None,
         });
         doc.add_page(PdfPage {

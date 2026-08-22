@@ -47,18 +47,18 @@ impl FontMetrics for MetricsAdapter {
     }
 }
 
-pub struct FontEntry {
-    pub data: FontData,
+pub struct RegisteredFont {
+    pub font_data: FontData,
     pub base_font_name: &'static str,
     adapter: MetricsAdapter,
 }
 
-impl FontEntry {
+impl RegisteredFont {
     fn new(bytes: &[u8], base_font_name: &'static str) -> Result<Self, FontError> {
-        let data = FontData::load(bytes.to_vec())?;
-        let metrics = EmbeddedFontMetrics::from_font_data(&data)?;
-        Ok(FontEntry {
-            data,
+        let font_data = FontData::load(bytes.to_vec())?;
+        let metrics = EmbeddedFontMetrics::from_font_data(&font_data)?;
+        Ok(RegisteredFont {
+            font_data,
             base_font_name,
             adapter: MetricsAdapter(metrics),
         })
@@ -72,16 +72,16 @@ impl FontEntry {
 }
 
 pub struct FontRegistry {
-    pub regular: FontEntry,
-    pub bold: FontEntry,
+    pub regular: RegisteredFont,
+    pub bold: RegisteredFont,
 }
 
 impl FontRegistry {
     #[cfg(feature = "default-fonts")]
     pub fn with_defaults() -> Result<Self, FontError> {
         Ok(FontRegistry {
-            regular: FontEntry::new(SANS_REGULAR_BYTES, "SourceSans3-Subset")?,
-            bold: FontEntry::new(SANS_BOLD_BYTES, "SourceSans3-Bold-Subset")?,
+            regular: RegisteredFont::new(SANS_REGULAR_BYTES, "SourceSans3-Subset")?,
+            bold: RegisteredFont::new(SANS_BOLD_BYTES, "SourceSans3-Bold-Subset")?,
         })
     }
 
@@ -93,19 +93,19 @@ impl FontRegistry {
     /// separately (github.com/casoon/lightweight-pdf/issues/1).
     pub fn with_fonts(regular_bytes: &[u8], bold_bytes: &[u8]) -> Result<Self, FontError> {
         Ok(FontRegistry {
-            regular: FontEntry::new(regular_bytes, "CustomFont-Regular-Subset")?,
-            bold: FontEntry::new(bold_bytes, "CustomFont-Bold-Subset")?,
+            regular: RegisteredFont::new(regular_bytes, "CustomFont-Regular-Subset")?,
+            bold: RegisteredFont::new(bold_bytes, "CustomFont-Bold-Subset")?,
         })
     }
 
     /// Order matches how the facade registers PDF fonts — used to build
     /// resource names (`F1`, `F2`, ...) consistently between PDF font
     /// registration and content-stream references.
-    pub fn font_entries(&self) -> [(FontKey, &FontEntry); 2] {
+    pub fn font_entries(&self) -> [(FontKey, &RegisteredFont); 2] {
         [(FontKey::SANS_REGULAR, &self.regular), (FontKey::SANS_BOLD, &self.bold)]
     }
 
-    pub fn entry(&self, key: FontKey) -> &FontEntry {
+    pub fn entry(&self, key: FontKey) -> &RegisteredFont {
         if key == FontKey::SANS_BOLD {
             &self.bold
         } else {

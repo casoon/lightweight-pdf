@@ -7,6 +7,9 @@
 
 use lightweight_pdf::*;
 
+#[path = "common/mod.rs"]
+mod common;
+
 fn main() {
     let mut doc = Document::new(PageFormat::A4)
         .margin(Margin::symmetric(56.0, 56.0))
@@ -65,7 +68,5 @@ fn main() {
          diesem Absatz auf derselben Seite zusammen.",
     ));
 
-    let bytes = doc.render().expect("render should succeed");
-    std::fs::write("report.pdf", &bytes).expect("write report.pdf");
-    println!("wrote report.pdf ({} bytes)", bytes.len());
+    common::write_pdf(&doc, "report.pdf");
 }

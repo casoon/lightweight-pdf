@@ -2,7 +2,7 @@
 //! (github.com/casoon/lightweight-pdf/issues/1): rendering with a
 //! caller-supplied font instead of the bundled Source Sans 3 default.
 
-mod support;
+use lightweight_pdf_test_support as support;
 
 use lightweight_pdf::*;
 
@@ -18,10 +18,10 @@ fn renders_with_a_caller_supplied_font_instead_of_the_bundled_default() {
     let (bytes, warnings) = doc.render_with_fonts_and_diagnostics(&fonts).expect("render should succeed");
     assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
 
-    let (ok, log) = support::qpdf_check(&bytes);
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf --check failed:\n{log}");
 
-    let text = support::pdftotext(&bytes);
+    let text = support::pdftotext(&bytes).unwrap();
     assert!(
         text.contains("Hallo Rechnung äöü"),
         "missing expected text in extracted content:\n{text}"

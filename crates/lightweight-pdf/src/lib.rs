@@ -25,17 +25,18 @@ compile_error!(
 #[cfg(feature = "wasm-size-probe")]
 #[no_mangle]
 pub extern "C" fn lightweight_pdf_wasm_size_probe() -> i32 {
-    let mut doc = Document::new(PageFormat::A4).margin(Margin::symmetric(20.0, 18.0));
+    let mut doc = Document::new(PageFormat::A4);
     doc.add(Text::new("Hallo Rechnung").size(18.0).bold());
-    doc.add(
-        Row::new()
-            .gap(8.0)
-            .child(Text::new("Menge").size(10.0))
-            .child(Text::new("Preis").size(10.0)),
-    );
+    let cell = |s: &str| Text::new(s).size(10.0);
+    doc.add(Row::new().gap(8.0).child(cell("Menge")).child(cell("Preis")));
     doc.add(Line::new());
     match doc.render() {
-        Ok(bytes) => bytes.len() as i32,
+        // `bytes` comes from rendering the small, fixed document literally
+        // constructed above (not attacker/caller-supplied input), so its
+        // length is bounded far below `i32::MAX` in practice — `unwrap_or`
+        // keeps that a non-panicking fallback rather than an `.expect()` on
+        // this `pub extern "C"` FFI boundary.
+        Ok(bytes) => i32::try_from(bytes.len()).unwrap_or(i32::MAX),
         Err(_) => -1,
     }
 }

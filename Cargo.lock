@@ -79,36 +79,41 @@ dependencies = [
 
 [[package]]
 name = "lightweight-pdf"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "lightweight-pdf-core",
  "lightweight-pdf-fonts",
  "lightweight-pdf-layout",
+ "lightweight-pdf-test-support",
  "lightweight-pdf-writer",
  "png",
 ]
 
 [[package]]
 name = "lightweight-pdf-core"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "lightweight-pdf-fonts"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "skrifa",
 ]
 
 [[package]]
 name = "lightweight-pdf-layout"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "lightweight-pdf-core",
 ]
 
 [[package]]
+name = "lightweight-pdf-test-support"
+version = "0.2.0"
+
+[[package]]
 name = "lightweight-pdf-writer"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "miniz_oxide"

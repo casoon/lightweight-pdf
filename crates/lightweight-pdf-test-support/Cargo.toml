@@ -1,0 +1,10 @@
+[package]
+name = "lightweight-pdf-test-support"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Internal, unpublished: shared shell-out helpers (qpdf/pdftotext) for lightweight-pdf's integration tests"
+publish = false
+
+[dependencies]

@@ -6,8 +6,17 @@
 //! render time. Only header bytes are parsed here; no dependency, no pixel
 //! decoding (that's the facade's job for PNG, and unneeded for JPEG since
 //! it's embedded byte-for-byte as `DCTDecode`).
+//!
+//! Format-specific header parsing lives in the `jpeg`/`png` submodules; this
+//! module owns the public `Image` type and dispatches to whichever parser
+//! matches the file's magic bytes.
+
+mod jpeg;
+mod png;
 
 use crate::style::Common;
+use jpeg::parse_jpeg;
+use png::{parse_png, PNG_SIGNATURE};
 use std::sync::Arc;
 
 /// Generous but finite: guards against a maliciously/accidentally huge
@@ -48,100 +57,6 @@ impl core::fmt::Display for ImageError {
     }
 }
 
-const PNG_SIGNATURE: [u8; 8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
-
-/// Parses just enough of a JPEG to validate it and extract
-/// `(width, height, components)`. Scans markers up to the first
-/// start-of-frame; `SOF0` (0xFFC0) is baseline, any other `SOFn` is
-/// rejected as unsupported (progressive, extended sequential, lossless,
-/// arithmetic-coded, ...). `components` is 1 (Gray) or 3 (RGB); 4 (CMYK)
-/// or anything else is rejected.
-fn parse_jpeg(bytes: &[u8]) -> Result<(u32, u32, u8), ImageError> {
-    if bytes.len() < 4 || bytes[0] != 0xFF || bytes[1] != 0xD8 {
-        return Err(ImageError::Malformed);
-    }
-    let mut i = 2usize;
-    while i + 1 < bytes.len() {
-        if bytes[i] != 0xFF {
-            return Err(ImageError::Malformed);
-        }
-        let mut marker_pos = i + 1;
-        while marker_pos < bytes.len() && bytes[marker_pos] == 0xFF {
-            marker_pos += 1; // fill bytes between markers are legal
-        }
-        if marker_pos >= bytes.len() {
-            return Err(ImageError::Malformed);
-        }
-        let marker = bytes[marker_pos];
-        i = marker_pos + 1;
-
-        // Standalone markers carry no length field.
-        if marker == 0x01 || (0xD0..=0xD9).contains(&marker) {
-            continue;
-        }
-        if i + 2 > bytes.len() {
-            return Err(ImageError::Malformed);
-        }
-        let length = u16::from_be_bytes([bytes[i], bytes[i + 1]]) as usize;
-        if length < 2 || i + length > bytes.len() {
-            return Err(ImageError::Malformed);
-        }
-
-        let is_sof = (0xC0..=0xCF).contains(&marker) && marker != 0xC4 && marker != 0xC8 && marker != 0xCC;
-        if is_sof {
-            if marker != 0xC0 {
-                return Err(ImageError::UnsupportedJpeg);
-            }
-            let payload = &bytes[i + 2..i + length];
-            if payload.len() < 6 {
-                return Err(ImageError::Malformed);
-            }
-            let height = u16::from_be_bytes([payload[1], payload[2]]) as u32;
-            let width = u16::from_be_bytes([payload[3], payload[4]]) as u32;
-            let components = payload[5];
-            if components != 1 && components != 3 {
-                return Err(ImageError::UnsupportedJpeg); // CMYK (4) or exotic
-            }
-            return Ok((width, height, components));
-        }
-        if marker == 0xDA {
-            return Err(ImageError::Malformed); // reached scan data, no SOF seen
-        }
-        i += length;
-    }
-    Err(ImageError::Malformed)
-}
-
-/// Parses a PNG's `IHDR` chunk (always the first chunk) and validates V1's
-/// supported subset: non-interlaced, 8-bit, RGB or RGBA (ADR-013).
-fn parse_png(bytes: &[u8]) -> Result<(u32, u32, u8), ImageError> {
-    if bytes.len() < 8 + 8 + 13 || bytes[0..8] != PNG_SIGNATURE {
-        return Err(ImageError::Malformed);
-    }
-    let chunk_len = u32::from_be_bytes(bytes[8..12].try_into().unwrap()) as usize;
-    if &bytes[12..16] != b"IHDR" || chunk_len != 13 {
-        return Err(ImageError::Malformed);
-    }
-    let ihdr = &bytes[16..16 + 13];
-    let width = u32::from_be_bytes(ihdr[0..4].try_into().unwrap());
-    let height = u32::from_be_bytes(ihdr[4..8].try_into().unwrap());
-    let bit_depth = ihdr[8];
-    let color_type = ihdr[9];
-    let interlace = ihdr[12];
-    if width == 0 || height == 0 {
-        return Err(ImageError::Malformed);
-    }
-    if interlace != 0 || bit_depth != 8 {
-        return Err(ImageError::UnsupportedPng);
-    }
-    let components = match color_type {
-        2 => 3,                                      // RGB
-        6 => 4,                                      // RGBA
-        _ => return Err(ImageError::UnsupportedPng), // grayscale(0)/palette(3)/gray+alpha(4) — not V1 scope
-    };
-    Ok((width, height, components))
-}
-
 /// A validated, embeddable JPEG or PNG. `bytes` are the original file
 /// bytes, kept as-is — pixel decoding (only ever needed for PNG, to split
 /// out the alpha channel as a `SMask`) happens later, in the facade.
@@ -163,10 +78,10 @@ impl Image {
     /// best-effort attempt (`phases/phase-5-images.md` step 2-3).
     pub fn new(bytes: impl Into<Arc<[u8]>>) -> Result<Self, ImageError> {
         let bytes: Arc<[u8]> = bytes.into();
-        let (format, width_px, height_px, components) = if bytes.len() >= 2 && bytes[0] == 0xFF && bytes[1] == 0xD8 {
+        let (format, width_px, height_px, components) = if bytes.starts_with(&[0xFF, 0xD8]) {
             let (w, h, c) = parse_jpeg(&bytes)?;
             (ImageFormat::Jpeg, w, h, c)
-        } else if bytes.len() >= 8 && bytes[0..8] == PNG_SIGNATURE {
+        } else if bytes.starts_with(&PNG_SIGNATURE) {
             let (w, h, c) = parse_png(&bytes)?;
             (ImageFormat::Png, w, h, c)
         } else {

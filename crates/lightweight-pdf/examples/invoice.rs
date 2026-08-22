@@ -8,6 +8,9 @@
 
 use lightweight_pdf::*;
 
+#[path = "common/mod.rs"]
+mod common;
+
 /// PDF points per millimeter (72pt / 25.4mm).
 const MM: f32 = 72.0 / 25.4;
 
@@ -146,7 +149,5 @@ fn main() {
             ])),
     );
 
-    let bytes = doc.render().expect("render should succeed");
-    std::fs::write("invoice.pdf", &bytes).expect("write invoice.pdf");
-    println!("wrote invoice.pdf ({} bytes)", bytes.len());
+    common::write_pdf(&doc, "invoice.pdf");
 }

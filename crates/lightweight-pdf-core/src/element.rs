@@ -24,38 +24,38 @@ pub enum Element {
     PageBreak,
 }
 
+/// Generates the match arms shared by `Element::common`/`common_mut`: both
+/// are exact mirrors of each other, differing only in `&`/`&mut`. `$ref` is
+/// spliced in front of each `.common` field access, so invoking this with
+/// `&` vs `&mut` produces the two accessors from one written body.
+macro_rules! common_accessor {
+    ($self:expr, $($ref:tt)*) => {
+        match $self {
+            Element::Text(t) => Some($($ref)* t.common),
+            Element::Row(r) => Some($($ref)* r.common),
+            Element::Column(c) => Some($($ref)* c.common),
+            Element::Line(l) => Some($($ref)* l.common),
+            Element::Rect(r) => Some($($ref)* r.common),
+            Element::Table(t) => Some($($ref)* t.common),
+            Element::Image(i) => Some($($ref)* i.common),
+            Element::List(l) => Some($($ref)* l.common),
+            Element::Spacer(_) | Element::PageBreak => None,
+        }
+    };
+}
+
 impl Element {
     /// Shared style properties, where applicable. `Spacer` and `PageBreak`
     /// carry no `Common` (nothing to size/clip/keep-with-next).
     pub fn common(&self) -> Option<&Common> {
-        match self {
-            Element::Text(t) => Some(&t.common),
-            Element::Row(r) => Some(&r.common),
-            Element::Column(c) => Some(&c.common),
-            Element::Line(l) => Some(&l.common),
-            Element::Rect(r) => Some(&r.common),
-            Element::Table(t) => Some(&t.common),
-            Element::Image(i) => Some(&i.common),
-            Element::List(l) => Some(&l.common),
-            Element::Spacer(_) | Element::PageBreak => None,
-        }
+        common_accessor!(self, &)
     }
 
     /// Mutable counterpart to [`Self::common`] — used by `List`'s layout
     /// translation to make item content fill the remaining row width
     /// (`flex(1.0)`) without needing a bespoke setter per element variant.
     pub fn common_mut(&mut self) -> Option<&mut Common> {
-        match self {
-            Element::Text(t) => Some(&mut t.common),
-            Element::Row(r) => Some(&mut r.common),
-            Element::Column(c) => Some(&mut c.common),
-            Element::Line(l) => Some(&mut l.common),
-            Element::Rect(r) => Some(&mut r.common),
-            Element::Table(t) => Some(&mut t.common),
-            Element::Image(i) => Some(&mut i.common),
-            Element::List(l) => Some(&mut l.common),
-            Element::Spacer(_) | Element::PageBreak => None,
-        }
+        common_accessor!(self, &mut)
     }
 }
 

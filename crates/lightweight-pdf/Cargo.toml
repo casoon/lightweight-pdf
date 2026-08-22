@@ -10,11 +10,14 @@ description = "Lightweight, dependency-minimal Rust PDF generation for recurring
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-lightweight-pdf-core = { path = "../lightweight-pdf-core", version = "0.1.0" }
-lightweight-pdf-layout = { path = "../lightweight-pdf-layout", version = "0.1.0" }
-lightweight-pdf-writer = { path = "../lightweight-pdf-writer", version = "0.1.0" }
-lightweight-pdf-fonts = { path = "../lightweight-pdf-fonts", version = "0.1.0" }
+lightweight-pdf-core = { path = "../lightweight-pdf-core", version = "0.2.0" }
+lightweight-pdf-layout = { path = "../lightweight-pdf-layout", version = "0.2.0" }
+lightweight-pdf-writer = { path = "../lightweight-pdf-writer", version = "0.2.0" }
+lightweight-pdf-fonts = { path = "../lightweight-pdf-fonts", version = "0.2.0" }
 png = { version = "0.18.1", optional = true, default-features = false }
+
+[dev-dependencies]
+lightweight-pdf-test-support = { path = "../lightweight-pdf-test-support" }
 
 [features]
 default = ["default-fonts"]

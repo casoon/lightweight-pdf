@@ -5,7 +5,10 @@
 //! header repeats on every continuation page.
 
 use crate::geometry::{Constraints, Rect, Size};
-use crate::layoutable::{LayoutCtx, LayoutResult, Layoutable};
+use crate::layoutable::{
+    clip_to_fixed_height, finish_fit, measure_at_width, push_warning, resolve_auto_size, resolve_bound, shrink_and_bound_height,
+    wrap_children, LayoutCtx, LayoutResult, Layoutable,
+};
 use crate::render_node::{align_offset, RenderNode};
 use crate::warnings::{LayoutWarning, LayoutWarningKind};
 use lightweight_pdf_core::{Color, ColumnWidth, Common, Element, Table, TableColumn};
@@ -57,17 +60,19 @@ fn measure_row_height(ctx: &LayoutCtx, cells: &[Element], col_widths: &[f32], ce
         .zip(col_widths.iter())
         .map(|(cell, w)| {
             let inner_w = (w - 2.0 * cell_padding).max(0.0);
-            cell.measure(
-                ctx,
-                Constraints {
-                    max_width: inner_w,
-                    max_height: f32::INFINITY,
-                },
-            )
-            .height
-                + 2.0 * cell_padding
+            measure_at_width(ctx, cell, inner_w).height + 2.0 * cell_padding
         })
         .fold(0.0f32, f32::max)
+}
+
+/// The header row's height, or `0.0` if the table has no header — shared
+/// by `table_min_unit` and `Table::layout`.
+fn header_row_height(ctx: &LayoutCtx, table: &Table, col_widths: &[f32]) -> f32 {
+    table
+        .header
+        .as_ref()
+        .map(|h| measure_row_height(ctx, h, col_widths, table.cell_padding))
+        .unwrap_or(0.0)
 }
 
 /// The smallest worthwhile placement for a `Table` when there's already
@@ -76,42 +81,30 @@ fn measure_row_height(ctx: &LayoutCtx, cells: &[Element], col_widths: &[f32], ce
 /// treating a whole table as one atomic block).
 pub fn table_min_unit(ctx: &LayoutCtx, table: &Table, width: f32) -> f32 {
     let col_widths = resolve_column_widths(&table.columns, (width - 2.0 * table.common.padding).max(0.0));
-    let header_h = table
-        .header
-        .as_ref()
-        .map(|h| measure_row_height(ctx, h, &col_widths, table.cell_padding))
-        .unwrap_or(0.0);
     let first_row_h = table
         .rows
         .first()
         .map(|r| measure_row_height(ctx, r, &col_widths, table.cell_padding))
         .unwrap_or(0.0);
-    header_h + first_row_h
+    header_row_height(ctx, table, &col_widths) + first_row_h
 }
 
-#[allow(clippy::too_many_arguments)]
 fn layout_row_cells(
     ctx: &LayoutCtx,
+    table: &Table,
     cells: &[Element],
-    columns: &[TableColumn],
     col_widths: &[f32],
     row_area: Rect,
-    cell_padding: f32,
     warnings: &mut Vec<LayoutWarning>,
     page: usize,
 ) -> Vec<RenderNode> {
+    let cell_padding = table.cell_padding;
     let mut nodes = Vec::with_capacity(cells.len());
     let mut cursor_x = row_area.x;
-    for ((cell, col), w) in cells.iter().zip(columns.iter()).zip(col_widths.iter()) {
+    for ((cell, col), w) in cells.iter().zip(table.columns.iter()).zip(col_widths.iter()) {
         let inner_w = (w - 2.0 * cell_padding).max(0.0);
         let content_h = (row_area.height - 2.0 * cell_padding).max(0.0);
-        let cell_size = cell.measure(
-            ctx,
-            Constraints {
-                max_width: inner_w,
-                max_height: f32::INFINITY,
-            },
-        );
+        let cell_size = measure_at_width(ctx, cell, inner_w);
         let box_width = cell_size.width.min(inner_w).max(0.0);
         let x_offset = align_offset(col.align, inner_w, box_width);
         let cell_area = Rect {
@@ -135,30 +128,36 @@ fn layout_row_cells(
     nodes
 }
 
-#[allow(clippy::too_many_arguments)]
+/// The per-row data that varies across `render_row` call sites (header vs.
+/// data row vs. forced/oversized row), grouped so the function itself
+/// doesn't need one positional `f32`/`Option<Color>` parameter per field.
+struct RowRenderParams<'a> {
+    cells: &'a [Element],
+    y: f32,
+    row_height: f32,
+    background: Option<Color>,
+}
+
 fn render_row(
     ctx: &LayoutCtx,
     table: &Table,
-    cells: &[Element],
     col_widths: &[f32],
-    y: f32,
     inner: &Rect,
-    row_height: f32,
-    background: Option<Color>,
     warnings: &mut Vec<LayoutWarning>,
     page: usize,
+    row: RowRenderParams,
 ) -> RenderNode {
     let row_area = Rect {
         x: inner.x,
-        y: inner.y + y,
+        y: inner.y + row.y,
         width: inner.width,
-        height: row_height,
+        height: row.row_height,
     };
-    let nodes = layout_row_cells(ctx, cells, &table.columns, col_widths, row_area, table.cell_padding, warnings, page);
+    let nodes = layout_row_cells(ctx, table, row.cells, col_widths, row_area, warnings, page);
     RenderNode::Group {
         area: row_area,
         clip: true,
-        background,
+        background: row.background,
         border: None,
         children: nodes,
     }
@@ -166,31 +165,22 @@ fn render_row(
 
 impl Layoutable for Table {
     fn measure(&self, ctx: &LayoutCtx, constraints: Constraints) -> Size {
-        let width = self.common.width.unwrap_or(constraints.max_width);
-        let inner_width = (width - 2.0 * self.common.padding).max(0.0);
+        let (width, inner_width) = resolve_bound(self.common.width, constraints.max_width, self.common.padding);
         let col_widths = resolve_column_widths(&self.columns, inner_width);
-        let mut total = 0.0f32;
-        if let Some(header) = &self.header {
-            total += measure_row_height(ctx, header, &col_widths, self.cell_padding);
-        }
+        let mut total = header_row_height(ctx, self, &col_widths);
         for row in &self.rows {
             total += measure_row_height(ctx, row, &col_widths, self.cell_padding);
         }
         Size {
             width,
-            height: self.common.height.unwrap_or(total + 2.0 * self.common.padding),
+            height: resolve_auto_size(self.common.height, total, self.common.padding),
         }
     }
 
     fn layout(&self, ctx: &LayoutCtx, area: Rect, warnings: &mut Vec<LayoutWarning>, page: usize) -> LayoutResult {
-        let inner = area.shrink(self.common.padding);
+        let (inner, bound_height) = shrink_and_bound_height(area, self.common.height, self.common.padding);
         let col_widths = resolve_column_widths(&self.columns, inner.width);
-        let bound_height = self.common.height.map(|h| h - 2.0 * self.common.padding).unwrap_or(inner.height);
-        let header_height = self
-            .header
-            .as_ref()
-            .map(|h| measure_row_height(ctx, h, &col_widths, self.cell_padding))
-            .unwrap_or(0.0);
+        let header_height = header_row_height(ctx, self, &col_widths);
 
         let mut rendered = Vec::new();
         let mut cursor_y = 0.0f32;
@@ -199,14 +189,16 @@ impl Layoutable for Table {
             rendered.push(render_row(
                 ctx,
                 self,
-                header,
                 &col_widths,
-                cursor_y,
                 &inner,
-                header_height,
-                None,
                 warnings,
                 page,
+                RowRenderParams {
+                    cells: header,
+                    y: cursor_y,
+                    row_height: header_height,
+                    background: None,
+                },
             ));
             cursor_y += header_height;
         }
@@ -221,14 +213,16 @@ impl Layoutable for Table {
                 rendered.push(render_row(
                     ctx,
                     self,
-                    row,
                     &col_widths,
-                    cursor_y,
                     &inner,
-                    row_height,
-                    stripe,
                     warnings,
                     page,
+                    RowRenderParams {
+                        cells: row,
+                        y: cursor_y,
+                        row_height,
+                        background: stripe,
+                    },
                 ));
                 cursor_y += row_height;
                 continue;
@@ -241,20 +235,23 @@ impl Layoutable for Table {
                 rendered.push(render_row(
                     ctx,
                     self,
-                    row,
                     &col_widths,
-                    cursor_y,
                     &inner,
-                    remaining,
-                    stripe,
                     warnings,
                     page,
+                    RowRenderParams {
+                        cells: row,
+                        y: cursor_y,
+                        row_height: remaining,
+                        background: stripe,
+                    },
                 ));
-                warnings.push(LayoutWarning {
-                    kind: LayoutWarningKind::ForcedPageBreak,
+                push_warning(
+                    warnings,
+                    LayoutWarningKind::ForcedPageBreak,
                     page,
-                    element_hint: format!("Table row {absolute_i} larger than one page"),
-                });
+                    format!("Table row {absolute_i} larger than one page"),
+                );
                 cursor_y = bound_height;
                 continue;
             }
@@ -262,23 +259,8 @@ impl Layoutable for Table {
             // Doesn't fit — move this row and everything after it to a
             // continuation page, which repeats the header.
             if let Some(fixed_height) = self.common.height {
-                if !self.rows[i..].is_empty() {
-                    warnings.push(LayoutWarning {
-                        kind: LayoutWarningKind::ContentOverflow,
-                        page,
-                        element_hint: "Table content exceeds its fixed height".to_string(),
-                    });
-                }
-                return LayoutResult::Fit(RenderNode::Group {
-                    area: Rect {
-                        height: fixed_height,
-                        ..area
-                    },
-                    clip: true,
-                    background: self.common.background,
-                    border: self.common.border,
-                    children: rendered,
-                });
+                let overflow_hint = (!self.rows[i..].is_empty()).then_some("Table content exceeds its fixed height");
+                return clip_to_fixed_height(area, fixed_height, &self.common, rendered, warnings, page, overflow_hint);
             }
 
             let remainder = Table {
@@ -293,30 +275,14 @@ impl Layoutable for Table {
                     ..self.common
                 },
             };
-            let current = RenderNode::Group {
-                area: Rect { height: cursor_y, ..area },
-                clip: true,
-                background: self.common.background,
-                border: self.common.border,
-                children: rendered,
-            };
+            let current = wrap_children(area, cursor_y, &self.common, rendered);
             return LayoutResult::Split {
                 current,
                 remainder: Element::Table(remainder),
             };
         }
 
-        let outer_height = self.common.height.unwrap_or(cursor_y + 2.0 * self.common.padding);
-        LayoutResult::Fit(RenderNode::Group {
-            area: Rect {
-                height: outer_height,
-                ..area
-            },
-            clip: true,
-            background: self.common.background,
-            border: self.common.border,
-            children: rendered,
-        })
+        finish_fit(&self.common, area, cursor_y, rendered)
     }
 }
 

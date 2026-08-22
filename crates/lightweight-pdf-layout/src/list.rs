@@ -5,8 +5,8 @@
 //! element (builder ergonomics) despite delegating like this.
 
 use crate::geometry::{Constraints, Rect, Size};
-use crate::layoutable::{LayoutCtx, LayoutResult, Layoutable};
-use crate::warnings::{LayoutWarning, LayoutWarningKind};
+use crate::layoutable::{coerce_to_fit_and_warn, LayoutCtx, LayoutResult, Layoutable};
+use crate::warnings::LayoutWarning;
 use lightweight_pdf_core::{Align, Column, List, Marker, Row, Text};
 
 fn marker_text(marker: &Marker) -> String {
@@ -48,17 +48,13 @@ impl Layoutable for List {
         // Lists don't paginate in V1 (same "atomic, no Split" contract as
         // Row) — if the translated Column would need to split, keep what
         // fits and clip+warn on the rest instead of silently dropping it.
-        match to_column(self).layout(ctx, area, warnings, page) {
-            LayoutResult::Fit(node) => LayoutResult::Fit(node),
-            LayoutResult::Split { current, .. } => {
-                warnings.push(LayoutWarning {
-                    kind: LayoutWarningKind::ContentOverflow,
-                    page,
-                    element_hint: "List content exceeds available space".to_string(),
-                });
-                LayoutResult::Fit(current)
-            }
-        }
+        let result = to_column(self).layout(ctx, area, warnings, page);
+        LayoutResult::Fit(coerce_to_fit_and_warn(
+            result,
+            warnings,
+            page,
+            "List content exceeds available space",
+        ))
     }
 }
 
