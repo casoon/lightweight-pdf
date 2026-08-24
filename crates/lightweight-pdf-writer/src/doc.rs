@@ -68,10 +68,27 @@ pub struct ImageXObject {
     pub smask: Option<Box<ImageXObject>>,
 }
 
+#[derive(Clone, Debug)]
+pub struct PdfLinkAnnotation {
+    pub rect: (f32, f32, f32, f32),
+    pub uri: String,
+}
+
+#[derive(Default)]
 pub struct PdfPage {
     pub width: f32,
     pub height: f32,
     pub content: Vec<u8>,
+    pub annotations: Vec<PdfLinkAnnotation>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct PdfMetadata {
+    pub title: Option<String>,
+    pub author: Option<String>,
+    pub subject: Option<String>,
+    pub keywords: Option<String>,
+    pub creator: Option<String>,
 }
 
 #[derive(Default)]
@@ -79,6 +96,7 @@ pub struct PdfDocument {
     fonts: Vec<CidFont>,
     images: Vec<ImageXObject>,
     pages: Vec<PdfPage>,
+    pub metadata: PdfMetadata,
 }
 
 impl PdfDocument {
@@ -265,16 +283,41 @@ impl PdfDocument {
         let content_refs: Vec<Ref> = (0..pages.len()).map(|_| w.alloc()).collect();
 
         for ((page, &page_ref), &content_ref) in pages.iter().zip(&page_refs).zip(&content_refs) {
+            let mut annot_refs = Vec::new();
+            for annot in &page.annotations {
+                let id = w.alloc();
+                w.object(
+                    id,
+                    &format!(
+                        "<< /Type /Annot /Subtype /Link /Rect [{x0} {y0} {x1} {y1}] /Border [0 0 0] /A << /S /URI /URI {uri} >> >>",
+                        x0 = fmt_num(annot.rect.0),
+                        y0 = fmt_num(annot.rect.1),
+                        x1 = fmt_num(annot.rect.2),
+                        y1 = fmt_num(annot.rect.3),
+                        uri = format_pdf_string(&annot.uri),
+                    ),
+                );
+                annot_refs.push(id);
+            }
+
+            let annots_entry = if !annot_refs.is_empty() {
+                let refs = Self::join_with_space(&annot_refs, |r| r.write());
+                format!(" /Annots [{refs}]")
+            } else {
+                String::new()
+            };
+
             w.object(
                 page_ref,
                 &format!(
-                    "<< /Type /Page /Parent {parent} /MediaBox [0 0 {w} {h}] /Resources << /Font << {fonts} >> /XObject << {images} >> >> /Contents {content} >>",
+                    "<< /Type /Page /Parent {parent} /MediaBox [0 0 {w} {h}] /Resources << /Font << {fonts} >> /XObject << {images} >> >> /Contents {content}{annots} >>",
                     parent = pages_ref.write(),
                     w = fmt_num(page.width),
                     h = fmt_num(page.height),
                     fonts = font_resources,
                     images = image_resources,
                     content = content_ref.write(),
+                    annots = annots_entry,
                 ),
             );
             w.stream(content_ref, "", &page.content);
@@ -303,8 +346,38 @@ impl PdfDocument {
         w.object(pages_ref, &format!("<< /Type /Pages /Kids [{kids}] /Count {} >>", self.pages.len()));
         w.object(catalog_ref, &format!("<< /Type /Catalog /Pages {} >>", pages_ref.write()));
 
-        w.finish(catalog_ref)
+        let mut info_entries = Vec::new();
+        if let Some(ref title) = self.metadata.title {
+            info_entries.push(format!("/Title {}", format_pdf_string(title)));
+        }
+        if let Some(ref author) = self.metadata.author {
+            info_entries.push(format!("/Author {}", format_pdf_string(author)));
+        }
+        if let Some(ref subject) = self.metadata.subject {
+            info_entries.push(format!("/Subject {}", format_pdf_string(subject)));
+        }
+        if let Some(ref keywords) = self.metadata.keywords {
+            info_entries.push(format!("/Keywords {}", format_pdf_string(keywords)));
+        }
+        if let Some(ref creator) = self.metadata.creator {
+            info_entries.push(format!("/Creator {}", format_pdf_string(creator)));
+        }
+
+        let info_ref = if !info_entries.is_empty() {
+            let id = w.alloc();
+            w.object(id, &format!("<< {} >>", info_entries.join(" ")));
+            Some(id)
+        } else {
+            None
+        };
+
+        w.finish(catalog_ref, info_ref)
     }
+}
+
+fn format_pdf_string(s: &str) -> String {
+    let escaped = s.replace('\\', "\\\\").replace('(', "\\(").replace(')', "\\)");
+    format!("({escaped})")
 }
 
 #[cfg(test)]
@@ -334,6 +407,7 @@ mod tests {
             width: 595.0,
             height: 842.0,
             content: Vec::new(),
+            annotations: Vec::new(),
         });
         let bytes = doc.write();
         let text = String::from_utf8_lossy(&bytes);
@@ -350,6 +424,7 @@ mod tests {
             width: 595.0,
             height: 842.0,
             content: Vec::new(),
+            annotations: Vec::new(),
         });
         let bytes = doc.write();
         let text = String::from_utf8_lossy(&bytes);
@@ -386,6 +461,7 @@ mod tests {
             width: 200.0,
             height: 200.0,
             content: Vec::new(),
+            annotations: Vec::new(),
         });
         let bytes = doc.write();
         let text = String::from_utf8_lossy(&bytes);
@@ -412,6 +488,7 @@ mod tests {
             width: 200.0,
             height: 200.0,
             content: Vec::new(),
+            annotations: Vec::new(),
         });
         let bytes = doc.write();
         let text = String::from_utf8_lossy(&bytes);

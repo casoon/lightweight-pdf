@@ -33,10 +33,7 @@ fn credential_box(cred: &Credential) -> Element {
     Column::new()
         .gap(4.0)
         .padding(10.0)
-        .border(Border {
-            width: 1.0,
-            color: BORDER_GRAY,
-        })
+        .border(Border::solid(1.0, BORDER_GRAY))
         .child(Text::new(cred.label).bold())
         .child(
             Row::new()
@@ -138,7 +135,7 @@ fn main() {
     doc.add(
         Column::new()
             .padding(14.0)
-            .border(Border { width: 1.5, color: ACCENT })
+            .border(Border::solid(1.5, ACCENT))
             .child(Text::new("CONFIDENTIAL").bold().color(ACCENT).align(Align::Center))
             .child(Spacer::new(6.0))
             .child(
@@ -199,10 +196,7 @@ fn main() {
         Column::new()
             .gap(4.0)
             .padding(12.0)
-            .border(Border {
-                width: 1.0,
-                color: Color::rgb(0xE6, 0x9A, 0x2E),
-            })
+            .border(Border::solid(1.0, Color::rgb(0xE6, 0x9A, 0x2E)))
             .child(Text::new("Security Notes").bold().align(Align::Center))
             .child(Spacer::new(4.0))
             .child(

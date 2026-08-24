@@ -85,6 +85,7 @@ struct RenderCtx<'a> {
     embedded: &'a HashMap<FontKey, EmbeddedFont>,
     pdf: &'a mut PdfDocument,
     cb: &'a mut ContentBuilder,
+    annotations: &'a mut Vec<lightweight_pdf_writer::PdfLinkAnnotation>,
 }
 
 /// Renders one page's header/watermark/body/footer into a fresh content
@@ -99,6 +100,7 @@ fn render_page(
     pdf: &mut PdfDocument,
 ) -> Result<PdfPage, RenderError> {
     let mut cb = ContentBuilder::new();
+    let mut annotations = Vec::new();
     cb.save();
     cb.clip_rect(0.0, 0.0, page_width, page_height);
     // Watermark first (bottom layer, `05-overflow-and-robustness.md`):
@@ -112,6 +114,7 @@ fn render_page(
         embedded,
         pdf,
         cb: &mut cb,
+        annotations: &mut annotations,
     };
     if let Some(header) = &page.header {
         tree::render_node(header, &mut ctx)?;
@@ -125,6 +128,7 @@ fn render_page(
         width: page_width,
         height: page_height,
         content: cb.into_bytes(),
+        annotations,
     })
 }
 
@@ -141,6 +145,12 @@ fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec
     }
 
     let mut pdf = PdfDocument::new();
+    pdf.metadata.title = doc.metadata.title.clone();
+    pdf.metadata.author = doc.metadata.author.clone();
+    pdf.metadata.subject = doc.metadata.subject.clone();
+    pdf.metadata.keywords = doc.metadata.keywords.clone();
+    pdf.metadata.creator = doc.metadata.creator.clone();
+
     let embedded = text::embed_fonts(&mut pdf, fonts, &used_chars)?;
 
     for page in &paginated.pages {

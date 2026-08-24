@@ -49,17 +49,17 @@ impl FontMetrics for MetricsAdapter {
 
 pub struct RegisteredFont {
     pub font_data: FontData,
-    pub base_font_name: &'static str,
+    pub base_font_name: String,
     adapter: MetricsAdapter,
 }
 
 impl RegisteredFont {
-    fn new(bytes: &[u8], base_font_name: &'static str) -> Result<Self, FontError> {
+    fn new(bytes: &[u8], base_font_name: impl Into<String>) -> Result<Self, FontError> {
         let font_data = FontData::load(bytes.to_vec())?;
         let metrics = EmbeddedFontMetrics::from_font_data(&font_data)?;
         Ok(RegisteredFont {
             font_data,
-            base_font_name,
+            base_font_name: base_font_name.into(),
             adapter: MetricsAdapter(metrics),
         })
     }
@@ -72,45 +72,60 @@ impl RegisteredFont {
 }
 
 pub struct FontRegistry {
-    pub regular: RegisteredFont,
-    pub bold: RegisteredFont,
+    fonts: std::collections::HashMap<FontKey, RegisteredFont>,
+    default_key: FontKey,
 }
 
 impl FontRegistry {
+    pub fn empty() -> Self {
+        FontRegistry {
+            fonts: std::collections::HashMap::new(),
+            default_key: FontKey::SANS_REGULAR,
+        }
+    }
+
     #[cfg(feature = "default-fonts")]
     pub fn with_defaults() -> Result<Self, FontError> {
-        Ok(FontRegistry {
-            regular: RegisteredFont::new(SANS_REGULAR_BYTES, "SourceSans3-Subset")?,
-            bold: RegisteredFont::new(SANS_BOLD_BYTES, "SourceSans3-Bold-Subset")?,
-        })
+        let mut reg = Self::empty();
+        reg.register_named(FontKey::SANS_REGULAR, "SourceSans3-Subset", SANS_REGULAR_BYTES)?;
+        reg.register_named(FontKey::SANS_BOLD, "SourceSans3-Bold-Subset", SANS_BOLD_BYTES)?;
+        Ok(reg)
     }
 
     /// Builds a registry from caller-supplied static TrueType `glyf` fonts
     /// (ADR-012, same constraint as the bundled defaults) instead of Source
     /// Sans 3 — always available, independent of the `default-fonts`
-    /// feature. Still exactly the two-weight `SANS_REGULAR`/`SANS_BOLD`
-    /// model; an arbitrary-weight/arbitrary-`FontKey` registry is tracked
-    /// separately (github.com/casoon/lightweight-pdf/issues/1).
+    /// feature.
     pub fn with_fonts(regular_bytes: &[u8], bold_bytes: &[u8]) -> Result<Self, FontError> {
-        Ok(FontRegistry {
-            regular: RegisteredFont::new(regular_bytes, "CustomFont-Regular-Subset")?,
-            bold: RegisteredFont::new(bold_bytes, "CustomFont-Bold-Subset")?,
-        })
+        let mut reg = Self::empty();
+        reg.register_named(FontKey::SANS_REGULAR, "CustomFont-Regular-Subset", regular_bytes)?;
+        reg.register_named(FontKey::SANS_BOLD, "CustomFont-Bold-Subset", bold_bytes)?;
+        Ok(reg)
+    }
+
+    pub fn register(&mut self, key: FontKey, bytes: &[u8]) -> Result<(), FontError> {
+        let name = format!("CustomFont-{}-Subset", key.0);
+        self.register_named(key, name, bytes)
+    }
+
+    pub fn register_named(&mut self, key: FontKey, name: impl Into<String>, bytes: &[u8]) -> Result<(), FontError> {
+        let font = RegisteredFont::new(bytes, name)?;
+        self.fonts.insert(key, font);
+        Ok(())
     }
 
     /// Order matches how the facade registers PDF fonts — used to build
     /// resource names (`F1`, `F2`, ...) consistently between PDF font
     /// registration and content-stream references.
-    pub fn font_entries(&self) -> [(FontKey, &RegisteredFont); 2] {
-        [(FontKey::SANS_REGULAR, &self.regular), (FontKey::SANS_BOLD, &self.bold)]
+    pub fn font_entries(&self) -> Vec<(FontKey, &RegisteredFont)> {
+        self.fonts.iter().map(|(&k, v)| (k, v)).collect()
     }
 
     pub fn entry(&self, key: FontKey) -> &RegisteredFont {
-        if key == FontKey::SANS_BOLD {
-            &self.bold
-        } else {
-            &self.regular
-        }
+        self.fonts
+            .get(&key)
+            .or_else(|| self.fonts.get(&self.default_key))
+            .expect("FontRegistry must contain at least one registered font")
     }
 }
 

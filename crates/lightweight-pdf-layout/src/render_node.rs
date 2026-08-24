@@ -14,11 +14,13 @@ pub enum RenderNode {
         style: TextStyle,
         lines: Vec<String>,
         line_height_pt: f32,
+        url: Option<String>,
     },
     Rect {
         area: Rect,
         background: Option<Color>,
         border: Option<Border>,
+        corner_radius: f32,
     },
     Line {
         x1: f32,
@@ -47,6 +49,7 @@ pub enum RenderNode {
         clip: bool,
         background: Option<Color>,
         border: Option<Border>,
+        corner_radius: f32,
         children: Vec<RenderNode>,
     },
 }
@@ -61,6 +64,7 @@ impl RenderNode {
             clip: true,
             background: None,
             border: None,
+            corner_radius: 0.0,
             children: vec![inner],
         }
     }

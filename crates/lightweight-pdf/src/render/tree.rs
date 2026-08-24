@@ -5,36 +5,51 @@
 
 use super::{pdf_rect_y, text, to_rgb, RenderCtx, RenderError};
 use crate::images;
-use lightweight_pdf_core::{Border, Color, ImageFormat};
+use lightweight_pdf_core::{Border, BorderStyle, Color, ImageFormat};
 use lightweight_pdf_layout::{Rect, RenderNode};
 use lightweight_pdf_writer::PdfDocument;
 
 /// Fills `area`'s background, if any — shared by `RenderNode::Group` (under
 /// its children) and `RenderNode::Rect` (its whole body).
-fn paint_background(area: &Rect, background: &Option<Color>, ctx: &mut RenderCtx) {
+fn paint_background(area: &Rect, background: &Option<Color>, corner_radius: f32, ctx: &mut RenderCtx) {
     if let Some(bg) = background {
-        ctx.cb.fill_rect(
-            area.x,
-            pdf_rect_y(ctx.page_height, area.y, area.height),
-            area.width,
-            area.height,
-            to_rgb(*bg),
-        );
+        let pdf_y = pdf_rect_y(ctx.page_height, area.y, area.height);
+        if corner_radius > 0.0 {
+            ctx.cb
+                .draw_rounded_rect(area.x, pdf_y, area.width, area.height, corner_radius, Some(to_rgb(*bg)), None, None);
+        } else {
+            ctx.cb.fill_rect(area.x, pdf_y, area.width, area.height, to_rgb(*bg));
+        }
     }
 }
 
 /// Strokes `area`'s border, if any — shared by `RenderNode::Group` (over
 /// its children) and `RenderNode::Rect` (its whole body).
-fn paint_border(area: &Rect, border: &Option<Border>, ctx: &mut RenderCtx) {
+fn paint_border(area: &Rect, border: &Option<Border>, corner_radius: f32, ctx: &mut RenderCtx) {
     if let Some(b) = border {
-        ctx.cb.stroke_rect(
-            area.x,
-            pdf_rect_y(ctx.page_height, area.y, area.height),
-            area.width,
-            area.height,
-            b.width,
-            to_rgb(b.color),
-        );
+        let pdf_y = pdf_rect_y(ctx.page_height, area.y, area.height);
+        let dash_info = match b.style {
+            BorderStyle::Solid => None,
+            BorderStyle::Dashed { dash, gap } => Some((dash, gap)),
+        };
+        if corner_radius > 0.0 {
+            ctx.cb.draw_rounded_rect(
+                area.x,
+                pdf_y,
+                area.width,
+                area.height,
+                corner_radius,
+                None,
+                Some((b.width, to_rgb(b.color))),
+                dash_info,
+            );
+        } else if let Some((dash, gap)) = dash_info {
+            ctx.cb.set_dash(dash, gap);
+            ctx.cb.stroke_rect(area.x, pdf_y, area.width, area.height, b.width, to_rgb(b.color));
+            ctx.cb.reset_dash();
+        } else {
+            ctx.cb.stroke_rect(area.x, pdf_y, area.width, area.height, b.width, to_rgb(b.color));
+        }
     }
 }
 
@@ -43,6 +58,7 @@ fn render_group(
     clip: bool,
     background: &Option<Color>,
     border: &Option<Border>,
+    corner_radius: f32,
     children: &[RenderNode],
     ctx: &mut RenderCtx,
 ) -> Result<(), RenderError> {
@@ -51,18 +67,18 @@ fn render_group(
         ctx.cb
             .clip_rect(area.x, pdf_rect_y(ctx.page_height, area.y, area.height), area.width, area.height);
     }
-    paint_background(area, background, ctx);
+    paint_background(area, background, corner_radius, ctx);
     for child in children {
         render_node(child, ctx)?;
     }
-    paint_border(area, border, ctx);
+    paint_border(area, border, corner_radius, ctx);
     ctx.cb.restore();
     Ok(())
 }
 
-fn render_rect(area: &Rect, background: &Option<Color>, border: &Option<Border>, ctx: &mut RenderCtx) {
-    paint_background(area, background, ctx);
-    paint_border(area, border, ctx);
+fn render_rect(area: &Rect, background: &Option<Color>, border: &Option<Border>, corner_radius: f32, ctx: &mut RenderCtx) {
+    paint_background(area, background, corner_radius, ctx);
+    paint_border(area, border, corner_radius, ctx);
 }
 
 fn render_line(x1: f32, y1: f32, x2: f32, y2: f32, thickness: f32, color: Color, ctx: &mut RenderCtx) {
@@ -102,10 +118,16 @@ pub(super) fn render_node(node: &RenderNode, ctx: &mut RenderCtx) -> Result<(), 
             clip,
             background,
             border,
+            corner_radius,
             children,
-        } => render_group(area, *clip, background, border, children, ctx),
-        RenderNode::Rect { area, background, border } => {
-            render_rect(area, background, border, ctx);
+        } => render_group(area, *clip, background, border, *corner_radius, children, ctx),
+        RenderNode::Rect {
+            area,
+            background,
+            border,
+            corner_radius,
+        } => {
+            render_rect(area, background, border, *corner_radius, ctx);
             Ok(())
         }
         RenderNode::Line {
@@ -124,8 +146,9 @@ pub(super) fn render_node(node: &RenderNode, ctx: &mut RenderCtx) -> Result<(), 
             style,
             lines,
             line_height_pt,
+            url,
         } => {
-            text::render_text_lines(area, style, lines, *line_height_pt, ctx);
+            text::render_text_lines(area, style, lines, *line_height_pt, url.as_deref(), ctx);
             Ok(())
         }
         RenderNode::Image {

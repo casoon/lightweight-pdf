@@ -43,11 +43,44 @@ impl TableColumn {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct TableCell {
+    pub element: Element,
+    pub colspan: usize,
+    pub align: Option<Align>,
+}
+
+impl TableCell {
+    pub fn new(element: impl Into<Element>) -> Self {
+        TableCell {
+            element: element.into(),
+            colspan: 1,
+            align: None,
+        }
+    }
+
+    pub fn colspan(mut self, colspan: usize) -> Self {
+        self.colspan = colspan.max(1);
+        self
+    }
+
+    pub fn align(mut self, align: Align) -> Self {
+        self.align = Some(align);
+        self
+    }
+}
+
+impl<T: Into<Element>> From<T> for TableCell {
+    fn from(value: T) -> Self {
+        TableCell::new(value)
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Table {
     pub columns: Vec<TableColumn>,
-    pub header: Option<Vec<Element>>,
-    pub rows: Vec<Vec<Element>>,
+    pub header: Option<Vec<TableCell>>,
+    pub rows: Vec<Vec<TableCell>>,
     /// Alternating row background ("Zebra-Streifen"), see
     /// `02-elementcatalog-and-features.md`. Applies to data rows only (a
     /// striped header would be indistinguishable from a striped data row).
@@ -77,12 +110,12 @@ impl Table {
         self
     }
 
-    pub fn header(mut self, cells: impl IntoIterator<Item = impl Into<Element>>) -> Self {
+    pub fn header(mut self, cells: impl IntoIterator<Item = impl Into<TableCell>>) -> Self {
         self.header = Some(cells.into_iter().map(Into::into).collect());
         self
     }
 
-    pub fn rows(mut self, rows: impl IntoIterator<Item = impl IntoIterator<Item = impl Into<Element>>>) -> Self {
+    pub fn rows(mut self, rows: impl IntoIterator<Item = impl IntoIterator<Item = impl Into<TableCell>>>) -> Self {
         self.rows = rows.into_iter().map(|row| row.into_iter().map(Into::into).collect()).collect();
         self
     }

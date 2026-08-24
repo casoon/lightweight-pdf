@@ -20,7 +20,7 @@ fn max_lines_fitting(area_height: f32, lh: f32, available: usize) -> usize {
     (((area_height + EPS) / lh).floor().max(0.0) as usize).min(available)
 }
 
-fn text_lines_node(area: Rect, style: TextStyle, lines: Vec<String>, lh: f32) -> RenderNode {
+fn text_lines_node(area: Rect, style: TextStyle, lines: Vec<String>, lh: f32, url: Option<String>) -> RenderNode {
     let height = lines.len() as f32 * lh;
     RenderNode::clipped(
         area,
@@ -29,6 +29,7 @@ fn text_lines_node(area: Rect, style: TextStyle, lines: Vec<String>, lh: f32) ->
             style,
             lines,
             line_height_pt: lh,
+            url,
         },
     )
 }
@@ -57,7 +58,7 @@ impl Layoutable for Text {
             if total_height > area.height + EPS {
                 push_warning(warnings, LayoutWarningKind::TextClipped, page, text_clipped_hint(&self.content));
             }
-            return LayoutResult::Fit(text_lines_node(area, self.style, lines, lh));
+            return LayoutResult::Fit(text_lines_node(area, self.style, lines, lh, self.url.clone()));
         }
 
         // An explicit, fixed `.height(...)` means this box's overflow is
@@ -100,6 +101,7 @@ impl Layoutable for Text {
             self.style,
             current_lines.to_vec(),
             lh,
+            self.url.clone(),
         );
         let remainder_text = remainder_lines.join(" ");
         let mut remainder = self.clone();
@@ -127,7 +129,7 @@ fn layout_text_fixed_overflow(
 ) -> RenderNode {
     let max_lines = max_lines_fitting(area.height, lh, lines.len());
     if max_lines >= lines.len() {
-        return text_lines_node(area, text.style, lines, lh);
+        return text_lines_node(area, text.style, lines, lh, text.url.clone());
     }
     push_warning(warnings, LayoutWarningKind::TextClipped, page, text_clipped_hint(&text.content));
     let take = if text.common.overflow == Overflow::Ellipsis {
@@ -141,7 +143,7 @@ fn layout_text_fixed_overflow(
             *last = fit_with_ellipsis(ctx, &text.style, last, area.width);
         }
     }
-    text_lines_node(area, text.style, kept, lh)
+    text_lines_node(area, text.style, kept, lh, text.url.clone())
 }
 
 /// Trims `line` character by character (from the end) until `line + "…"`
@@ -230,6 +232,7 @@ impl Layoutable for RectElement {
             area,
             background: self.common.background,
             border: self.common.border,
+            corner_radius: self.common.corner_radius,
         };
         LayoutResult::Fit(RenderNode::clipped(area, node))
     }

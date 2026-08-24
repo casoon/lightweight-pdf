@@ -11,7 +11,7 @@ use crate::layoutable::{
 };
 use crate::render_node::{align_offset, RenderNode};
 use crate::warnings::{LayoutWarning, LayoutWarningKind};
-use lightweight_pdf_core::{Color, ColumnWidth, Common, Element, Table, TableColumn};
+use lightweight_pdf_core::{Color, ColumnWidth, Common, Element, Table, TableCell, TableColumn};
 
 const EPS: f32 = 0.01;
 
@@ -54,15 +54,22 @@ fn resolve_column_widths(columns: &[TableColumn], available_width: f32) -> Vec<f
     widths
 }
 
-fn measure_row_height(ctx: &LayoutCtx, cells: &[Element], col_widths: &[f32], cell_padding: f32) -> f32 {
-    cells
-        .iter()
-        .zip(col_widths.iter())
-        .map(|(cell, w)| {
-            let inner_w = (w - 2.0 * cell_padding).max(0.0);
-            measure_at_width(ctx, cell, inner_w).height + 2.0 * cell_padding
-        })
-        .fold(0.0f32, f32::max)
+fn measure_row_height(ctx: &LayoutCtx, cells: &[TableCell], col_widths: &[f32], cell_padding: f32) -> f32 {
+    let mut max_h = 0.0f32;
+    let mut col_idx = 0;
+    for cell in cells {
+        if col_idx >= col_widths.len() {
+            break;
+        }
+        let span = cell.colspan.max(1);
+        let end_idx = (col_idx + span).min(col_widths.len());
+        let total_w: f32 = col_widths[col_idx..end_idx].iter().sum();
+        let inner_w = (total_w - 2.0 * cell_padding).max(0.0);
+        let h = measure_at_width(ctx, &cell.element, inner_w).height + 2.0 * cell_padding;
+        max_h = max_h.max(h);
+        col_idx = end_idx;
+    }
+    max_h
 }
 
 /// The header row's height, or `0.0` if the table has no header — shared
@@ -92,7 +99,7 @@ pub fn table_min_unit(ctx: &LayoutCtx, table: &Table, width: f32) -> f32 {
 fn layout_row_cells(
     ctx: &LayoutCtx,
     table: &Table,
-    cells: &[Element],
+    cells: &[TableCell],
     col_widths: &[f32],
     row_area: Rect,
     warnings: &mut Vec<LayoutWarning>,
@@ -101,29 +108,35 @@ fn layout_row_cells(
     let cell_padding = table.cell_padding;
     let mut nodes = Vec::with_capacity(cells.len());
     let mut cursor_x = row_area.x;
-    for ((cell, col), w) in cells.iter().zip(table.columns.iter()).zip(col_widths.iter()) {
-        let inner_w = (w - 2.0 * cell_padding).max(0.0);
+    let mut col_idx = 0;
+    for cell in cells {
+        if col_idx >= table.columns.len() {
+            break;
+        }
+        let span = cell.colspan.max(1);
+        let end_idx = (col_idx + span).min(table.columns.len());
+        let total_w: f32 = col_widths[col_idx..end_idx].iter().sum();
+        let col_align = cell.align.unwrap_or(table.columns[col_idx].align);
+
+        let inner_w = (total_w - 2.0 * cell_padding).max(0.0);
         let content_h = (row_area.height - 2.0 * cell_padding).max(0.0);
-        let cell_size = measure_at_width(ctx, cell, inner_w);
+        let cell_size = measure_at_width(ctx, &cell.element, inner_w);
         let box_width = cell_size.width.min(inner_w).max(0.0);
-        let x_offset = align_offset(col.align, inner_w, box_width);
+        let x_offset = align_offset(col_align, inner_w, box_width);
         let cell_area = Rect {
             x: cursor_x + cell_padding + x_offset,
             y: row_area.y + cell_padding,
             width: box_width,
             height: content_h,
         };
-        match cell.layout(ctx, cell_area, warnings, page) {
+        match cell.element.layout(ctx, cell_area, warnings, page) {
             LayoutResult::Fit(node) => nodes.push(node),
             LayoutResult::Split { current, .. } => {
-                // Cells never split (a row is an atomic unit,
-                // Grundprinzip 5's table addendum) — keep what fit,
-                // ContentOverflow already implied by TextClipped from the
-                // cell's own fixed-size handling if applicable.
                 nodes.push(current);
             }
         }
-        cursor_x += *w;
+        cursor_x += total_w;
+        col_idx = end_idx;
     }
     nodes
 }
@@ -132,7 +145,7 @@ fn layout_row_cells(
 /// data row vs. forced/oversized row), grouped so the function itself
 /// doesn't need one positional `f32`/`Option<Color>` parameter per field.
 struct RowRenderParams<'a> {
-    cells: &'a [Element],
+    cells: &'a [TableCell],
     y: f32,
     row_height: f32,
     background: Option<Color>,
@@ -159,6 +172,7 @@ fn render_row(
         clip: true,
         background: row.background,
         border: None,
+        corner_radius: 0.0,
         children: nodes,
     }
 }

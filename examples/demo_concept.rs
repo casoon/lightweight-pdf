@@ -153,7 +153,7 @@ fn main() {
     doc.add(
         Column::new()
             .padding(12.0)
-            .border(Border { width: 1.5, color: ACCENT })
+            .border(Border::solid(1.5, ACCENT))
             .background(PILL_BG)
             .child(Text::new("Key Takeaway").bold())
             .child(Spacer::new(4.0))

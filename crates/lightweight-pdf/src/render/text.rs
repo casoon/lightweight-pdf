@@ -78,7 +78,14 @@ fn font_resource(embedded: &HashMap<FontKey, EmbeddedFont>, key: FontKey) -> Opt
     Some((font, PdfDocument::font_resource_name(font.index)))
 }
 
-pub(super) fn render_text_lines(area: &Rect, style: &TextStyle, lines: &[String], line_height_pt: f32, ctx: &mut RenderCtx) {
+pub(super) fn render_text_lines(
+    area: &Rect,
+    style: &TextStyle,
+    lines: &[String],
+    line_height_pt: f32,
+    url: Option<&str>,
+    ctx: &mut RenderCtx,
+) {
     let Some((font, resource)) = font_resource(ctx.embedded, style.font) else {
         return; // font had nothing usable subset (shouldn't happen for a font that produced text, defensive only)
     };
@@ -93,6 +100,15 @@ pub(super) fn render_text_lines(area: &Rect, style: &TextStyle, lines: &[String]
         let x = area.x + align_offset(style.align, area.width, line_width);
         let bytes = encode_cid(line, &font.char_to_gid);
         ctx.cb.text(&resource, style.size, x, baseline_pdf_y, to_rgb(style.color), &bytes);
+
+        if let Some(target_url) = url {
+            let y0 = ctx.page_height - (line_top + line_height_pt);
+            let y1 = ctx.page_height - line_top;
+            ctx.annotations.push(lightweight_pdf_writer::PdfLinkAnnotation {
+                rect: (x, y0, x + line_width, y1),
+                uri: target_url.to_string(),
+            });
+        }
     }
 }
 
@@ -169,10 +185,11 @@ pub(super) fn embed_fonts(
     used_chars: &HashMap<FontKey, BTreeSet<char>>,
 ) -> Result<HashMap<FontKey, EmbeddedFont>, RenderError> {
     let mut embedded: HashMap<FontKey, EmbeddedFont> = HashMap::new();
-    for (key, entry) in fonts.font_entries() {
-        let Some(chars) = used_chars.get(&key) else {
-            continue; // this weight was never referenced in the document
-        };
+    for (&key, chars) in used_chars {
+        if chars.is_empty() {
+            continue;
+        }
+        let entry = fonts.entry(key);
         let subset = lightweight_pdf_fonts::subset_font(&entry.font_data, chars)?;
         let metrics = entry.metrics();
         let char_to_gid = subset.char_to_gid.clone();

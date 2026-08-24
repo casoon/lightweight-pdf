@@ -82,7 +82,7 @@ fn layout_band(el: &Element, area: Rect, ctx: &LayoutCtx, warnings: &mut Vec<Lay
 }
 
 pub fn paginate(doc: &Document, ctx: &LayoutCtx) -> PaginatedDocument {
-    let (page_w, page_h) = doc.page_format.size();
+    let (page_w, page_h) = doc.page_size();
     let header_h = doc.header.as_ref().map(|h| h.height).unwrap_or(0.0);
     let footer_h = doc.footer.as_ref().map(|h| h.height).unwrap_or(0.0);
     let body_w = (page_w - doc.margin.left - doc.margin.right).max(0.0);

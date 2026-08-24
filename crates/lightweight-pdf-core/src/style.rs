@@ -9,6 +9,12 @@ pub struct FontKey(pub &'static str);
 impl FontKey {
     pub const SANS_REGULAR: FontKey = FontKey("sans-regular");
     pub const SANS_BOLD: FontKey = FontKey("sans-bold");
+    pub const SANS_ITALIC: FontKey = FontKey("sans-italic");
+    pub const SANS_BOLD_ITALIC: FontKey = FontKey("sans-bold-italic");
+
+    pub const fn custom(name: &'static str) -> Self {
+        FontKey(name)
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -49,10 +55,39 @@ impl Default for Color {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub enum BorderStyle {
+    #[default]
+    Solid,
+    Dashed {
+        dash: f32,
+        gap: f32,
+    },
+}
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Border {
     pub width: f32,
     pub color: Color,
+    pub style: BorderStyle,
+}
+
+impl Border {
+    pub fn solid(width: f32, color: Color) -> Self {
+        Border {
+            width,
+            color,
+            style: BorderStyle::Solid,
+        }
+    }
+
+    pub fn dashed(width: f32, color: Color, dash: f32, gap: f32) -> Self {
+        Border {
+            width,
+            color,
+            style: BorderStyle::Dashed { dash, gap },
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -91,6 +126,7 @@ pub struct Common {
     /// parent's main-axis size is bounded (see lightweight-pdf-layout Row/Column).
     pub flex: Option<f32>,
     pub padding: f32,
+    pub corner_radius: f32,
     pub overflow: Overflow,
     pub background: Option<Color>,
     pub border: Option<Border>,

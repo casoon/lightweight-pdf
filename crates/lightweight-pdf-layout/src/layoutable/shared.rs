@@ -94,6 +94,7 @@ pub(crate) fn wrap_children(area: Rect, outer_height: f32, common: &Common, chil
         clip: true,
         background: common.background,
         border: common.border,
+        corner_radius: common.corner_radius,
         children,
     }
 }

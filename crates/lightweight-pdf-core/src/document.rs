@@ -1,21 +1,45 @@
 use crate::element::Element;
 use std::rc::Rc;
 
-/// V1 supports a single fixed page size (Phase 0 spike scope: "fixe
-/// A4-Größe"). Dimensions in PDF points (1/72 inch).
+/// Page formats supported for documents. Dimensions in PDF points (1/72 inch).
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum PageFormat {
+    A3,
     A4,
+    A5,
+    Letter,
+    Legal,
+    Custom(f32, f32),
 }
 
 impl PageFormat {
     /// (width, height) in points, portrait.
     pub fn size(&self) -> (f32, f32) {
         match self {
-            // 210mm x 297mm at 72pt/25.4mm.
+            PageFormat::A3 => (841.8898, 1190.5512),
             PageFormat::A4 => (595.2756, 841.8898),
+            PageFormat::A5 => (419.5276, 595.2756),
+            PageFormat::Letter => (612.0, 792.0),
+            PageFormat::Legal => (612.0, 1008.0),
+            PageFormat::Custom(w, h) => (*w, *h),
         }
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum Orientation {
+    #[default]
+    Portrait,
+    Landscape,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct DocumentMetadata {
+    pub title: Option<String>,
+    pub author: Option<String>,
+    pub subject: Option<String>,
+    pub keywords: Option<String>,
+    pub creator: Option<String>,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
@@ -92,12 +116,14 @@ impl Footer {
 #[derive(Clone)]
 pub struct Document {
     pub page_format: PageFormat,
+    pub orientation: Orientation,
     pub margin: Margin,
     pub header: Option<Header>,
     pub footer: Option<Footer>,
     pub header_visible_from: usize,
     pub footer_visible_from: usize,
     pub watermark: Option<crate::watermark::Watermark>,
+    pub metadata: DocumentMetadata,
     pub children: Vec<Element>,
 }
 
@@ -105,14 +131,65 @@ impl Document {
     pub fn new(page_format: PageFormat) -> Self {
         Document {
             page_format,
+            orientation: Orientation::default(),
             margin: Margin::default(),
             header: None,
             footer: None,
             header_visible_from: 1,
             footer_visible_from: 1,
             watermark: None,
+            metadata: DocumentMetadata::default(),
             children: Vec::new(),
         }
+    }
+
+    /// Effective page dimensions (width, height) in PDF points, accounting for orientation.
+    pub fn page_size(&self) -> (f32, f32) {
+        let (w, h) = self.page_format.size();
+        match self.orientation {
+            Orientation::Portrait => (w, h),
+            Orientation::Landscape => (h, w),
+        }
+    }
+
+    pub fn orientation(mut self, orientation: Orientation) -> Self {
+        self.orientation = orientation;
+        self
+    }
+
+    pub fn landscape(mut self) -> Self {
+        self.orientation = Orientation::Landscape;
+        self
+    }
+
+    pub fn portrait(mut self) -> Self {
+        self.orientation = Orientation::Portrait;
+        self
+    }
+
+    pub fn title(mut self, title: impl Into<String>) -> Self {
+        self.metadata.title = Some(title.into());
+        self
+    }
+
+    pub fn author(mut self, author: impl Into<String>) -> Self {
+        self.metadata.author = Some(author.into());
+        self
+    }
+
+    pub fn subject(mut self, subject: impl Into<String>) -> Self {
+        self.metadata.subject = Some(subject.into());
+        self
+    }
+
+    pub fn keywords(mut self, keywords: impl Into<String>) -> Self {
+        self.metadata.keywords = Some(keywords.into());
+        self
+    }
+
+    pub fn creator(mut self, creator: impl Into<String>) -> Self {
+        self.metadata.creator = Some(creator.into());
+        self
     }
 
     pub fn margin(mut self, margin: Margin) -> Self {

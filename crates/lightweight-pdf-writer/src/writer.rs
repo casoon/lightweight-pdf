@@ -80,7 +80,7 @@ impl PdfWriter {
     /// Crate-internal: only [`crate::doc::PdfDocument::write`] calls this —
     /// `PdfWriter` is `PdfDocument`'s implementation detail, not part of
     /// this crate's public surface.
-    pub(crate) fn finish(mut self, root: Ref) -> Vec<u8> {
+    pub(crate) fn finish(mut self, root: Ref, info: Option<Ref>) -> Vec<u8> {
         let xref_offset = self.buf.len();
         let count = self.next_id; // includes object 0
         self.buf.extend_from_slice(format!("xref\n0 {count}\n").as_bytes());
@@ -93,9 +93,13 @@ impl PdfWriter {
             let offset = *self.offsets.get(idx).unwrap_or(&0);
             self.buf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
         }
+        let info_str = match info {
+            Some(r) => format!(" /Info {}", r.write()),
+            None => String::new(),
+        };
         self.buf.extend_from_slice(
             format!(
-                "trailer\n<< /Size {count} /Root {} >>\nstartxref\n{xref_offset}\n%%EOF",
+                "trailer\n<< /Size {count} /Root {}{info_str} >>\nstartxref\n{xref_offset}\n%%EOF",
                 root.write()
             )
             .as_bytes(),
@@ -133,7 +137,7 @@ mod tests {
         let pages = w.alloc();
         w.object(pages, "<< /Type /Pages /Kids [] /Count 0 >>");
         w.object(catalog, &format!("<< /Type /Catalog /Pages {} >>", pages.write()));
-        let bytes = w.finish(catalog);
+        let bytes = w.finish(catalog, None);
         let text = String::from_utf8_lossy(&bytes);
         assert!(text.starts_with("%PDF-1.7"));
         assert!(text.contains("trailer"));

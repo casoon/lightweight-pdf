@@ -84,6 +84,11 @@ macro_rules! common_builder_methods {
             self
         }
 
+        pub fn corner_radius(mut self, radius: f32) -> Self {
+            self.common.corner_radius = radius;
+            self
+        }
+
         pub fn overflow(mut self, overflow: Overflow) -> Self {
             self.common.overflow = overflow;
             self
@@ -116,6 +121,7 @@ macro_rules! common_builder_methods {
 pub struct Text {
     pub content: String,
     pub style: TextStyle,
+    pub url: Option<String>,
     pub common: Common,
 }
 
@@ -124,8 +130,14 @@ impl Text {
         Text {
             content: content.into(),
             style: TextStyle::default(),
+            url: None,
             common: Common::default(),
         }
+    }
+
+    pub fn url(mut self, url: impl Into<String>) -> Self {
+        self.url = Some(url.into());
+        self
     }
 
     pub fn size(mut self, size: f32) -> Self {
@@ -135,6 +147,16 @@ impl Text {
 
     pub fn bold(mut self) -> Self {
         self.style.font = FontKey::SANS_BOLD;
+        self
+    }
+
+    pub fn italic(mut self) -> Self {
+        self.style.font = FontKey::SANS_ITALIC;
+        self
+    }
+
+    pub fn bold_italic(mut self) -> Self {
+        self.style.font = FontKey::SANS_BOLD_ITALIC;
         self
     }
 

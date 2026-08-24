@@ -101,6 +101,98 @@ impl ContentBuilder {
         self.rect_op(&prefix, x, y, w, h, "S");
     }
 
+    pub fn set_dash(&mut self, dash: f32, gap: f32) {
+        self.op(&format!("[{} {}] 0 d", fmt_num(dash), fmt_num(gap)));
+    }
+
+    pub fn reset_dash(&mut self) {
+        self.op("[] 0 d");
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_rounded_rect(
+        &mut self,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        radius: f32,
+        fill: Option<Rgb>,
+        stroke: Option<(f32, Rgb)>,
+        dash: Option<(f32, f32)>,
+    ) {
+        let r = radius.min(w / 2.0).min(h / 2.0);
+        let k = r * 0.552_284_8;
+        let mut path = String::new();
+
+        path.push_str(&format!("{} {} m\n", fmt_num(x + r), fmt_num(y)));
+        path.push_str(&format!("{} {} l\n", fmt_num(x + w - r), fmt_num(y)));
+        path.push_str(&format!(
+            "{} {} {} {} {} {} c\n",
+            fmt_num(x + w - r + k),
+            fmt_num(y),
+            fmt_num(x + w),
+            fmt_num(y + r - k),
+            fmt_num(x + w),
+            fmt_num(y + r)
+        ));
+        path.push_str(&format!("{} {} l\n", fmt_num(x + w), fmt_num(y + h - r)));
+        path.push_str(&format!(
+            "{} {} {} {} {} {} c\n",
+            fmt_num(x + w),
+            fmt_num(y + h - r + k),
+            fmt_num(x + w - r + k),
+            fmt_num(y + h),
+            fmt_num(x + w - r),
+            fmt_num(y + h)
+        ));
+        path.push_str(&format!("{} {} l\n", fmt_num(x + r), fmt_num(y + h)));
+        path.push_str(&format!(
+            "{} {} {} {} {} {} c\n",
+            fmt_num(x + r - k),
+            fmt_num(y + h),
+            fmt_num(x),
+            fmt_num(y + h - r + k),
+            fmt_num(x),
+            fmt_num(y + h - r)
+        ));
+        path.push_str(&format!("{} {} l\n", fmt_num(x), fmt_num(y + r)));
+        path.push_str(&format!(
+            "{} {} {} {} {} {} c\nh",
+            fmt_num(x),
+            fmt_num(y + r - k),
+            fmt_num(x + r - k),
+            fmt_num(y),
+            fmt_num(x + r),
+            fmt_num(y)
+        ));
+
+        if let Some((dash_len, gap_len)) = dash {
+            self.set_dash(dash_len, gap_len);
+        }
+
+        match (fill, stroke) {
+            (Some(f), Some((sw, s))) => {
+                let fill_str = color_op(f, "rg");
+                let stroke_str = color_op(s, "RG");
+                self.op(&format!("{} {} {} w\n{} b", fill_str, stroke_str, fmt_num(sw), path));
+            }
+            (Some(f), None) => {
+                let fill_str = color_op(f, "rg");
+                self.op(&format!("{}\n{} f", fill_str, path));
+            }
+            (None, Some((sw, s))) => {
+                let stroke_str = color_op(s, "RG");
+                self.op(&format!("{} {} w\n{} S", stroke_str, fmt_num(sw), path));
+            }
+            (None, None) => {}
+        }
+
+        if dash.is_some() {
+            self.reset_dash();
+        }
+    }
+
     pub fn line(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, line_width: f32, color: Rgb) {
         self.op(&format!(
             "{} {} w {} {} m {} {} l S",
