@@ -1,10 +1,14 @@
 //! Bridges `lightweight-pdf-fonts::FontData` to `lightweight-pdf-layout::FontResolver`
-//! (ADR-010: "Font-Bridge liegt an der Facade"). `FontRegistry` always
-//! resolves exactly the two weights `FontKey::SANS_REGULAR`/`SANS_BOLD` —
-//! either the bundled default (`with_defaults()`, needs the `default-fonts`
-//! feature) or caller-supplied bytes (`with_fonts()`, always available). An
-//! arbitrary-weight/arbitrary-`FontKey` registry beyond this fixed pair is
-//! out of scope here (see the tracking issue linked from `with_fonts`).
+//! (ADR-010: "Font-Bridge liegt an der Facade"). `FontRegistry` is a
+//! dynamic `FontKey -> RegisteredFont` map (`register()`/`register_named()`
+//! register arbitrary keys, not just `SANS_REGULAR`/`SANS_BOLD`). Two
+//! convenience constructors cover the common case: `with_defaults()`
+//! (bundled Source Sans 3 regular/bold, needs the `default-fonts` feature)
+//! and `with_fonts()` (caller-supplied regular/bold bytes, always
+//! available). Looking up a key that was never registered (e.g.
+//! `SANS_ITALIC`/`SANS_BOLD_ITALIC` without a matching `register()` call)
+//! falls back to the registry's default key (`SANS_REGULAR`) rather than
+//! erroring — see `entry()`.
 
 use lightweight_pdf_core::FontKey;
 use lightweight_pdf_fonts::{EmbeddedFontMetrics, FontData, FontError};

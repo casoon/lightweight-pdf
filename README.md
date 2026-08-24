@@ -43,28 +43,37 @@ lightweight-pdf --example demo_invoice` etc.
 
 - Layout primitives: `Text`, `Column`, `Row`, `Table`, `List`, `Image`,
   `Line`, `Spacer`, `PageBreak` — with `flex`, alignment, padding,
-  border/background.
+  border/background, rounded corners (`.corner_radius()`), and dashed
+  borders (`Border::dashed(width, color, dash, gap)`).
+- Page formats `A3`/`A4`/`A5`/`Letter`/`Legal`/`Custom(w, h)` plus
+  `Document::landscape()`/`.portrait()` orientation.
+- Document metadata (title/author/subject/keywords/creator) written to the
+  PDF `/Info` dictionary via `Document::title()`/`.author()`/etc.
+- Hyperlinks: `Text::url(...)` emits a PDF URI link annotation over the
+  rendered text.
 - Automatic, page-count-stable pagination (two-pass) including
   header/footer bands, widow/orphan rule, and `keep_with_next`.
 - Tables that split across page boundaries (header repeats automatically)
-  with row striping.
+  with row striping; cells support `colspan` and a per-cell alignment
+  override via `TableCell`.
 - Own TrueType subsetting (only glyphs actually used are embedded) for
-  real Unicode text via Type-0/CIDFontType2; a Source Sans 3 font set is
-  bundled by default (`default-fonts` feature). Bring your own font instead
-  via `FontRegistry::with_fonts(regular_bytes, bold_bytes)` +
-  `Document::render_with_fonts()` — works without `default-fonts` too, see
-  `examples/demo_custom_font.rs`. Currently a fixed regular/bold pair, not
-  an arbitrary-weight registry (tracked in
-  [#1](https://github.com/casoon/lightweight-pdf/issues/1)).
+  real Unicode text via Type-0/CIDFontType2; a Source Sans 3 regular/bold
+  pair is bundled by default (`default-fonts` feature). `FontRegistry` is a
+  dynamic, arbitrary-`FontKey` registry (`register()`/`register_named()`),
+  not fixed to two weights — bring your own fonts via
+  `FontRegistry::with_fonts(regular_bytes, bold_bytes)` +
+  `Document::render_with_fonts()` (works without `default-fonts` too, see
+  `examples/demo_custom_font.rs`), or register additional weights such as
+  `FontKey::SANS_ITALIC`/`SANS_BOLD_ITALIC` yourself. `Text::italic()`/
+  `.bold_italic()` only render as italic once a font is registered under
+  that key — with no such registration, they silently fall back to
+  whatever `FontRegistry`'s default key resolves to (`SANS_REGULAR`).
 - Images: JPEG is passed through unchanged as `DCTDecode`; PNG is decoded
   and re-embedded with a separate `SMask` (alpha channel) — only with the
   `png` feature enabled (see below).
 - Watermarking as a document-level feature (rotated, repeated text drawn
   beneath the page content) — deliberately no general transform/rotation
   API.
-
-Currently only one page size (A4, portrait); see
-`crates/lightweight-pdf-core/src/document.rs`.
 
 ## Cargo features (crate `lightweight-pdf`)
 
