@@ -45,7 +45,9 @@ fn document_metadata_is_written_to_pdf_info_dictionary() {
         .author("Acme Software GmbH")
         .subject("Quarterly Report")
         .keywords("invoice, 2026, tax")
-        .creator("lightweight-pdf v0.2.0");
+        .creator("lightweight-pdf v0.2.0")
+        .creation_date(PdfDate::new(2026, 1, 15, 9, 30, 0))
+        .mod_date(PdfDate::new(2026, 1, 16, 10, 0, 0));
     doc.add(Text::new("Metadata Test"));
 
     let bytes = doc.render().expect("render should succeed");
@@ -58,7 +60,31 @@ fn document_metadata_is_written_to_pdf_info_dictionary() {
     assert!(text.contains("/Subject (Quarterly Report)"));
     assert!(text.contains("/Keywords (invoice, 2026, tax)"));
     assert!(text.contains("/Creator (lightweight-pdf v0.2.0)"));
+    assert!(text.contains("/CreationDate (D:20260115093000Z)"));
+    assert!(text.contains("/ModDate (D:20260116100000Z)"));
+    assert!(text.contains(concat!("/Producer (lightweight-pdf ", env!("CARGO_PKG_VERSION"), ")")));
+    assert!(text.contains("/ID [<"));
     assert!(text.contains("/Info"));
+
+    let info = support::pdfinfo(&bytes).unwrap();
+    assert!(info.contains("Invoice #2026-104"), "pdfinfo output was:\n{info}");
+    assert!(info.contains("Acme Software GmbH"), "pdfinfo output was:\n{info}");
+    assert!(info.contains("CreationDate:"), "pdfinfo output was:\n{info}");
+    assert!(info.contains("ModDate:"), "pdfinfo output was:\n{info}");
+}
+
+#[test]
+fn document_id_is_deterministic_across_identical_renders() {
+    let build = || {
+        let mut doc = Document::new(PageFormat::A4).title("Determinism Check");
+        doc.add(Text::new("Same content, same /ID"));
+        doc.render().expect("render should succeed")
+    };
+    assert_eq!(
+        build(),
+        build(),
+        "two renders of the same Document must be byte-identical, including /ID"
+    );
 }
 
 #[test]

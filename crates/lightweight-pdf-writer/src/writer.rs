@@ -97,15 +97,38 @@ impl PdfWriter {
             Some(r) => format!(" /Info {}", r.write()),
             None => String::new(),
         };
+        // Deterministic /ID: a hash over every object written so far
+        // (everything up to, but not including, this xref/trailer), never
+        // a random source — `wasm32-unknown-unknown` has none, and two
+        // renders of the same `Document` must produce byte-identical PDFs.
+        // Both array entries are equal, as is conventional for a document
+        // written in a single revision (no prior version to diff against).
+        let id = document_id_hex(&self.buf[..xref_offset]);
         self.buf.extend_from_slice(
             format!(
-                "trailer\n<< /Size {count} /Root {}{info_str} >>\nstartxref\n{xref_offset}\n%%EOF",
+                "trailer\n<< /Size {count} /Root {}{info_str} /ID [<{id}> <{id}>] >>\nstartxref\n{xref_offset}\n%%EOF",
                 root.write()
             )
             .as_bytes(),
         );
         self.buf
     }
+}
+
+/// 16 bytes (32 hex chars), hashed from `content` with a fixed-seed,
+/// deterministic hasher (`DefaultHasher::new()` always starts from the
+/// same internal state — unlike `HashMap`'s `RandomState`, it never reads
+/// OS randomness). Two calls with the same `content` always agree.
+fn document_id_hex(content: &[u8]) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let mut h1 = DefaultHasher::new();
+    content.hash(&mut h1);
+    let mut h2 = DefaultHasher::new();
+    1u8.hash(&mut h2);
+    content.hash(&mut h2);
+    format!("{:016x}{:016x}", h1.finish(), h2.finish())
 }
 
 /// Formats an `f32` with a fixed, compact precision suitable for PDF

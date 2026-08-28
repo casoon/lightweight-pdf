@@ -89,6 +89,19 @@ pub fn pdftotext_page(bytes: &[u8], page_1based: usize) -> Result<String, String
     })
 }
 
+/// Runs `pdfinfo` and returns stdout as a `String` — reads back `/Info`
+/// dictionary fields (Title, Author, CreationDate, Producer, ...) the way a
+/// consumer of the PDF actually would, rather than grepping raw bytes.
+pub fn pdfinfo(bytes: &[u8]) -> Result<String, String> {
+    with_temp_pdf(bytes, "lightweight-pdf-pdfinfo", |path| {
+        let output = Command::new("pdfinfo")
+            .arg(path)
+            .output()
+            .map_err(|e| format!("run pdfinfo: {e}"))?;
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    })
+}
+
 /// Authoritative page count via `qpdf --show-npages` (do not derive this
 /// from form-feed counting in `pdftotext` output — it is not reliable).
 pub fn page_count(bytes: &[u8]) -> Result<usize, String> {

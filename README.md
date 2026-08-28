@@ -47,8 +47,11 @@ lightweight-pdf --example demo_invoice` etc.
   borders (`Border::dashed(width, color, dash, gap)`).
 - Page formats `A3`/`A4`/`A5`/`Letter`/`Legal`/`Custom(w, h)` plus
   `Document::landscape()`/`.portrait()` orientation.
-- Document metadata (title/author/subject/keywords/creator) written to the
-  PDF `/Info` dictionary via `Document::title()`/`.author()`/etc.
+- Document metadata (title/author/subject/keywords/creator/creation date/mod
+  date) written to the PDF `/Info` dictionary via `Document::title()`/`.author()`/
+  `.creation_date(PdfDate::new(..))`/etc., plus a `/Producer` and a
+  deterministic `/ID` (hashed from document content, never a random source)
+  on every document.
 - Hyperlinks: `Text::url(...)` emits a PDF URI link annotation over the
   rendered text.
 - Automatic, page-count-stable pagination (two-pass) including

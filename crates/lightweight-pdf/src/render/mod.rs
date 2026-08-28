@@ -150,6 +150,8 @@ fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec
     pdf.metadata.subject = doc.metadata.subject.clone();
     pdf.metadata.keywords = doc.metadata.keywords.clone();
     pdf.metadata.creator = doc.metadata.creator.clone();
+    pdf.metadata.creation_date = doc.metadata.creation_date.map(|d| d.to_pdf_string());
+    pdf.metadata.mod_date = doc.metadata.mod_date.map(|d| d.to_pdf_string());
 
     let embedded = text::embed_fonts(&mut pdf, fonts, &used_chars)?;
 

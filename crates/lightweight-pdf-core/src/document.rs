@@ -40,6 +40,44 @@ pub struct DocumentMetadata {
     pub subject: Option<String>,
     pub keywords: Option<String>,
     pub creator: Option<String>,
+    pub creation_date: Option<PdfDate>,
+    pub mod_date: Option<PdfDate>,
+}
+
+/// A UTC timestamp for `/CreationDate`/`/ModDate`. Always an explicit
+/// caller-supplied value, never read from the system clock: `wasm32-unknown-unknown`
+/// has none, and reproducible output (same `Document` -> byte-identical
+/// PDF) is a feature, not an accident.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct PdfDate {
+    pub year: u16,
+    pub month: u8,
+    pub day: u8,
+    pub hour: u8,
+    pub minute: u8,
+    pub second: u8,
+}
+
+impl PdfDate {
+    pub fn new(year: u16, month: u8, day: u8, hour: u8, minute: u8, second: u8) -> Self {
+        PdfDate {
+            year,
+            month,
+            day,
+            hour,
+            minute,
+            second,
+        }
+    }
+
+    /// `D:YYYYMMDDHHmmSSZ` — the PDF date string format (ISO/IEC 32000-1
+    /// 7.9.4), UTC only (no offset support needed here).
+    pub fn to_pdf_string(self) -> String {
+        format!(
+            "D:{:04}{:02}{:02}{:02}{:02}{:02}Z",
+            self.year, self.month, self.day, self.hour, self.minute, self.second
+        )
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
@@ -189,6 +227,16 @@ impl Document {
 
     pub fn creator(mut self, creator: impl Into<String>) -> Self {
         self.metadata.creator = Some(creator.into());
+        self
+    }
+
+    pub fn creation_date(mut self, date: PdfDate) -> Self {
+        self.metadata.creation_date = Some(date);
+        self
+    }
+
+    pub fn mod_date(mut self, date: PdfDate) -> Self {
+        self.metadata.mod_date = Some(date);
         self
     }
 

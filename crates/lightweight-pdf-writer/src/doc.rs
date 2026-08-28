@@ -1,5 +1,10 @@
 use crate::writer::{fmt_num, PdfWriter, Ref};
 
+/// `/Producer` is always set (unlike the other `/Info` fields, which are
+/// opt-in) — it identifies the generator, not the document, so there's no
+/// caller-supplied value to opt out of.
+const PRODUCER: &str = concat!("lightweight-pdf ", env!("CARGO_PKG_VERSION"));
+
 /// A subset, embedded TrueType font written as `/Subtype /Type0` with a
 /// `/CIDFontType2` descendant (ADR-012: Identity-H, `CIDToGIDMap`,
 /// `ToUnicode`). CID space equals the subset's own glyph-index space (the
@@ -89,6 +94,11 @@ pub struct PdfMetadata {
     pub subject: Option<String>,
     pub keywords: Option<String>,
     pub creator: Option<String>,
+    /// Already-formatted PDF date strings (`D:YYYYMMDDHHmmSSZ`) — this
+    /// crate has no date logic of its own, the facade formats
+    /// `lightweight_pdf_core::PdfDate` before handing it over.
+    pub creation_date: Option<String>,
+    pub mod_date: Option<String>,
 }
 
 #[derive(Default)]
@@ -362,13 +372,18 @@ impl PdfDocument {
         if let Some(ref creator) = self.metadata.creator {
             info_entries.push(format!("/Creator {}", format_pdf_string(creator)));
         }
+        if let Some(ref creation_date) = self.metadata.creation_date {
+            info_entries.push(format!("/CreationDate {}", format_pdf_string(creation_date)));
+        }
+        if let Some(ref mod_date) = self.metadata.mod_date {
+            info_entries.push(format!("/ModDate {}", format_pdf_string(mod_date)));
+        }
+        info_entries.push(format!("/Producer {}", format_pdf_string(PRODUCER)));
 
-        let info_ref = if !info_entries.is_empty() {
+        let info_ref = {
             let id = w.alloc();
             w.object(id, &format!("<< {} >>", info_entries.join(" ")));
             Some(id)
-        } else {
-            None
         };
 
         w.finish(catalog_ref, info_ref)
