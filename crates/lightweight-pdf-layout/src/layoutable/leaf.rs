@@ -50,6 +50,7 @@ impl Layoutable for Text {
     }
 
     fn layout(&self, ctx: &LayoutCtx, area: Rect, warnings: &mut Vec<LayoutWarning>, page: usize) -> LayoutResult {
+        push_missing_glyph_warnings(ctx, &self.style, &self.content, warnings, page);
         let lines = wrap_text(ctx.resolver, &self.style, &self.content, area.width);
         let lh = line_height_pt(&self.style);
         let total_height = lines.len() as f32 * lh;
@@ -161,6 +162,24 @@ fn fit_with_ellipsis(ctx: &LayoutCtx, style: &TextStyle, line: &str, max_width: 
 
 /// The `element_hint` used for both `Text::layout`'s and
 /// `layout_text_fixed_overflow`'s `TextClipped` warning.
+/// Emits `LayoutWarningKind::MissingGlyph` for every character in `content`
+/// the resolved font has no glyph for — deduplicated per (`ch`, `font`)
+/// against everything already in `warnings`, not per occurrence (a
+/// document-wide repeated character/font miss would otherwise drown the
+/// diagnosis in noise).
+fn push_missing_glyph_warnings(ctx: &LayoutCtx, style: &TextStyle, content: &str, warnings: &mut Vec<LayoutWarning>, page: usize) {
+    let metrics = ctx.resolver.metrics(style.font);
+    for ch in content.chars() {
+        if ch.is_whitespace() || metrics.has_glyph(ch) {
+            continue;
+        }
+        let kind = LayoutWarningKind::MissingGlyph { ch, font: style.font };
+        if !warnings.iter().any(|w| w.kind == kind) {
+            push_warning(warnings, kind, page, format!("missing glyph for {ch:?}"));
+        }
+    }
+}
+
 fn text_clipped_hint(content: &str) -> String {
     format!("Text \"{}\"", truncate_hint(content))
 }

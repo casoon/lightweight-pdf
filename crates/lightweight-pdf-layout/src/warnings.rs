@@ -4,6 +4,8 @@
 //! `render_with_diagnostics()`, never separately (InDesign "Overset Text"
 //! anti-pattern).
 
+use lightweight_pdf_core::FontKey;
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum LayoutWarningKind {
     /// Text was cut off because its box was too small (`Overflow::Clip`).
@@ -16,6 +18,10 @@ pub enum LayoutWarningKind {
     /// Header/Footer content was taller than its reserved band and got
     /// clipped (band size is fixed, never grows, ADR-011).
     HeaderFooterOverflow,
+    /// A character has no glyph in the resolved font and rendered as
+    /// `.notdef` (an empty box) instead. Deduplicated per (`ch`, `font`),
+    /// not per occurrence.
+    MissingGlyph { ch: char, font: FontKey },
 }
 
 #[derive(Clone, Debug)]

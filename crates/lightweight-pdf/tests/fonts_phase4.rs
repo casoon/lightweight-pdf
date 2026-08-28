@@ -32,6 +32,28 @@ fn german_special_characters_render_and_extract_correctly() {
 }
 
 #[test]
+fn missing_glyph_is_reported_as_layout_warning_deduplicated_per_char_and_font() {
+    // Source Sans 3 (Latin-only) has no glyph for CJK ideographs — appears
+    // three times, must warn exactly once.
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::symmetric(56.0, 56.0));
+    doc.add(Text::new("Test \u{4e2d} \u{4e2d} \u{4e2d} text").size(14.0));
+
+    let (_bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+
+    let matches: Vec<_> = warnings
+        .iter()
+        .filter(|w| {
+            w.kind
+                == LayoutWarningKind::MissingGlyph {
+                    ch: '\u{4e2d}',
+                    font: FontKey::SANS_REGULAR,
+                }
+        })
+        .collect();
+    assert_eq!(matches.len(), 1, "expected exactly one deduplicated warning, got: {warnings:?}");
+}
+
+#[test]
 fn embedded_fonts_are_subset_not_fully_embedded() {
     let mut doc = Document::new(PageFormat::A4).margin(Margin::symmetric(56.0, 56.0));
     doc.add(Text::new("Hallo Rechnung").size(14.0));

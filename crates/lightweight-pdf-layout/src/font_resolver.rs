@@ -10,6 +10,15 @@ pub trait FontMetrics {
     fn advance(&self, ch: char) -> f32;
     fn ascent(&self) -> f32;
     fn descent(&self) -> f32;
+
+    /// Whether the font has an actual glyph for `ch` (as opposed to
+    /// `advance`'s notdef fallback width). Defaults to `true` so existing
+    /// implementors (test doubles, anything that doesn't track glyph
+    /// coverage) don't need to change; `lightweight-pdf`'s embedded-font
+    /// adapter overrides this to drive `LayoutWarningKind::MissingGlyph`.
+    fn has_glyph(&self, _ch: char) -> bool {
+        true
+    }
 }
 
 /// `lightweight-pdf-layout`'s only dependency on fonts: given a [`FontKey`], hand

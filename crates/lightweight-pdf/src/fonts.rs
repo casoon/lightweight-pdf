@@ -39,6 +39,8 @@ impl FontMetrics for MetricsAdapter {
     fn advance(&self, ch: char) -> f32 {
         // Fallback width for characters the font has no glyph for: roughly
         // a notdef-box width, keeps wrapping usable rather than panicking.
+        // The layout crate surfaces the miss itself via `has_glyph()` /
+        // `LayoutWarningKind::MissingGlyph`, so this no longer fails silently.
         self.0.advance_1000(ch).unwrap_or(500.0)
     }
 
@@ -48,6 +50,10 @@ impl FontMetrics for MetricsAdapter {
 
     fn descent(&self) -> f32 {
         self.0.descent
+    }
+
+    fn has_glyph(&self, ch: char) -> bool {
+        self.0.advance_1000(ch).is_some()
     }
 }
 
