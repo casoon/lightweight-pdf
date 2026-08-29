@@ -20,6 +20,18 @@ struct LineItem {
     unit_price_cents: i64,
 }
 
+impl TableRow for LineItem {
+    fn cells(&self) -> Vec<TableCell> {
+        let total = self.qty as i64 * self.unit_price_cents;
+        vec![
+            TableCell::from(self.description.as_str()),
+            TableCell::from(self.qty.to_string()),
+            TableCell::from(format_currency_de(self.unit_price_cents)),
+            TableCell::from(format_currency_de(total)),
+        ]
+    }
+}
+
 fn main() {
     let mut items = vec![
         LineItem {
@@ -107,15 +119,7 @@ fn main() {
             ])
             .header(["Beschreibung", "Menge", "Einzelpreis", "Gesamt"])
             .striped(Color::rgb(0xF5, 0xF5, 0xF5))
-            .rows(items.iter().map(|item| {
-                let total = item.qty as i64 * item.unit_price_cents;
-                vec![
-                    Element::from(item.description.as_str()),
-                    Element::from(item.qty.to_string()),
-                    Element::from(format_currency_de(item.unit_price_cents)),
-                    Element::from(format_currency_de(total)),
-                ]
-            })),
+            .from_rows(&items),
     );
 
     doc.add(Spacer::new(14.0));

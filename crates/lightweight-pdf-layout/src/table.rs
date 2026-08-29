@@ -111,6 +111,16 @@ fn layout_row_cells(
     let mut col_idx = 0;
     for cell in cells {
         if col_idx >= table.columns.len() {
+            push_warning(
+                warnings,
+                LayoutWarningKind::TableRowOverflow,
+                page,
+                format!(
+                    "table row has {} cell(s), table has {} column(s) — extra cells dropped",
+                    cells.len(),
+                    table.columns.len()
+                ),
+            );
             break;
         }
         let span = cell.colspan.max(1);

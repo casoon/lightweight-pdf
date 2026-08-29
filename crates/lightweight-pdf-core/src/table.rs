@@ -76,6 +76,16 @@ impl<T: Into<Element>> From<T> for TableCell {
     }
 }
 
+/// Implemented by a domain type (an invoice line item, a report row, ...)
+/// that knows how to render itself as one table row — lets callers write
+/// `Table::new()...from_rows(&items)` instead of hand-building
+/// `vec![vec![Element::from(..), ...]]` per row, where the column order is
+/// invisible at the call site and only checked at runtime. The plain
+/// `.rows(vec![vec![..]])` form stays available for ad hoc tables.
+pub trait TableRow {
+    fn cells(&self) -> Vec<TableCell>;
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Table {
     pub columns: Vec<TableColumn>,
@@ -117,6 +127,13 @@ impl Table {
 
     pub fn rows(mut self, rows: impl IntoIterator<Item = impl IntoIterator<Item = impl Into<TableCell>>>) -> Self {
         self.rows = rows.into_iter().map(|row| row.into_iter().map(Into::into).collect()).collect();
+        self
+    }
+
+    /// `.rows(..)` for anything implementing `TableRow` — one row per item,
+    /// in order.
+    pub fn from_rows<T: TableRow>(mut self, items: &[T]) -> Self {
+        self.rows = items.iter().map(TableRow::cells).collect();
         self
     }
 

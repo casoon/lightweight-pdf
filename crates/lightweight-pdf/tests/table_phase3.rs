@@ -64,6 +64,75 @@ fn renders_the_invoice_table_example() {
     assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
 }
 
+impl TableRow for LineItem {
+    fn cells(&self) -> Vec<TableCell> {
+        line_to_row(self).into_iter().map(TableCell::from).collect()
+    }
+}
+
+#[test]
+fn from_rows_matches_the_equivalent_rows_call() {
+    let items = [
+        LineItem {
+            description: "Beratung",
+            qty: 3,
+            price: 120.0,
+        },
+        LineItem {
+            description: "Lizenz",
+            qty: 1,
+            price: 499.0,
+        },
+    ];
+
+    let build = |table: Table| {
+        let mut doc = Document::new(PageFormat::A4).margin(Margin::symmetric(56.0, 56.0));
+        doc.add(table);
+        doc.render().expect("render should succeed")
+    };
+
+    let via_rows = build(
+        Table::new()
+            .columns([
+                TableColumn::flex(1.0),
+                TableColumn::fixed(60.0),
+                TableColumn::fixed(60.0),
+                TableColumn::fixed(60.0),
+            ])
+            .rows(items.iter().map(line_to_row)),
+    );
+    let via_from_rows = build(
+        Table::new()
+            .columns([
+                TableColumn::flex(1.0),
+                TableColumn::fixed(60.0),
+                TableColumn::fixed(60.0),
+                TableColumn::fixed(60.0),
+            ])
+            .from_rows(&items),
+    );
+    assert_eq!(
+        via_rows, via_from_rows,
+        "from_rows must produce the same table as the equivalent .rows() call"
+    );
+}
+
+#[test]
+fn row_with_more_cells_than_columns_reports_a_layout_warning() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::symmetric(56.0, 56.0));
+    doc.add(
+        Table::new()
+            .columns([TableColumn::flex(1.0)])
+            .rows(vec![vec![Element::from("A"), Element::from("B"), Element::from("C")]]),
+    );
+
+    let (_bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+    assert!(
+        warnings.iter().any(|w| w.kind == LayoutWarningKind::TableRowOverflow),
+        "expected a TableRowOverflow warning, got: {warnings:?}"
+    );
+}
+
 #[test]
 fn table_spanning_multiple_pages_repeats_header_without_losing_rows() {
     let mut doc = Document::new(PageFormat::A4).margin(Margin::symmetric(56.0, 56.0));

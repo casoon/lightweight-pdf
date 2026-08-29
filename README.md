@@ -58,7 +58,9 @@ lightweight-pdf --example demo_invoice` etc.
   header/footer bands, widow/orphan rule, and `keep_with_next`.
 - Tables that split across page boundaries (header repeats automatically)
   with row striping; cells support `colspan` and a per-cell alignment
-  override via `TableCell`.
+  override via `TableCell`. `Table::from_rows(&items)` builds rows from
+  anything implementing `TableRow` instead of hand-nesting
+  `vec![vec![Element::from(..), ...]]`.
 - Own TrueType subsetting (only glyphs actually used are embedded) for
   real Unicode text via Type-0/CIDFontType2; a Source Sans 3 regular/bold
   pair is bundled by default (`default-fonts` feature). `FontRegistry` is a

@@ -22,6 +22,9 @@ pub enum LayoutWarningKind {
     /// `.notdef` (an empty box) instead. Deduplicated per (`ch`, `font`),
     /// not per occurrence.
     MissingGlyph { ch: char, font: FontKey },
+    /// A table row had more cells than the table declares columns — the
+    /// extra cells were dropped rather than rendered.
+    TableRowOverflow,
 }
 
 #[derive(Clone, Debug)]
