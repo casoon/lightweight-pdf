@@ -114,6 +114,9 @@ version = "0.2.1"
 [[package]]
 name = "lightweight-pdf-writer"
 version = "0.2.1"
+dependencies = [
+ "miniz_oxide",
+]
 
 [[package]]
 name = "miniz_oxide"

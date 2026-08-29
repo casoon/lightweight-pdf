@@ -79,7 +79,7 @@ jobs:
       - name: Install binaryen (wasm-opt)
         run: sudo apt-get update && sudo apt-get install -y binaryen
       - name: Build Generator config
-        run: cargo build --release --target wasm32-unknown-unknown -p lightweight-pdf --no-default-features --features wasm,wasm-size-probe,default-fonts
+        run: cargo build --release --target wasm32-unknown-unknown -p lightweight-pdf --no-default-features --features wasm,wasm-size-probe,default-fonts,compress
       - name: Measure Generator config
         run: |
           f=target/wasm32-unknown-unknown/release/lightweight-pdf.wasm
@@ -90,7 +90,7 @@ jobs:
           echo "wasm-opt -Oz: $(stat -c%s /tmp/generator.opt.wasm) bytes" >> "$GITHUB_STEP_SUMMARY"
           echo "gzip -9: $(stat -c%s /tmp/generator.opt.wasm.gz) bytes" >> "$GITHUB_STEP_SUMMARY"
       - name: Build Standard config
-        run: cargo build --release --target wasm32-unknown-unknown -p lightweight-pdf --no-default-features --features wasm,wasm-size-probe,default-fonts,png
+        run: cargo build --release --target wasm32-unknown-unknown -p lightweight-pdf --no-default-features --features wasm,wasm-size-probe,default-fonts,png,compress
       - name: Measure Standard config
         run: |
           f=target/wasm32-unknown-unknown/release/lightweight-pdf.wasm

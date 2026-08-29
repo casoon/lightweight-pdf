@@ -194,8 +194,10 @@ fn per_cell_background_and_border_render_and_override_the_stripe() {
 
     // The cell's own fill color (1.0/0/0) and stroke color (120/255=0.47..)
     // must show up as PDF `rg`/`RG` color operators — proof the cell-level
-    // Rect actually got emitted, not just the row's zebra stripe.
-    let text = String::from_utf8_lossy(&bytes);
+    // Rect actually got emitted, not just the row's zebra stripe. Content
+    // streams are compressed by default (ADR-016), so decompress first.
+    let decompressed = support::decompressed(&bytes).unwrap();
+    let text = String::from_utf8_lossy(&decompressed);
     assert!(text.contains("1 0 0 rg"), "expected the cell's own red fill color, got:\n{text}");
     assert!(
         text.contains(" RG"),

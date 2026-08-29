@@ -140,7 +140,10 @@ fn rect_and_container_rounded_corners_and_dashed_borders() {
     let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf check failed: {log}");
 
-    let text = String::from_utf8_lossy(&bytes);
+    // Content streams are compressed by default (ADR-016); decompress to
+    // string-search their operators.
+    let decompressed = support::decompressed(&bytes).unwrap();
+    let text = String::from_utf8_lossy(&decompressed);
     // Bezier curves ('c') are emitted for rounded corners
     assert!(text.contains(" c\n"), "rounded rect must emit Bezier curve 'c' operators");
     // Dash pattern '[4 2] 0 d'
@@ -361,9 +364,11 @@ fn text_italic_and_bold_italic_methods_work() {
 /// Every `Tj` (text-showing) op in the content stream, across the whole
 /// document — a justified line draws one op per word (composite/CID fonts
 /// can't use PDF word spacing, see `render/text.rs`), a non-justified
-/// line draws exactly one op for the whole line.
+/// line draws exactly one op for the whole line. Content streams are
+/// compressed by default (ADR-016), so this decompresses first.
 fn count_tj_ops(bytes: &[u8]) -> usize {
-    bytes.windows(5).filter(|w| *w == b"Tj ET").count()
+    let decompressed = support::decompressed(bytes).expect("qpdf --stream-data=uncompress should succeed");
+    decompressed.windows(5).filter(|w| *w == b"Tj ET").count()
 }
 
 #[test]

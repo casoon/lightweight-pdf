@@ -12,7 +12,7 @@ crate-type = ["rlib", "cdylib"]
 [dependencies]
 lightweight-pdf-core = { path = "../lightweight-pdf-core", version = "0.2.1" }
 lightweight-pdf-layout = { path = "../lightweight-pdf-layout", version = "0.2.1" }
-lightweight-pdf-writer = { path = "../lightweight-pdf-writer", version = "0.2.1" }
+lightweight-pdf-writer = { path = "../lightweight-pdf-writer", version = "0.2.1", default-features = false }
 lightweight-pdf-fonts = { path = "../lightweight-pdf-fonts", version = "0.2.1" }
 png = { version = "0.18.1", optional = true, default-features = false }
 
@@ -20,11 +20,12 @@ png = { version = "0.18.1", optional = true, default-features = false }
 lightweight-pdf-test-support = { path = "../lightweight-pdf-test-support" }
 
 [features]
-default = ["default-fonts"]
+default = ["default-fonts", "compress"]
 default-fonts = []
 wasm = []
 wasm-size-probe = []
 png = ["dep:png"]
+compress = ["lightweight-pdf-writer/compress"]
 
 [[example]]
 name = "demo_invoice"

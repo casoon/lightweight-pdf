@@ -99,7 +99,8 @@ fn watermark_does_not_obscure_body_text_and_stays_within_the_body_box() {
     // with a `cm`) must be the *first* drawing operation in the page's
     // content stream, before the outer-clip-scoped header/body/footer ops
     // that follow it — i.e. it really is the bottom layer, not drawn last.
-    let content = String::from_utf8_lossy(&bytes);
+    let decompressed = support::decompressed(&bytes).unwrap();
+    let content = String::from_utf8_lossy(&decompressed);
     let watermark_pos = content.find("cm BT").expect("watermark rotation matrix must be present");
     let first_page_content_start = content.find("re W n").expect("outer page clip must be present"); // the full-page clip, written first
     assert!(

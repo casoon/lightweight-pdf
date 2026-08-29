@@ -4,6 +4,11 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Minimal, zero-dependency PDF object/xref/stream writer for lightweight-pdf"
+description = "Minimal PDF object/xref/stream writer for lightweight-pdf, zero required dependencies (FlateDecode compression via the optional miniz_oxide)"
 
 [dependencies]
+miniz_oxide = { version = "0.8", optional = true, default-features = false, features = ["with-alloc"] }
+
+[features]
+default = ["compress"]
+compress = ["dep:miniz_oxide"]

@@ -30,8 +30,13 @@ fn baseline_jpeg_logo_renders_at_its_target_size() {
         text.contains("/Filter /DCTDecode"),
         "JPEG must be embedded byte-for-byte, not re-encoded"
     );
+
+    // The `cm` matrix lives in the (compressed by default, ADR-016) page
+    // content stream, not the XObject dict checked above.
+    let decompressed = support::decompressed(&bytes).unwrap();
+    let content = String::from_utf8_lossy(&decompressed);
     assert!(
-        text.contains("120 0 0 90"),
+        content.contains("120 0 0 90"),
         "expected the cm matrix to use the 120x90 target size, not the natural 80x60 pixel size"
     );
 }
@@ -57,7 +62,10 @@ mod with_png_feature {
         assert!(text.contains("/Subtype /Image"));
         assert!(text.contains("/SMask"), "RGBA PNG must produce a separate alpha SMask");
         assert!(text.contains("/ColorSpace /DeviceGray"), "the SMask must be DeviceGray");
-        assert!(text.contains("64 0 0 48"), "expected the cm matrix to use the 64x48 target size");
+
+        let decompressed = support::decompressed(&bytes).unwrap();
+        let content = String::from_utf8_lossy(&decompressed);
+        assert!(content.contains("64 0 0 48"), "expected the cm matrix to use the 64x48 target size");
     }
 
     #[test]

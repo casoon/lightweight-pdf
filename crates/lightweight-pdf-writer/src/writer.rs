@@ -1,7 +1,9 @@
 //! Thin, allocation-light layer directly over PDF object syntax: typed
 //! object IDs, dict/stream writing, xref table + trailer. Architecturally
-//! modeled after `pdf-writer` (ADR-004) but self-written for zero
-//! dependencies and full control over every emitted byte.
+//! modeled after `pdf-writer` (ADR-004) but self-written for full control
+//! over every emitted byte, and (still) no required dependencies — the one
+//! optional dependency, `miniz_oxide` behind the `compress` feature
+//! (ADR-016), is FlateDecode compression, not object-model plumbing.
 
 /// A PDF indirect object reference (generation is always 0 in V1 — we never
 /// rewrite an existing file).
@@ -65,15 +67,38 @@ impl PdfWriter {
         self.buf.extend_from_slice(b"\nendobj\n");
     }
 
-    /// Writes an indirect stream object. `dict_extra` are additional
-    /// dictionary entries (e.g. `/Length1 1234`); `/Length` is computed and
-    /// added automatically. No compression in V1 (see phase-0 notes).
+    /// Writes an indirect stream object, uncompressed. `dict_extra` are
+    /// additional dictionary entries (e.g. `/Length1 1234`); `/Length` is
+    /// computed and added automatically.
     pub fn stream(&mut self, id: Ref, dict_extra: &str, data: &[u8]) {
         self.record_offset(id);
         self.buf
             .extend_from_slice(format!("{} 0 obj\n<< /Length {} {} >>\nstream\n", id.0, data.len(), dict_extra).as_bytes());
         self.buf.extend_from_slice(data);
         self.buf.extend_from_slice(b"\nendstream\nendobj\n");
+    }
+
+    /// `Self::stream`'s DEFLATE-compressed counterpart (ADR-016): adds
+    /// `/Filter /FlateDecode` and zlib-wraps `data` (RFC 1950 — what
+    /// `/FlateDecode` expects per PDF 32000-1 7.4.4) before writing. Used
+    /// for content streams, embedded font programs (`FontFile2`) and
+    /// `ToUnicode` CMaps — never for data that's already compressed (e.g.
+    /// JPEG `/DCTDecode` samples), where re-deflating near-random bytes
+    /// wastes CPU for ~0 size benefit.
+    #[cfg(feature = "compress")]
+    pub fn compressed_stream(&mut self, id: Ref, dict_extra: &str, data: &[u8]) {
+        // Level 6 (zlib's own default): a reasonable ratio/speed balance
+        // for a "generate once" library — no hard requirement pushed
+        // this any higher, and this crate has no benchmarked need to.
+        let compressed = miniz_oxide::deflate::compress_to_vec_zlib(data, 6);
+        self.stream(id, &format!("/Filter /FlateDecode {dict_extra}"), &compressed);
+    }
+
+    /// Without the `compress` feature, `compressed_stream` is exactly
+    /// `stream` — the previous, always-uncompressed behavior.
+    #[cfg(not(feature = "compress"))]
+    pub fn compressed_stream(&mut self, id: Ref, dict_extra: &str, data: &[u8]) {
+        self.stream(id, dict_extra, data);
     }
 
     /// Writes the xref table, trailer and `%%EOF`, consuming the writer.

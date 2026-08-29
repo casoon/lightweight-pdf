@@ -7,7 +7,9 @@ Worker. No generic typesetting system, no parser for a custom markup
 language — a builder pattern over a fixed set of layout primitives.
 
 Own PDF writer (objects/xref/streams) and own TrueType subsetter; the only
-required external dependency is `skrifa` for font parsing.
+required external dependency is `skrifa` for font parsing. `miniz_oxide`
+(FlateDecode compression, see above) is an optional dependency behind the
+default-on `compress` feature.
 
 ## Example
 
@@ -62,6 +64,9 @@ lightweight-pdf --example demo_invoice` etc.
   build the sidebar tree automatically (`.outline_level(n)` for anything
   else that should show up in it); a document with no headings emits no
   `/Outlines` object at all.
+- Content streams, embedded font programs, and raw image samples are
+  `/FlateDecode`-compressed by default (`compress` feature, on unless
+  explicitly disabled) — typically 40-60% smaller output.
 - Automatic, page-count-stable pagination (two-pass) including
   header/footer bands, widow/orphan rule, and `keep_with_next`.
 - Tables that split across page boundaries (header repeats automatically)
@@ -95,6 +100,7 @@ lightweight-pdf --example demo_invoice` etc.
 | Feature           | Default | Purpose                                                       |
 |--------------------|:-------:|-----------------------------------------------------------------|
 | `default-fonts`     | ✅      | Bundles Source Sans 3 as the default font set for `Document::render()`/`render_with_diagnostics()`. Not needed for `render_with_fonts()` (custom fonts) — `--no-default-features` still compiles the `lib` target and the `demo_custom_font` example, just not the other examples/tests, which call `render()` directly. |
+| `compress`          | ✅      | `/FlateDecode`-compresses content streams, embedded font programs, and raw image samples (`miniz_oxide`, see ADR-016). Disabling it falls back to the previous always-uncompressed output — same PDFs, just bigger. |
 | `png`               |         | PNG decoding/embedding (`Image::from_png`); without this feature, embedding a PNG fails at runtime with `ImageEmbedError::PngFeatureDisabled`. |
 | `wasm`              |         | Targets `wasm32-unknown-unknown`.                                |
 | `wasm-size-probe`   |         | Internal, non-public `extern "C"` function used to measure WASM build size (CI); requires `default-fonts`. |

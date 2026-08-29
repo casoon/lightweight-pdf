@@ -46,9 +46,8 @@ impl ColorSpace {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ImageDataFilter {
-    /// Raw, uncompressed samples (V1 doesn't implement a Flate encoder —
-    /// consistent with content streams/embedded fonts also being
-    /// uncompressed, see `progress.md`).
+    /// Raw samples — Flate-compressed like any other stream by default
+    /// (ADR-016), unlike `DctDecode` below.
     None,
     /// The original JPEG bytes, embedded byte-for-byte (`phases/
     /// phase-5-images.md` step 2: "kein Neukodieren").
@@ -230,7 +229,13 @@ impl PdfDocument {
             filter = filter,
             smask = smask_entry,
         );
-        w.stream(image_ref, &dict, &image.bytes);
+        // JPEG samples (DctDecode) are already compressed — re-deflating
+        // near-random bytes wastes CPU for ~0 size benefit, so only raw
+        // (None) samples go through the compressing path.
+        match image.filter {
+            ImageDataFilter::None => w.compressed_stream(image_ref, &dict, &image.bytes),
+            ImageDataFilter::DctDecode => w.stream(image_ref, &dict, &image.bytes),
+        }
         image_ref
     }
 
@@ -301,8 +306,8 @@ impl PdfDocument {
                     file = file_ref.write(),
                 ),
             );
-            w.stream(file_ref, &format!("/Length1 {}", font.subset_bytes.len()), &font.subset_bytes);
-            w.stream(to_unicode_ref, "", &Self::to_unicode_cmap(font));
+            w.compressed_stream(file_ref, &format!("/Length1 {}", font.subset_bytes.len()), &font.subset_bytes);
+            w.compressed_stream(to_unicode_ref, "", &Self::to_unicode_cmap(font));
         }
 
         let type0_refs: Vec<Ref> = font_refs.iter().map(|&(t, ..)| t).collect();
@@ -365,7 +370,7 @@ impl PdfDocument {
                     annots = annots_entry,
                 ),
             );
-            w.stream(content_ref, "", &page.content);
+            w.compressed_stream(content_ref, "", &page.content);
         }
 
         page_refs
@@ -611,8 +616,47 @@ mod tests {
         assert!(text.contains("/Subtype /CIDFontType2"));
         assert!(text.contains("/CIDToGIDMap /Identity"));
         assert!(text.contains("/ToUnicode"));
-        assert!(text.contains("beginbfchar"));
-        assert!(text.contains("<0001> <0048>")); // CID 1 -> U+0048 'H'
+        // The ToUnicode CMap body itself lives inside a stream, which is
+        // `/FlateDecode`-compressed by default (ADR-016) — inflate every
+        // stream body before checking, rather than the raw dict text.
+        let decoded = stream_bodies_decoded(&bytes);
+        assert!(decoded.contains("beginbfchar"));
+        assert!(decoded.contains("<0001> <0048>")); // CID 1 -> U+0048 'H'
+    }
+
+    /// Every `stream\n...\nendstream` payload in `bytes`, inflated (when
+    /// `compress` is enabled — a no-op passthrough otherwise, since
+    /// nothing is compressed then) and concatenated, for tests that need
+    /// to read stream content rather than just check the surrounding
+    /// dict.
+    fn stream_bodies_decoded(bytes: &[u8]) -> String {
+        const START: &[u8] = b"stream\n";
+        const END: &[u8] = b"\nendstream";
+        let mut bodies = Vec::new();
+        let mut i = 0;
+        while let Some(start_rel) = bytes[i..].windows(START.len()).position(|w| w == START) {
+            let start = i + start_rel + START.len();
+            let Some(end_rel) = bytes[start..].windows(END.len()).position(|w| w == END) else {
+                break;
+            };
+            let end = start + end_rel;
+            bodies.push(&bytes[start..end]);
+            i = end + END.len();
+        }
+        bodies.into_iter().map(decode_one_stream_body).collect::<Vec<_>>().join("\n")
+    }
+
+    #[cfg(feature = "compress")]
+    fn decode_one_stream_body(body: &[u8]) -> String {
+        match miniz_oxide::inflate::decompress_to_vec_zlib(body) {
+            Ok(v) => String::from_utf8_lossy(&v).into_owned(),
+            Err(_) => String::new(), // not a zlib stream (shouldn't happen for our own output) — skip, don't panic
+        }
+    }
+
+    #[cfg(not(feature = "compress"))]
+    fn decode_one_stream_body(body: &[u8]) -> String {
+        String::from_utf8_lossy(body).into_owned()
     }
 
     #[test]

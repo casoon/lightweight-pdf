@@ -67,6 +67,35 @@ pub fn qpdf_check(bytes: &[u8]) -> Result<(bool, String), String> {
     })
 }
 
+/// Runs `qpdf --stream-data=uncompress` and returns the resulting bytes —
+/// same PDF, every stream decompressed back to plain text. Tests that
+/// string-search content-stream operators (a `cm` matrix, a color
+/// operator, a `Tj` count) need this now that streams are `/FlateDecode`-
+/// compressed by default (ADR-016); string-searching `bytes` directly
+/// only still works for content that never lived in a stream (dict
+/// entries like `/Title`, `/Annots`, `/Outlines`).
+pub fn decompressed(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    with_temp_pdf(bytes, "lightweight-pdf-decompress-in", |in_path| {
+        let out_path = in_path.with_extension("out.pdf");
+        let output = Command::new("qpdf")
+            .arg("--stream-data=uncompress")
+            .arg(in_path)
+            .arg(&out_path)
+            .output()
+            .map_err(|e| format!("run qpdf: {e}"))?;
+        if !output.status.success() {
+            return Err(format!(
+                "qpdf --stream-data=uncompress failed:\n{}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+        let result = std::fs::read(&out_path).map_err(|e| format!("read decompressed pdf: {e}"));
+        remove_temp_file(&out_path);
+        result
+    })
+}
+
 /// Extracts text via `pdftotext -layout` for assertions on visible content.
 pub fn pdftotext(bytes: &[u8]) -> Result<String, String> {
     with_temp_pdf(bytes, "lightweight-pdf-writertotext", |path| run_pdftotext(path, &["-layout"]))
