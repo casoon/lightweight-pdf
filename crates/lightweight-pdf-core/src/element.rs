@@ -131,6 +131,11 @@ pub struct Text {
     /// document called `.anchor(name)` with the same name, instead of an
     /// external URI. If both `url` and `link_to` are set, `url` wins.
     pub link_to: Option<String>,
+    /// Set by `.heading1()`/`.heading2()`/`.heading3()` (1/2/3), or
+    /// explicitly via `.outline_level(n)` for text that should appear in
+    /// the PDF bookmark sidebar without being an actual heading preset.
+    /// `None` (the default for plain `Text`) means "not a bookmark".
+    pub outline_level: Option<u8>,
     pub common: Common,
 }
 
@@ -142,6 +147,7 @@ impl Text {
             url: None,
             anchor: None,
             link_to: None,
+            outline_level: None,
             common: Common::default(),
         }
     }
@@ -158,6 +164,11 @@ impl Text {
 
     pub fn link_to(mut self, anchor: impl Into<String>) -> Self {
         self.link_to = Some(anchor.into());
+        self
+    }
+
+    pub fn outline_level(mut self, level: u8) -> Self {
+        self.outline_level = Some(level);
         self
     }
 
@@ -205,17 +216,20 @@ impl Text {
     /// thin wrappers over `.size()`/`.bold()`, additionally setting
     /// `keep_with_next` so a heading never ends up alone at the bottom of
     /// a page without its following content
-    /// (`plan/05-overflow-and-robustness.md` Grundprinzip 9).
+    /// (`plan/05-overflow-and-robustness.md` Grundprinzip 9), and
+    /// `outline_level` so the PDF bookmark sidebar can be derived from the
+    /// heading hierarchy without a separate API (`.outline_level(n)`
+    /// overrides this for the rare case the derivation doesn't fit).
     pub fn heading1(self) -> Self {
-        self.size(24.0).bold().keep_with_next()
+        self.size(24.0).bold().keep_with_next().outline_level(1)
     }
 
     pub fn heading2(self) -> Self {
-        self.size(18.0).bold().keep_with_next()
+        self.size(18.0).bold().keep_with_next().outline_level(2)
     }
 
     pub fn heading3(self) -> Self {
-        self.size(14.0).bold().keep_with_next()
+        self.size(14.0).bold().keep_with_next().outline_level(3)
     }
 
     common_builder_methods!();

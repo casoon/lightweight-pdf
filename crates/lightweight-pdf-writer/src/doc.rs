@@ -98,6 +98,17 @@ pub struct PdfPage {
     pub annotations: Vec<PdfLinkAnnotation>,
 }
 
+/// One entry in the `/Outlines` bookmark tree (`Text::outline_level`,
+/// resolved). `page_index`/`y` mean the same thing as `PdfLinkAction::GoTo`
+/// — resolved against `page_refs` at write time, not by the caller.
+#[derive(Clone, Debug)]
+pub struct PdfOutlineNode {
+    pub title: String,
+    pub page_index: usize,
+    pub y: f32,
+    pub children: Vec<PdfOutlineNode>,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct PdfMetadata {
     pub title: Option<String>,
@@ -118,6 +129,10 @@ pub struct PdfDocument {
     images: Vec<ImageXObject>,
     pages: Vec<PdfPage>,
     pub metadata: PdfMetadata,
+    /// Top-level bookmark entries; empty means no `/Outlines` object at
+    /// all (not an empty one — a reader shouldn't see a bookmark panel
+    /// with nothing in it for a document with no headings).
+    pub outline: Vec<PdfOutlineNode>,
 }
 
 impl PdfDocument {
@@ -356,6 +371,34 @@ impl PdfDocument {
         page_refs
     }
 
+    /// Writes the `/Outlines` bookmark tree and returns its object ref, or
+    /// `None` if `outline` is empty — a document with no headings gets no
+    /// `/Outlines` entry at all, not an empty bookmark panel. Two passes:
+    /// [`alloc_outline_refs`] allocates one `Ref` per node first (so
+    /// siblings/parents can reference each other regardless of write
+    /// order), [`write_outline_siblings`] then writes every node's dict.
+    fn write_outline(w: &mut PdfWriter, outline: &[PdfOutlineNode], page_refs: &[Ref]) -> Option<Ref> {
+        if outline.is_empty() {
+            return None;
+        }
+        let outlines_ref = w.alloc();
+        let ref_tree = alloc_outline_refs(w, outline);
+        write_outline_siblings(w, outline, &ref_tree, outlines_ref, page_refs);
+
+        let total_count: i64 = outline.iter().map(|n| 1 + count_descendants(n)).sum();
+        let first = ref_tree.first().map(|t| t.r);
+        let last = ref_tree.last().map(|t| t.r);
+        let mut entries = vec!["/Type /Outlines".to_string(), format!("/Count {total_count}")];
+        if let Some(f) = first {
+            entries.push(format!("/First {}", f.write()));
+        }
+        if let Some(l) = last {
+            entries.push(format!("/Last {}", l.write()));
+        }
+        w.object(outlines_ref, &format!("<< {} >>", entries.join(" ")));
+        Some(outlines_ref)
+    }
+
     /// Assembles the full PDF byte stream: Catalog, Pages, Page objects,
     /// content streams, fonts (Type0 + CIDFontType2 + FontDescriptor +
     /// embedded subset FontFile2 + ToUnicode), images (XObjects + optional
@@ -374,7 +417,15 @@ impl PdfDocument {
 
         let kids = Self::join_with_space(&page_refs, |r| r.write());
         w.object(pages_ref, &format!("<< /Type /Pages /Kids [{kids}] /Count {} >>", self.pages.len()));
-        w.object(catalog_ref, &format!("<< /Type /Catalog /Pages {} >>", pages_ref.write()));
+
+        let outlines_entry = match Self::write_outline(&mut w, &self.outline, &page_refs) {
+            Some(outlines_ref) => format!(" /Outlines {}", outlines_ref.write()),
+            None => String::new(),
+        };
+        w.object(
+            catalog_ref,
+            &format!("<< /Type /Catalog /Pages {}{outlines_entry} >>", pages_ref.write()),
+        );
 
         let mut info_entries = Vec::new();
         if let Some(ref title) = self.metadata.title {
@@ -407,6 +458,72 @@ impl PdfDocument {
         };
 
         w.finish(catalog_ref, info_ref)
+    }
+}
+
+/// [`PdfOutlineNode`]'s shape, mirrored with an allocated [`Ref`] per node
+/// instead of the node data — lets [`write_outline_siblings`] look up any
+/// node's own/children's refs without re-allocating or borrowing `w`.
+struct RefTree {
+    r: Ref,
+    children: Vec<RefTree>,
+}
+
+fn alloc_outline_refs(w: &mut PdfWriter, nodes: &[PdfOutlineNode]) -> Vec<RefTree> {
+    nodes
+        .iter()
+        .map(|n| RefTree {
+            r: w.alloc(),
+            children: alloc_outline_refs(w, &n.children),
+        })
+        .collect()
+}
+
+/// Total number of descendants (not just direct children) — the PDF
+/// `/Count` an always-expanded outline entry needs.
+fn count_descendants(node: &PdfOutlineNode) -> i64 {
+    node.children.len() as i64 + node.children.iter().map(count_descendants).sum::<i64>()
+}
+
+/// Writes every node in `nodes` (a sibling list — top-level entries or one
+/// node's children) as its own indirect object: `/Title`, `/Parent`,
+/// `/Prev`/`/Next` (siblings), `/First`/`/Last`/`/Count` (children), and
+/// `/Dest` resolved from `page_index`/`y` against `page_refs` (falls back
+/// to the entry's own object if `page_index` is somehow out of range — a
+/// self-link is a harmless no-op, not a broken PDF). Recurses into each
+/// node's own children afterwards.
+fn write_outline_siblings(w: &mut PdfWriter, nodes: &[PdfOutlineNode], ref_nodes: &[RefTree], parent_ref: Ref, page_refs: &[Ref]) {
+    for (i, (node, ref_node)) in nodes.iter().zip(ref_nodes).enumerate() {
+        let prev = (i > 0).then(|| ref_nodes[i - 1].r);
+        let next = (i + 1 < nodes.len()).then(|| ref_nodes[i + 1].r);
+        let first = ref_node.children.first().map(|c| c.r);
+        let last = ref_node.children.last().map(|c| c.r);
+        let count = count_descendants(node);
+        let target_page = page_refs.get(node.page_index).copied().unwrap_or(ref_node.r);
+
+        let mut entries = vec![
+            format!("/Title {}", format_pdf_string(&node.title)),
+            format!("/Parent {}", parent_ref.write()),
+            format!("/Dest [{} /XYZ null {} null]", target_page.write(), fmt_num(node.y)),
+        ];
+        if let Some(p) = prev {
+            entries.push(format!("/Prev {}", p.write()));
+        }
+        if let Some(n) = next {
+            entries.push(format!("/Next {}", n.write()));
+        }
+        if let Some(f) = first {
+            entries.push(format!("/First {}", f.write()));
+        }
+        if let Some(l) = last {
+            entries.push(format!("/Last {}", l.write()));
+        }
+        if count > 0 {
+            entries.push(format!("/Count {count}"));
+        }
+        w.object(ref_node.r, &format!("<< {} >>", entries.join(" ")));
+
+        write_outline_siblings(w, &node.children, &ref_node.children, ref_node.r, page_refs);
     }
 }
 

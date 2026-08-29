@@ -186,7 +186,9 @@ fn link_to_jumps_to_a_different_page_than_a_same_page_anchor() {
     for i in 0..120 {
         doc.add(Text::new(format!("Fuelltext Zeile {i:03}")));
     }
-    doc.add(Text::new("Anhang").anchor("appendix").heading1());
+    // Plain text, not a heading: this test is about link_to/anchor, kept
+    // independent of outline_level/heading behavior (see outline tests).
+    doc.add(Text::new("Anhang").anchor("appendix"));
 
     let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
     assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
@@ -222,6 +224,122 @@ fn link_to_jumps_to_a_different_page_than_a_same_page_anchor() {
     assert_ne!(
         dest_obj, first_page_obj,
         "internal link must not point back at its own (first) page"
+    );
+}
+
+/// The full `N 0 obj ... endobj` block of whichever object's body
+/// contains `needle` — objects never legitimately contain a bare
+/// `\nendobj\n`, so splitting on it is a safe-enough object boundary for
+/// tests without a real PDF parser.
+fn find_object_containing<'a>(text: &'a str, needle: &str) -> &'a str {
+    let idx = text
+        .find(needle)
+        .unwrap_or_else(|| panic!("{needle:?} not found in output:\n{text}"));
+    let start = text[..idx].rfind("\nendobj\n").map(|i| i + "\nendobj\n".len()).unwrap_or(0);
+    let end = text[idx..].find("\nendobj").map(|i| idx + i).unwrap_or(text.len());
+    &text[start..end]
+}
+
+#[test]
+fn document_without_headings_has_no_outlines_object() {
+    let mut doc = Document::new(PageFormat::A4);
+    doc.add(Text::new("Ganz gewoehnlicher Text, keine Ueberschrift"));
+
+    let bytes = doc.render().expect("render should succeed");
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf check failed: {log}");
+
+    let text = String::from_utf8_lossy(&bytes);
+    assert!(
+        !text.contains("/Outlines"),
+        "a document with no headings must not emit an /Outlines object"
+    );
+}
+
+#[test]
+fn heading_hierarchy_produces_a_nested_outline_tree() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::all(40.0));
+    doc.add(Text::new("Kapitel 1").heading1());
+    doc.add(Text::new("Abschnitt 1.1").heading2());
+    doc.add(Text::new("Abschnitt 1.2").heading2());
+    doc.add(Text::new("Kapitel 2").heading1());
+
+    let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+    assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf check failed: {log}");
+
+    let text = String::from_utf8_lossy(&bytes);
+    assert_eq!(
+        text.matches("/Title (").count(),
+        4,
+        "expected one outline entry per heading, got:\n{text}"
+    );
+    // The whole-tree /Count on the root /Outlines object: 4 headings total.
+    assert!(
+        text.contains("/Type /Outlines /Count 4"),
+        "expected the root outline count to be 4, got:\n{text}"
+    );
+
+    // "Kapitel 1" is a root with two children (its /Count) and a /Next
+    // sibling ("Kapitel 2"), but no /Prev (it's first).
+    let kapitel1 = find_object_containing(&text, "/Title (Kapitel 1)");
+    assert!(kapitel1.contains("/Count 2"), "Kapitel 1 should have 2 children:\n{kapitel1}");
+    assert!(kapitel1.contains("/Next"), "Kapitel 1 should have a /Next sibling:\n{kapitel1}");
+    assert!(
+        !kapitel1.contains("/Prev"),
+        "Kapitel 1 is the first root, must not have /Prev:\n{kapitel1}"
+    );
+
+    // "Abschnitt 1.2" is a leaf (no /Count/First/Last) with a /Prev
+    // sibling ("Abschnitt 1.1") but no /Next (last child of Kapitel 1).
+    let abschnitt_1_2 = find_object_containing(&text, "/Title (Abschnitt 1.2)");
+    assert!(
+        abschnitt_1_2.contains("/Prev"),
+        "Abschnitt 1.2 should have a /Prev sibling:\n{abschnitt_1_2}"
+    );
+    assert!(
+        !abschnitt_1_2.contains("/Next"),
+        "Abschnitt 1.2 is the last child, must not have /Next:\n{abschnitt_1_2}"
+    );
+    assert!(
+        !abschnitt_1_2.contains("/Count"),
+        "a leaf outline entry must not have /Count:\n{abschnitt_1_2}"
+    );
+}
+
+#[test]
+fn heading_on_a_later_page_jumps_to_the_correct_page() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::symmetric(56.0, 56.0));
+    doc.add(Text::new("Start").heading1());
+    for i in 0..120 {
+        doc.add(Text::new(format!("Fuelltext Zeile {i:03}")));
+    }
+    doc.add(Text::new("Ende").heading1());
+
+    let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+    assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf check failed: {log}");
+
+    let page_count = support::page_count(&bytes).unwrap();
+    assert!(page_count > 1, "expected the filler content to force a page break");
+
+    let text = String::from_utf8_lossy(&bytes);
+    let ende_obj = find_object_containing(&text, "/Title (Ende)");
+    let dest_obj = dest_object_number(ende_obj);
+    let dest_obj_decl = format!("\n{dest_obj} 0 obj");
+    let dest_obj_body = text.split(&dest_obj_decl).nth(1).unwrap().split("endobj").next().unwrap();
+    assert!(
+        dest_obj_body.contains("/Type /Page"),
+        "'Ende' heading's /Dest {dest_obj} is not a /Type /Page object: {dest_obj_body}"
+    );
+
+    let kids = text.split("/Kids [").nth(1).unwrap().split(']').next().unwrap();
+    let first_page_obj: u32 = kids.split(' ').next().unwrap().parse().unwrap();
+    assert_ne!(
+        dest_obj, first_page_obj,
+        "'Ende' heading landed on a later page, its bookmark must not point at page 1"
     );
 }
 

@@ -34,14 +34,15 @@ impl WrappedLines {
     }
 }
 
-/// `Text`'s three link-related fields, bundled for the same reason as
+/// `Text`'s link/bookmark-related fields, bundled for the same reason as
 /// `WrappedLines`: one parameter through the split/overflow helpers
-/// instead of three, all cloned together at each `Text::layout` exit
+/// instead of four, all cloned together at each `Text::layout` exit
 /// point.
 struct TextLinks {
     url: Option<String>,
     anchor: Option<String>,
     link_to: Option<String>,
+    outline_level: Option<u8>,
 }
 
 impl TextLinks {
@@ -50,6 +51,7 @@ impl TextLinks {
             url: text.url.clone(),
             anchor: text.anchor.clone(),
             link_to: text.link_to.clone(),
+            outline_level: text.outline_level,
         }
     }
 }
@@ -67,6 +69,7 @@ fn text_lines_node(area: Rect, style: TextStyle, wrapped: WrappedLines, lh: f32,
             url: links.url,
             anchor: links.anchor,
             link_to: links.link_to,
+            outline_level: links.outline_level,
         },
     )
 }
@@ -149,6 +152,10 @@ impl Layoutable for Text {
         let remainder_text = remainder_lines.join(" ");
         let mut remainder = self.clone();
         remainder.content = remainder_text;
+        // `current` (just above) already carries the original outline
+        // entry — the remainder is a continuation of the same paragraph,
+        // not a second heading, so it must not register its own bookmark.
+        remainder.outline_level = None;
         LayoutResult::Split {
             current,
             remainder: Element::Text(remainder),

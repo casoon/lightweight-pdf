@@ -166,6 +166,7 @@ fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec
     }
 
     let mut pdf = PdfDocument::new();
+    pdf.outline = text::build_outline(&paginated.pages, paginated.page_height);
     pdf.metadata.title = doc.metadata.title.clone();
     pdf.metadata.author = doc.metadata.author.clone();
     pdf.metadata.subject = doc.metadata.subject.clone();

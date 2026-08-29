@@ -70,6 +70,107 @@ pub(super) fn collect_anchors_in_page(page: &PageRender, page_index: usize, page
     }
 }
 
+/// One `Text::outline_level` occurrence, flat and in document order — the
+/// input `build_outline_tree` nests into `PdfOutlineNode`s.
+struct HeadingEntry {
+    level: u8,
+    title: String,
+    page_index: usize,
+    y: f32,
+}
+
+fn collect_headings_in_node(node: &RenderNode, page_index: usize, page_height: f32, out: &mut Vec<HeadingEntry>) {
+    match node {
+        RenderNode::Group { children, .. } => {
+            for child in children {
+                collect_headings_in_node(child, page_index, page_height, out);
+            }
+        }
+        RenderNode::TextLines {
+            outline_level: Some(level),
+            lines,
+            area,
+            ..
+        } => {
+            out.push(HeadingEntry {
+                level: *level,
+                // Headings essentially never wrap, but join defensively
+                // rather than dropping continuation lines from the title.
+                title: lines.join(" "),
+                page_index,
+                y: page_height - area.y,
+            });
+        }
+        _ => {}
+    }
+}
+
+fn collect_headings_in_page(page: &PageRender, page_index: usize, page_height: f32, out: &mut Vec<HeadingEntry>) {
+    if let Some(header) = &page.header {
+        collect_headings_in_node(header, page_index, page_height, out);
+    }
+    collect_headings_in_node(&page.body, page_index, page_height, out);
+    if let Some(footer) = &page.footer {
+        collect_headings_in_node(footer, page_index, page_height, out);
+    }
+}
+
+/// Walks every page collecting `Text::outline_level` occurrences (needs
+/// the finished, already-paginated tree, same reasoning as
+/// `collect_anchors_in_page`), then nests them into a `/Outlines` tree by
+/// level: an entry becomes a child of the nearest preceding entry with a
+/// strictly lower level, or a new root if there is none (a level-3
+/// heading with no prior level-1/2 heading just becomes a root — no
+/// error, no required level sequence, matches "derive it, don't validate
+/// it").
+pub(super) fn build_outline(pages: &[PageRender], page_height: f32) -> Vec<lightweight_pdf_writer::PdfOutlineNode> {
+    let mut entries = Vec::new();
+    for (page_index, page) in pages.iter().enumerate() {
+        collect_headings_in_page(page, page_index, page_height, &mut entries);
+    }
+    let mut roots: Vec<lightweight_pdf_writer::PdfOutlineNode> = Vec::new();
+    let mut stack: Vec<(u8, Vec<usize>)> = Vec::new();
+
+    fn navigate_mut<'a>(
+        roots: &'a mut [lightweight_pdf_writer::PdfOutlineNode],
+        path: &[usize],
+    ) -> &'a mut lightweight_pdf_writer::PdfOutlineNode {
+        let (first, rest) = path.split_first().expect("path is never empty");
+        let mut node = &mut roots[*first];
+        for &i in rest {
+            node = &mut node.children[i];
+        }
+        node
+    }
+
+    for entry in entries {
+        while matches!(stack.last(), Some(&(top_level, _)) if top_level >= entry.level) {
+            stack.pop();
+        }
+        let node = lightweight_pdf_writer::PdfOutlineNode {
+            title: entry.title.clone(),
+            page_index: entry.page_index,
+            y: entry.y,
+            children: Vec::new(),
+        };
+        let path = match stack.last() {
+            Some((_, parent_path)) => {
+                let parent = navigate_mut(&mut roots, parent_path);
+                parent.children.push(node);
+                let mut child_path = parent_path.clone();
+                child_path.push(parent.children.len() - 1);
+                child_path
+            }
+            None => {
+                roots.push(node);
+                vec![roots.len() - 1]
+            }
+        };
+        stack.push((entry.level, path));
+    }
+    roots
+}
+
 /// A font actually embedded in the output: its PDF resource/font index,
 /// the character-to-CID mapping content streams encode text with (CID ==
 /// the subset's own glyph ID, `CIDToGIDMap /Identity`), and the per-GID

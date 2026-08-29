@@ -58,6 +58,10 @@ lightweight-pdf --example demo_invoice` etc.
   rendered text; `Text::anchor(name)`/`.link_to(name)` do the same for
   internal jumps (e.g. a table of contents entry to a heading elsewhere
   in the document), resolved to a `/Dest` once pagination is final.
+- PDF bookmarks (`/Outlines`): `.heading1()`/`.heading2()`/`.heading3()`
+  build the sidebar tree automatically (`.outline_level(n)` for anything
+  else that should show up in it); a document with no headings emits no
+  `/Outlines` object at all.
 - Automatic, page-count-stable pagination (two-pass) including
   header/footer bands, widow/orphan rule, and `keep_with_next`.
 - Tables that split across page boundaries (header repeats automatically)

@@ -22,6 +22,9 @@ pub enum RenderNode {
         url: Option<String>,
         anchor: Option<String>,
         link_to: Option<String>,
+        /// `Text::outline_level` — the PDF bookmark tree is built from
+        /// these, in document order, once pagination is final.
+        outline_level: Option<u8>,
     },
     Rect {
         area: Rect,

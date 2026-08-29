@@ -150,6 +150,7 @@ pub(super) fn render_node(node: &RenderNode, ctx: &mut RenderCtx) -> Result<(), 
             url,
             link_to,
             anchor: _,
+            outline_level: _,
         } => {
             let target = text::LinkTarget::from_text(url.as_deref(), link_to.as_deref());
             text::render_text_lines(area, style, lines, paragraph_end, *line_height_pt, target, ctx);
