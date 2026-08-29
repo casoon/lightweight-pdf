@@ -60,32 +60,55 @@ fn start_line(resolver: &dyn FontResolver, style: &TextStyle, word: &str, max_wi
 /// Wraps `text` to `max_width` points. Explicit `\n` in the source text
 /// start a new paragraph/line unconditionally.
 pub fn wrap_text(resolver: &dyn FontResolver, style: &TextStyle, text: &str, max_width: f32) -> Vec<String> {
+    wrap_text_marking_paragraph_ends(resolver, style, text, max_width).0
+}
+
+/// `wrap_text`, plus a same-length `bool` per line: `true` for the last
+/// line of its paragraph (the one a `Justify` renderer must leave
+/// left-aligned, not stretched), `false` for every other line. A
+/// paragraph is a `\n`-separated segment of `text`, same boundary
+/// `wrap_text` already breaks on.
+pub fn wrap_text_marking_paragraph_ends(
+    resolver: &dyn FontResolver,
+    style: &TextStyle,
+    text: &str,
+    max_width: f32,
+) -> (Vec<String>, Vec<bool>) {
     let max_width = max_width.max(0.0);
     let mut lines = Vec::new();
+    let mut paragraph_end = Vec::new();
     for paragraph in text.split('\n') {
         let words: Vec<&str> = paragraph.split(' ').filter(|w| !w.is_empty()).collect();
         if words.is_empty() {
             lines.push(String::new());
-            continue;
-        }
-        let mut current = String::new();
-        for word in words {
-            if current.is_empty() {
-                current = start_line(resolver, style, word, max_width, &mut lines);
-                continue;
+        } else {
+            let mut current = String::new();
+            for word in words {
+                if current.is_empty() {
+                    current = start_line(resolver, style, word, max_width, &mut lines);
+                    continue;
+                }
+                let candidate = format!("{current} {word}");
+                let w = styled_width_pt(resolver, style, &candidate);
+                if w <= max_width {
+                    current = candidate;
+                } else {
+                    lines.push(std::mem::take(&mut current));
+                    current = start_line(resolver, style, word, max_width, &mut lines);
+                }
             }
-            let candidate = format!("{current} {word}");
-            let w = styled_width_pt(resolver, style, &candidate);
-            if w <= max_width {
-                current = candidate;
-            } else {
-                lines.push(std::mem::take(&mut current));
-                current = start_line(resolver, style, word, max_width, &mut lines);
-            }
+            lines.push(current);
         }
-        lines.push(current);
+        // Every line just pushed for this paragraph (including any
+        // hard-break pieces `start_line` pushed directly) defaults to
+        // `false`; only the last one — the paragraph's actual last line —
+        // flips to `true`.
+        paragraph_end.resize(lines.len(), false);
+        if let Some(last) = paragraph_end.last_mut() {
+            *last = true;
+        }
     }
-    lines
+    (lines, paragraph_end)
 }
 
 #[cfg(test)]
@@ -143,5 +166,26 @@ mod tests {
         let style = TextStyle::default();
         let lines = wrap_text(&FixedResolver, &style, "a\nb", 1000.0);
         assert_eq!(lines, vec!["a".to_string(), "b".to_string()]);
+    }
+
+    #[test]
+    fn marks_only_the_last_line_of_each_paragraph() {
+        let style = TextStyle {
+            size: 10.0,
+            ..Default::default()
+        };
+        // Two paragraphs: "AAAA BBBB" wraps to 2 lines at width 30, "CCCC"
+        // fits on one line by itself.
+        let (lines, paragraph_end) = wrap_text_marking_paragraph_ends(&FixedResolver, &style, "AAAA BBBB\nCCCC", 30.0);
+        assert_eq!(lines, vec!["AAAA".to_string(), "BBBB".to_string(), "CCCC".to_string()]);
+        assert_eq!(paragraph_end, vec![false, true, true]);
+    }
+
+    #[test]
+    fn empty_paragraph_counts_as_its_own_last_line() {
+        let style = TextStyle::default();
+        let (lines, paragraph_end) = wrap_text_marking_paragraph_ends(&FixedResolver, &style, "a\n\nb", 1000.0);
+        assert_eq!(lines, vec!["a".to_string(), String::new(), "b".to_string()]);
+        assert_eq!(paragraph_end, vec![true, true, true]);
     }
 }

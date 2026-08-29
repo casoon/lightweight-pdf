@@ -180,3 +180,58 @@ fn text_italic_and_bold_italic_methods_work() {
     assert!(extracted.contains("Kursiver Hinweis"));
     assert!(extracted.contains("Fetter kursiver Text"));
 }
+
+/// Every `Tj` (text-showing) op in the content stream, across the whole
+/// document — a justified line draws one op per word (composite/CID fonts
+/// can't use PDF word spacing, see `render/text.rs`), a non-justified
+/// line draws exactly one op for the whole line.
+fn count_tj_ops(bytes: &[u8]) -> usize {
+    bytes.windows(5).filter(|w| *w == b"Tj ET").count()
+}
+
+#[test]
+fn justified_paragraph_stretches_every_line_but_the_last() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::all(40.0));
+    doc.add(
+        Text::new("Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor")
+            .align(Align::Justify)
+            .width(220.0),
+    );
+
+    let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+    assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf check failed: {log}");
+
+    let extracted = support::pdftotext(&bytes).unwrap();
+    let line_count = extracted.lines().filter(|l| !l.trim().is_empty()).count();
+    assert!(
+        line_count >= 2,
+        "expected the paragraph to wrap onto multiple lines, got:\n{extracted}"
+    );
+
+    let tj_count = count_tj_ops(&bytes);
+    assert!(
+        tj_count > line_count,
+        "expected more than one text run per justified line (one per word), got {tj_count} Tj ops across {line_count} lines"
+    );
+
+    for word in ["Lorem", "ipsum", "dolor", "tempor"] {
+        assert!(extracted.contains(word), "missing {word:?} in extracted text:\n{extracted}");
+    }
+}
+
+#[test]
+fn justify_never_stretches_a_single_line_paragraph() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::all(40.0));
+    doc.add(Text::new("Kurzer Satz").align(Align::Justify).width(300.0));
+
+    let bytes = doc.render().expect("render should succeed");
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf check failed: {log}");
+
+    // A paragraph that fits on one line is entirely its own last line —
+    // never stretched — so it draws as a single text-showing run, same as
+    // Align::Start.
+    assert_eq!(count_tj_ops(&bytes), 1);
+}

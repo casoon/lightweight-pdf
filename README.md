@@ -42,9 +42,11 @@ lightweight-pdf --example demo_invoice` etc.
 ## Features
 
 - Layout primitives: `Text`, `Column`, `Row`, `Table`, `List`, `Image`,
-  `Line`, `Spacer`, `PageBreak` — with `flex`, alignment, padding,
-  border/background, rounded corners (`.corner_radius()`), and dashed
-  borders (`Border::dashed(width, color, dash, gap)`).
+  `Line`, `Spacer`, `PageBreak` — with `flex`, alignment (including
+  `Align::Justify` for `Text`: every line flush with both edges except a
+  paragraph's last), padding, border/background, rounded corners
+  (`.corner_radius()`), and dashed borders (`Border::dashed(width, color,
+  dash, gap)`).
 - Page formats `A3`/`A4`/`A5`/`Letter`/`Legal`/`Custom(w, h)` plus
   `Document::landscape()`/`.portrait()` orientation.
 - Document metadata (title/author/subject/keywords/creator/creation date/mod

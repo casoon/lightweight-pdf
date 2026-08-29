@@ -13,6 +13,11 @@ pub enum RenderNode {
         area: Rect,
         style: TextStyle,
         lines: Vec<String>,
+        /// Same length as `lines`: `true` for the last line of its source
+        /// paragraph. Only consulted when `style.align == Align::Justify`
+        /// (that line stays left-aligned instead of being stretched); every
+        /// other alignment ignores it.
+        paragraph_end: Vec<bool>,
         line_height_pt: f32,
         url: Option<String>,
     },
@@ -84,7 +89,7 @@ impl RenderNode {
 /// Just used inside `Row`/`Column` cross-axis alignment.
 pub fn align_offset(align: Align, available: f32, used: f32) -> f32 {
     match align {
-        Align::Start => 0.0,
+        Align::Start | Align::Justify => 0.0,
         Align::Center => ((available - used) / 2.0).max(0.0),
         Align::End => (available - used).max(0.0),
     }

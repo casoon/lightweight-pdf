@@ -23,6 +23,11 @@ pub enum Align {
     Start,
     Center,
     End,
+    /// Text only (`TextStyle::align`): word gaps stretch so every line but
+    /// the last of a paragraph is flush with both edges. Meaningless for
+    /// block/container alignment (`Row`/`Column`/`TableColumn`), which
+    /// treats it the same as `Start`.
+    Justify,
 }
 
 /// Overflow policy for explicitly, fixed-size elements. See

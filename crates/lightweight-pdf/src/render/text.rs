@@ -4,7 +4,7 @@
 
 use super::{pdf_rect_y, to_rgb, RenderCtx, RenderError};
 use crate::fonts::{FontRegistry, RegisteredFont};
-use lightweight_pdf_core::{FontKey, TextStyle, Watermark};
+use lightweight_pdf_core::{Align, FontKey, TextStyle, Watermark};
 use lightweight_pdf_fonts::{EmbeddedFontMetrics, FontSubset};
 use lightweight_pdf_layout::{align_offset, PageRender, Rect, RenderNode};
 use lightweight_pdf_writer::{CidFont, ContentBuilder, PdfDocument, TextRotation};
@@ -78,10 +78,17 @@ fn font_resource(embedded: &HashMap<FontKey, EmbeddedFont>, key: FontKey) -> Opt
     Some((font, PdfDocument::font_resource_name(font.index)))
 }
 
+/// A justified gap over this many times the font's natural space width
+/// falls back to left-aligned instead of visibly stretching a short line
+/// across a wide column (the "Obergrenze, sonst Rückfall auf Start" safety
+/// rule for `Align::Justify`).
+const MAX_JUSTIFY_GAP_MULTIPLIER: f32 = 3.0;
+
 pub(super) fn render_text_lines(
     area: &Rect,
     style: &TextStyle,
     lines: &[String],
+    paragraph_end: &[bool],
     line_height_pt: f32,
     url: Option<&str>,
     ctx: &mut RenderCtx,
@@ -96,19 +103,86 @@ pub(super) fn render_text_lines(
         }
         let line_top = area.y + i as f32 * line_height_pt;
         let baseline_pdf_y = ctx.page_height - (line_top + ascent_pt);
-        let line_width = line_width_pt(font, style.size, line);
-        let x = area.x + align_offset(style.align, area.width, line_width);
-        let bytes = encode_cid(line, &font.char_to_gid);
-        ctx.cb.text(&resource, style.size, x, baseline_pdf_y, to_rgb(style.color), &bytes);
+
+        // Never stretch a paragraph's real last line (Grundprinzip of
+        // Justify, not tracked as a numbered principle elsewhere): typeset
+        // convention, also what keeps a one-line paragraph left-aligned.
+        let is_paragraph_end = paragraph_end.get(i).copied().unwrap_or(true);
+        let extra_gap = (style.align == Align::Justify && !is_paragraph_end)
+            .then(|| justify_word_gap(font, style.size, line, area.width))
+            .flatten();
+
+        let (x0, x1) = if let Some(extra_gap) = extra_gap {
+            let run = LineFont {
+                font,
+                resource: &resource,
+                style,
+            };
+            draw_justified_line(&run, line, area.x, baseline_pdf_y, extra_gap, ctx);
+            (area.x, area.x + area.width)
+        } else {
+            let line_width = line_width_pt(font, style.size, line);
+            let x = area.x + align_offset(style.align, area.width, line_width);
+            let bytes = encode_cid(line, &font.char_to_gid);
+            ctx.cb.text(&resource, style.size, x, baseline_pdf_y, to_rgb(style.color), &bytes);
+            (x, x + line_width)
+        };
 
         if let Some(target_url) = url {
             let y0 = ctx.page_height - (line_top + line_height_pt);
             let y1 = ctx.page_height - line_top;
             ctx.annotations.push(lightweight_pdf_writer::PdfLinkAnnotation {
-                rect: (x, y0, x + line_width, y1),
+                rect: (x0, y0, x1, y1),
                 uri: target_url.to_string(),
             });
         }
+    }
+}
+
+/// Extra space to insert at each inter-word gap of `line` so it spans
+/// exactly `target_width`, or `None` if it shouldn't be stretched at all
+/// (a single word — no gap to distribute into — or a gap that would
+/// exceed `MAX_JUSTIFY_GAP_MULTIPLIER` times the font's normal space
+/// width).
+fn justify_word_gap(font: &EmbeddedFont, size: f32, line: &str, target_width: f32) -> Option<f32> {
+    let word_count = line.split(' ').count();
+    if word_count < 2 {
+        return None;
+    }
+    let natural_width = line_width_pt(font, size, line);
+    let extra_total = (target_width - natural_width).max(0.0);
+    let gap_count = (word_count - 1) as f32;
+    let extra_per_gap = extra_total / gap_count;
+    let space_width = line_width_pt(font, size, " ");
+    if space_width > 0.0 && extra_per_gap > space_width * MAX_JUSTIFY_GAP_MULTIPLIER {
+        return None;
+    }
+    Some(extra_per_gap)
+}
+
+/// The trio every text-showing op needs, bundled so it travels as one
+/// parameter instead of three.
+struct LineFont<'a> {
+    font: &'a EmbeddedFont,
+    resource: &'a str,
+    style: &'a TextStyle,
+}
+
+/// Draws `line` word by word starting at `x0`, each word after the first
+/// shifted right by the previous word's width plus the font's natural
+/// space width plus `extra_gap`. Composite (Type0/CID) fonts can't use
+/// the PDF `Tw` word-spacing operator — it applies only to the
+/// single-byte code 32, never to a multi-byte code (PDF 32000-1 9.3.3),
+/// and this crate always encodes CIDs as 2 bytes — so each word becomes
+/// its own positioned text-showing op instead of one `Tw`-adjusted run.
+fn draw_justified_line(run: &LineFont, line: &str, x0: f32, baseline_y: f32, extra_gap: f32, ctx: &mut RenderCtx) {
+    let space_width = line_width_pt(run.font, run.style.size, " ");
+    let mut cursor_x = x0;
+    for word in line.split(' ') {
+        let bytes = encode_cid(word, &run.font.char_to_gid);
+        ctx.cb
+            .text(run.resource, run.style.size, cursor_x, baseline_y, to_rgb(run.style.color), &bytes);
+        cursor_x += line_width_pt(run.font, run.style.size, word) + space_width + extra_gap;
     }
 }
 

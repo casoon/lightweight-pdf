@@ -145,10 +145,11 @@ pub(super) fn render_node(node: &RenderNode, ctx: &mut RenderCtx) -> Result<(), 
             area,
             style,
             lines,
+            paragraph_end,
             line_height_pt,
             url,
         } => {
-            text::render_text_lines(area, style, lines, *line_height_pt, url.as_deref(), ctx);
+            text::render_text_lines(area, style, lines, paragraph_end, *line_height_pt, url.as_deref(), ctx);
             Ok(())
         }
         RenderNode::Image {

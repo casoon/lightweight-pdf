@@ -5,7 +5,7 @@ use super::shared::{line_height_pt, push_warning, size_with_defaults, EPS};
 use super::{LayoutCtx, LayoutResult, Layoutable};
 use crate::geometry::{Constraints, Rect, Size};
 use crate::render_node::RenderNode;
-use crate::text::{text_width_pt, wrap_text};
+use crate::text::{text_width_pt, wrap_text, wrap_text_marking_paragraph_ends};
 use crate::warnings::{LayoutWarning, LayoutWarningKind};
 use lightweight_pdf_core::{Element, Line, Overflow, Rect as RectElement, Spacer, Text, TextStyle};
 
@@ -20,14 +20,29 @@ fn max_lines_fitting(area_height: f32, lh: f32, available: usize) -> usize {
     (((area_height + EPS) / lh).floor().max(0.0) as usize).min(available)
 }
 
-fn text_lines_node(area: Rect, style: TextStyle, lines: Vec<String>, lh: f32, url: Option<String>) -> RenderNode {
-    let height = lines.len() as f32 * lh;
+/// `wrap_text_marking_paragraph_ends`'s two parallel `Vec`s, bundled so
+/// they travel together as a single parameter through `Text::layout`'s
+/// split/overflow helpers instead of two.
+struct WrappedLines {
+    lines: Vec<String>,
+    paragraph_end: Vec<bool>,
+}
+
+impl WrappedLines {
+    fn len(&self) -> usize {
+        self.lines.len()
+    }
+}
+
+fn text_lines_node(area: Rect, style: TextStyle, wrapped: WrappedLines, lh: f32, url: Option<String>) -> RenderNode {
+    let height = wrapped.lines.len() as f32 * lh;
     RenderNode::clipped(
         area,
         RenderNode::TextLines {
             area: Rect { height, ..area },
             style,
-            lines,
+            lines: wrapped.lines,
+            paragraph_end: wrapped.paragraph_end,
             line_height_pt: lh,
             url,
         },
@@ -51,15 +66,16 @@ impl Layoutable for Text {
 
     fn layout(&self, ctx: &LayoutCtx, area: Rect, warnings: &mut Vec<LayoutWarning>, page: usize) -> LayoutResult {
         push_missing_glyph_warnings(ctx, &self.style, &self.content, warnings, page);
-        let lines = wrap_text(ctx.resolver, &self.style, &self.content, area.width);
+        let (lines, paragraph_end) = wrap_text_marking_paragraph_ends(ctx.resolver, &self.style, &self.content, area.width);
+        let wrapped = WrappedLines { lines, paragraph_end };
         let lh = line_height_pt(&self.style);
-        let total_height = lines.len() as f32 * lh;
+        let total_height = wrapped.len() as f32 * lh;
 
-        if total_height <= area.height + EPS || lines.len() <= 1 {
+        if total_height <= area.height + EPS || wrapped.len() <= 1 {
             if total_height > area.height + EPS {
                 push_warning(warnings, LayoutWarningKind::TextClipped, page, text_clipped_hint(&self.content));
             }
-            return LayoutResult::Fit(text_lines_node(area, self.style, lines, lh, self.url.clone()));
+            return LayoutResult::Fit(text_lines_node(area, self.style, wrapped, lh, self.url.clone()));
         }
 
         // An explicit, fixed `.height(...)` means this box's overflow is
@@ -68,21 +84,21 @@ impl Layoutable for Text {
         // page-spanning `Split`. Only the ambient, pagination-provided
         // budget (no explicit height) may split.
         if self.common.height.is_some() {
-            return LayoutResult::Fit(layout_text_fixed_overflow(self, ctx, area, lines, lh, warnings, page));
+            return LayoutResult::Fit(layout_text_fixed_overflow(self, ctx, area, wrapped, lh, warnings, page));
         }
 
-        let max_lines_by_height = max_lines_fitting(area.height, lh, lines.len());
+        let max_lines_by_height = max_lines_fitting(area.height, lh, wrapped.len());
 
         let mut split_at = max_lines_by_height;
-        if lines.len() < 2 * WIDOW_ORPHAN_N {
+        if wrapped.len() < 2 * WIDOW_ORPHAN_N {
             // Short paragraph: never split, move as a whole.
             split_at = 0;
         } else if split_at < WIDOW_ORPHAN_N {
             // Orphan: too few lines would remain before the break.
             split_at = 0;
-        } else if lines.len() - split_at < WIDOW_ORPHAN_N {
+        } else if wrapped.len() - split_at < WIDOW_ORPHAN_N {
             // Widow: pull lines up so the remainder has >= N lines.
-            let adjusted = lines.len().saturating_sub(WIDOW_ORPHAN_N);
+            let adjusted = wrapped.len().saturating_sub(WIDOW_ORPHAN_N);
             split_at = if adjusted >= WIDOW_ORPHAN_N { adjusted } else { 0 };
         }
 
@@ -93,14 +109,18 @@ impl Layoutable for Text {
             };
         }
 
-        let (current_lines, remainder_lines) = lines.split_at(split_at);
+        let (current_lines, remainder_lines) = wrapped.lines.split_at(split_at);
+        let (current_paragraph_end, _) = wrapped.paragraph_end.split_at(split_at);
         let current = text_lines_node(
             Rect {
                 height: current_lines.len() as f32 * lh,
                 ..area
             },
             self.style,
-            current_lines.to_vec(),
+            WrappedLines {
+                lines: current_lines.to_vec(),
+                paragraph_end: current_paragraph_end.to_vec(),
+            },
             lh,
             self.url.clone(),
         );
@@ -123,28 +143,43 @@ fn layout_text_fixed_overflow(
     text: &Text,
     ctx: &LayoutCtx,
     area: Rect,
-    lines: Vec<String>,
+    wrapped: WrappedLines,
     lh: f32,
     warnings: &mut Vec<LayoutWarning>,
     page: usize,
 ) -> RenderNode {
-    let max_lines = max_lines_fitting(area.height, lh, lines.len());
-    if max_lines >= lines.len() {
-        return text_lines_node(area, text.style, lines, lh, text.url.clone());
+    let max_lines = max_lines_fitting(area.height, lh, wrapped.len());
+    if max_lines >= wrapped.len() {
+        return text_lines_node(area, text.style, wrapped, lh, text.url.clone());
     }
     push_warning(warnings, LayoutWarningKind::TextClipped, page, text_clipped_hint(&text.content));
     let take = if text.common.overflow == Overflow::Ellipsis {
-        max_lines.max(1).min(lines.len())
+        max_lines.max(1).min(wrapped.len())
     } else {
         max_lines
     };
-    let mut kept: Vec<String> = lines.into_iter().take(take).collect();
+    let mut kept: Vec<String> = wrapped.lines.into_iter().take(take).collect();
+    let mut kept_paragraph_end: Vec<bool> = wrapped.paragraph_end.into_iter().take(take).collect();
     if text.common.overflow == Overflow::Ellipsis {
         if let Some(last) = kept.last_mut() {
             *last = fit_with_ellipsis(ctx, &text.style, last, area.width);
         }
+        // An ellipsis-truncated line is never stretched, regardless of
+        // whether it happened to be its paragraph's real last line.
+        if let Some(last) = kept_paragraph_end.last_mut() {
+            *last = true;
+        }
     }
-    text_lines_node(area, text.style, kept, lh, text.url.clone())
+    text_lines_node(
+        area,
+        text.style,
+        WrappedLines {
+            lines: kept,
+            paragraph_end: kept_paragraph_end,
+        },
+        lh,
+        text.url.clone(),
+    )
 }
 
 /// Trims `line` character by character (from the end) until `line + "…"`
