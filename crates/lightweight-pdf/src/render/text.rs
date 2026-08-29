@@ -428,7 +428,7 @@ pub(super) fn embed_fonts(
         if chars.is_empty() {
             continue;
         }
-        let entry = fonts.entry(key);
+        let entry = fonts.get(key).ok_or(RenderError::MissingFont(key))?;
         let subset = lightweight_pdf_fonts::subset_font(&entry.font_data, chars)?;
         let metrics = entry.metrics();
         let char_to_gid = subset.char_to_gid.clone();

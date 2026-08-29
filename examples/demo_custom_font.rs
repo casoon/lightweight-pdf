@@ -9,10 +9,14 @@
 //! The "custom" font here is Source Serif 4 Regular, already vendored as a
 //! test fixture (`crates/lightweight-pdf-fonts/tests/fixtures/`, SIL OFL
 //! 1.1) so this demo doesn't need a new font asset of its own. It's reused
-//! for both the regular and bold slot since only one weight is vendored —
-//! this demo intentionally avoids `.bold()` so the unused "bold" entry
-//! (same glyphs, not visually bold) is never actually embedded in the
-//! output (only referenced weights get embedded, see `render.rs`).
+//! for every slot (regular/bold/italic/bold-italic) since only one weight
+//! is vendored — `.bold()` is intentionally never called (same glyphs,
+//! not visually bold, would just embed a duplicate weight for nothing),
+//! but `.italic()` *is* used below to demonstrate `FontKey::SANS_ITALIC`
+//! registration (issue #5) even though it renders visually upright with
+//! this single-weight fixture — the point is the registered-key/typed-
+//! error path (`RenderError::MissingFont` if it weren't registered), not
+//! a real italic cut.
 //!
 //! Run: `cargo run -p lightweight-pdf --example demo_custom_font`
 //! Also works: `cargo run -p lightweight-pdf --example demo_custom_font --no-default-features`
@@ -22,7 +26,10 @@ use lightweight_pdf::*;
 const CUSTOM_FONT: &[u8] = include_bytes!("../crates/lightweight-pdf-fonts/tests/fixtures/custom-test-font.ttf");
 
 fn main() {
-    let fonts = FontRegistry::with_fonts(CUSTOM_FONT, CUSTOM_FONT).expect("valid demo font (Source Serif 4)");
+    let mut fonts = FontRegistry::with_fonts(CUSTOM_FONT, CUSTOM_FONT).expect("valid demo font (Source Serif 4)");
+    fonts
+        .register(FontKey::SANS_ITALIC, CUSTOM_FONT)
+        .expect("valid demo font (Source Serif 4)");
 
     let mut doc = Document::new(PageFormat::A4).margin(Margin::all(20.0 * 72.0 / 25.4));
 
@@ -38,6 +45,14 @@ fn main() {
         "Any static TrueType font with glyf outlines works here (see FontData::load / ADR-012 \
          for the exact constraints) \u{2014} variable fonts and CFF/OTF fonts are rejected.",
     ));
+    doc.add(Spacer::new(14.0));
+    doc.add(
+        Text::new(
+            "This line uses .italic() \u{2014} FontKey::SANS_ITALIC was registered above, so this \
+         renders instead of failing with RenderError::MissingFont.",
+        )
+        .italic(),
+    );
     doc.add(Spacer::new(14.0));
     doc.add(
         Text::new("Sample document \u{2014} demonstrates the API, not a real document.")

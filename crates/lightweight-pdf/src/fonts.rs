@@ -5,10 +5,16 @@
 //! convenience constructors cover the common case: `with_defaults()`
 //! (bundled Source Sans 3 regular/bold, needs the `default-fonts` feature)
 //! and `with_fonts()` (caller-supplied regular/bold bytes, always
-//! available). Looking up a key that was never registered (e.g.
-//! `SANS_ITALIC`/`SANS_BOLD_ITALIC` without a matching `register()` call)
-//! falls back to the registry's default key (`SANS_REGULAR`) rather than
-//! erroring — see `entry()`.
+//! available).
+//!
+//! Two lookups, two different jobs: `entry()` (used by the `FontResolver`
+//! impl below, i.e. every width/wrap calculation during layout) falls
+//! back to the registry's default key when `key` was never registered —
+//! layout has no error channel, and a fallback width is the only way it
+//! can keep going at all. `get()` (used by `render::text::embed_fonts`,
+//! once layout is done and every font actually referenced is known) does
+//! *not* fall back: a key nothing was ever registered under there turns
+//! into `RenderError::MissingFont`, not a silently wrong embedded font.
 
 use lightweight_pdf_core::FontKey;
 use lightweight_pdf_fonts::{EmbeddedFontMetrics, FontData, FontError};
@@ -136,6 +142,15 @@ impl FontRegistry {
             .get(&key)
             .or_else(|| self.fonts.get(&self.default_key))
             .expect("FontRegistry must contain at least one registered font")
+    }
+
+    /// The exact, unfallen-back-to entry for `key` — `None` if nothing was
+    /// ever registered under it. Used at embed time
+    /// (`render::text::embed_fonts`) to turn a missing weight/style into
+    /// `RenderError::MissingFont` instead of silently embedding whatever
+    /// `entry()`'s fallback resolved to under the requested key's name.
+    pub fn get(&self, key: FontKey) -> Option<&RegisteredFont> {
+        self.fonts.get(&key)
     }
 }
 

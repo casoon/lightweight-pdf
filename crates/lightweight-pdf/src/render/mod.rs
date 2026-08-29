@@ -41,6 +41,11 @@ use text::EmbeddedFont;
 pub enum RenderError {
     Font(lightweight_pdf_fonts::FontError),
     Image(ImageEmbedError),
+    /// A `Text` used a `FontKey` (e.g. via `.font(key)`, or `.italic()`
+    /// when no italic was registered) that `FontRegistry` has nothing
+    /// registered under — a typed error instead of silently substituting
+    /// the registry's default font.
+    MissingFont(FontKey),
 }
 
 impl core::fmt::Display for RenderError {
@@ -48,6 +53,7 @@ impl core::fmt::Display for RenderError {
         match self {
             RenderError::Font(e) => write!(f, "font error: {e}"),
             RenderError::Image(e) => write!(f, "image error: {e}"),
+            RenderError::MissingFont(key) => write!(f, "no font registered for key {key:?}"),
         }
     }
 }

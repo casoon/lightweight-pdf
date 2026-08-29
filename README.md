@@ -84,10 +84,12 @@ lightweight-pdf --example demo_invoice` etc.
   `FontRegistry::with_fonts(regular_bytes, bold_bytes)` +
   `Document::render_with_fonts()` (works without `default-fonts` too, see
   `examples/demo_custom_font.rs`), or register additional weights such as
-  `FontKey::SANS_ITALIC`/`SANS_BOLD_ITALIC` yourself. `Text::italic()`/
-  `.bold_italic()` only render as italic once a font is registered under
-  that key — with no such registration, they silently fall back to
-  whatever `FontRegistry`'s default key resolves to (`SANS_REGULAR`).
+  `FontKey::SANS_ITALIC`/`SANS_BOLD_ITALIC` yourself — `default-fonts`
+  bundles regular/bold only, no italic. `Text::italic()`/`.bold_italic()`
+  render as italic once a font is registered under that key; with no such
+  registration, `render()`/`render_with_diagnostics()` return
+  `RenderError::MissingFont` instead of silently substituting the
+  registry's default font.
 - Images: JPEG is passed through unchanged as `DCTDecode`; PNG is decoded
   and re-embedded with a separate `SMask` (alpha channel) — only with the
   `png` feature enabled (see below).

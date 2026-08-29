@@ -346,13 +346,36 @@ fn heading_on_a_later_page_jumps_to_the_correct_page() {
     );
 }
 
+const CUSTOM_FONT: &[u8] = include_bytes!("../../lightweight-pdf-fonts/tests/fixtures/custom-test-font.ttf");
+
 #[test]
-fn text_italic_and_bold_italic_methods_work() {
+fn italic_with_nothing_registered_under_the_key_is_a_typed_error_not_a_silent_fallback() {
+    // default-fonts bundles regular/bold only, no italic (see README).
+    let mut doc = Document::new(PageFormat::A4);
+    doc.add(Text::new("Kursiver Hinweis").italic());
+
+    let err = doc
+        .render()
+        .expect_err("no SANS_ITALIC registered — render must not silently substitute regular");
+    assert!(
+        matches!(err, RenderError::MissingFont(key) if key == FontKey::SANS_ITALIC),
+        "expected RenderError::MissingFont(SANS_ITALIC), got: {err:?}"
+    );
+}
+
+#[test]
+fn italic_and_bold_italic_methods_work_once_a_font_is_registered_under_the_key() {
+    let mut fonts = FontRegistry::with_fonts(CUSTOM_FONT, CUSTOM_FONT).unwrap();
+    fonts.register(FontKey::SANS_ITALIC, CUSTOM_FONT).unwrap();
+    fonts.register(FontKey::SANS_BOLD_ITALIC, CUSTOM_FONT).unwrap();
+
     let mut doc = Document::new(PageFormat::A4);
     doc.add(Text::new("Kursiver Hinweis").italic());
     doc.add(Text::new("Fetter kursiver Text").bold_italic());
 
-    let bytes = doc.render().expect("render should succeed");
+    let bytes = doc
+        .render_with_fonts(&fonts)
+        .expect("render should succeed once SANS_ITALIC/SANS_BOLD_ITALIC are registered");
     let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf check failed: {log}");
 
