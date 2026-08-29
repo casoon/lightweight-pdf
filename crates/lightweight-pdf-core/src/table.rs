@@ -47,6 +47,12 @@ impl TableColumn {
 pub struct TableCell {
     pub element: Element,
     pub colspan: usize,
+    /// How many rows (including this one) this cell's box extends down
+    /// through. A continuation row (one a `rowspan > 1` cell from an
+    /// earlier row still covers) simply omits a `TableCell` for that
+    /// column — same convention as HTML `<tr>`/`<td>`, not a separate
+    /// "placeholder" cell type.
+    pub rowspan: usize,
     pub align: Option<Align>,
 }
 
@@ -55,12 +61,18 @@ impl TableCell {
         TableCell {
             element: element.into(),
             colspan: 1,
+            rowspan: 1,
             align: None,
         }
     }
 
     pub fn colspan(mut self, colspan: usize) -> Self {
         self.colspan = colspan.max(1);
+        self
+    }
+
+    pub fn rowspan(mut self, rowspan: usize) -> Self {
+        self.rowspan = rowspan.max(1);
         self
     }
 

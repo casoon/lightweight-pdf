@@ -187,6 +187,287 @@ fn render_row(
     }
 }
 
+// ---------------------------------------------------------------------
+// rowspan: body rows only (the header repeats per page independently and
+// stays on the simple per-row path above — a rowspan cell "hanging over"
+// into a repeated header makes no sense). A `rowspan` cell blocks its
+// column(s) for the rows below it; a row with no free cell for a given
+// column simply omits a `TableCell` there (same convention as HTML
+// `<tr>`/`<td>`). The page-break rule (`plan/02-elementcatalog-and-features.md`
+// discussion for #14): a rowspan may never be split across a page boundary
+// — the whole "block" of rows it covers moves to the next page together.
+// ---------------------------------------------------------------------
+
+/// One cell's resolved grid position, computed once per `Table::layout`
+/// call by [`plan_grid`] and reused for both row-height accounting and
+/// rendering.
+struct CellPlacement<'a> {
+    row: usize,
+    col_start: usize,
+    col_end: usize,
+    cell: &'a TableCell,
+}
+
+/// Simulates column occupancy row by row: a cell with `rowspan > 1`
+/// placed at row `r` blocks its column(s) through row `r + rowspan - 1`.
+/// Returns every cell's resolved `(row, col_start, col_end)` and, per row,
+/// whether it's a "continuation" row (some column still blocked by an
+/// earlier row's `rowspan`) — a continuation row is never a legal
+/// page-break point on its own; see [`atomic_blocks`].
+fn plan_grid<'a>(
+    rows: &'a [Vec<TableCell>],
+    num_columns: usize,
+    warnings: &mut Vec<LayoutWarning>,
+    page: usize,
+) -> (Vec<CellPlacement<'a>>, Vec<bool>) {
+    // blocked_until[col] = column `col` is occupied by an earlier row's
+    // rowspan for every row index strictly less than this value.
+    let mut blocked_until = vec![0usize; num_columns];
+    let mut placements = Vec::new();
+    let mut is_continuation = Vec::with_capacity(rows.len());
+
+    for (row_idx, row) in rows.iter().enumerate() {
+        is_continuation.push((0..num_columns).any(|c| blocked_until[c] > row_idx));
+
+        let mut col_idx = 0;
+        for cell in row {
+            while col_idx < num_columns && blocked_until[col_idx] > row_idx {
+                col_idx += 1;
+            }
+            if col_idx >= num_columns {
+                push_warning(
+                    warnings,
+                    LayoutWarningKind::TableRowOverflow,
+                    page,
+                    format!("table row {row_idx} has more cells than the table has free column(s) after rowspan — extra cells dropped"),
+                );
+                break;
+            }
+            let col_end = (col_idx + cell.colspan.max(1)).min(num_columns);
+            let rowspan = cell.rowspan.max(1);
+            if rowspan > 1 {
+                for slot in blocked_until[col_idx..col_end].iter_mut() {
+                    *slot = row_idx + rowspan;
+                }
+            }
+            placements.push(CellPlacement {
+                row: row_idx,
+                col_start: col_idx,
+                col_end,
+                cell,
+            });
+            col_idx = col_end;
+        }
+    }
+    (placements, is_continuation)
+}
+
+/// Each row's natural height from its own (non-`rowspan`-owning) cells —
+/// `rowspan` cells are handled separately by [`apply_rowspan_deficits`],
+/// since their content can spread across several rows.
+fn natural_row_heights(ctx: &LayoutCtx, placements: &[CellPlacement], num_rows: usize, col_widths: &[f32], cell_padding: f32) -> Vec<f32> {
+    let mut heights = vec![0.0f32; num_rows];
+    for p in placements {
+        if p.cell.rowspan.max(1) > 1 {
+            continue;
+        }
+        let inner_w = (col_widths[p.col_start..p.col_end].iter().sum::<f32>() - 2.0 * cell_padding).max(0.0);
+        let h = measure_at_width(ctx, &p.cell.element, inner_w).height + 2.0 * cell_padding;
+        heights[p.row] = heights[p.row].max(h);
+    }
+    heights
+}
+
+/// If a `rowspan` cell's own content needs more height than the rows it
+/// spans already provide, the shortfall is added to the *last* spanned
+/// row — simple, predictable, and keeps every other row's height
+/// undisturbed by a tall spanning cell.
+fn apply_rowspan_deficits(ctx: &LayoutCtx, placements: &[CellPlacement], heights: &mut [f32], col_widths: &[f32], cell_padding: f32) {
+    for p in placements {
+        let span = p.cell.rowspan.max(1);
+        if span <= 1 {
+            continue;
+        }
+        let inner_w = (col_widths[p.col_start..p.col_end].iter().sum::<f32>() - 2.0 * cell_padding).max(0.0);
+        let needed = measure_at_width(ctx, &p.cell.element, inner_w).height + 2.0 * cell_padding;
+        let end_row = (p.row + span).min(heights.len());
+        let available: f32 = heights[p.row..end_row].iter().sum();
+        if needed > available {
+            if let Some(last) = heights[p.row..end_row].last_mut() {
+                *last += needed - available;
+            }
+        }
+    }
+}
+
+/// Groups row indices into maximal runs where every row after the first
+/// is a continuation row of the one before it — the atomic units the
+/// page-break loop in `Table::layout` treats as indivisible.
+fn atomic_blocks(is_continuation: &[bool]) -> Vec<std::ops::Range<usize>> {
+    let mut blocks = Vec::new();
+    let mut i = 0;
+    while i < is_continuation.len() {
+        let start = i;
+        i += 1;
+        while i < is_continuation.len() && is_continuation[i] {
+            i += 1;
+        }
+        blocks.push(start..i);
+    }
+    blocks
+}
+
+/// Reduces a forced block's row heights to fit `budget`: rows keep their
+/// natural height from the top until the budget runs out, everything
+/// after collapses to zero — "clip the tail," the same read-order
+/// priority a single oversized row already got before `rowspan` existed.
+fn shrink_row_heights_to_fit(natural: &[f32], budget: f32) -> Vec<f32> {
+    let mut remaining_budget = budget.max(0.0);
+    natural
+        .iter()
+        .map(|&h| {
+            let take = h.min(remaining_budget);
+            remaining_budget -= take;
+            take
+        })
+        .collect()
+}
+
+/// Everything a block's rendering needs that stays the same across every
+/// cell/row in it — bundled so `render_cells_starting_at`/`render_block`
+/// don't grow past clippy's argument-count limit.
+struct TableRenderCtx<'a> {
+    ctx: &'a LayoutCtx<'a>,
+    table: &'a Table,
+    col_widths: &'a [f32],
+    placements: &'a [CellPlacement<'a>],
+    page: usize,
+}
+
+/// Lays out every cell placed at `row_idx`, using `block_heights[local_row_idx..]`
+/// for cells that reach beyond this single row (`rowspan > 1`) —
+/// `block_heights` is local to the block currently being rendered
+/// (already resolved to either natural or forced-page-clipped values by
+/// the caller), not the table-wide array.
+fn render_cells_starting_at(
+    trc: &TableRenderCtx,
+    row_area: &Rect,
+    warnings: &mut Vec<LayoutWarning>,
+    row_idx: usize,
+    local_row_idx: usize,
+    block_heights: &[f32],
+) -> Vec<RenderNode> {
+    let cell_padding = trc.table.cell_padding;
+    let mut nodes = Vec::new();
+    for p in trc.placements.iter().filter(|p| p.row == row_idx) {
+        let span = p.cell.rowspan.max(1);
+        let local_end = (local_row_idx + span).min(block_heights.len());
+        let cell_h: f32 = block_heights[local_row_idx..local_end].iter().sum();
+        let total_w: f32 = trc.col_widths[p.col_start..p.col_end].iter().sum();
+        let col_align = p.cell.align.unwrap_or(trc.table.columns[p.col_start].align);
+        let cursor_x = row_area.x + trc.col_widths[..p.col_start].iter().sum::<f32>();
+
+        let inner_w = (total_w - 2.0 * cell_padding).max(0.0);
+        let content_h = (cell_h - 2.0 * cell_padding).max(0.0);
+        let cell_size = measure_at_width(trc.ctx, &p.cell.element, inner_w);
+        let box_width = cell_size.width.min(inner_w).max(0.0);
+        let x_offset = align_offset(col_align, inner_w, box_width);
+        let cell_area = Rect {
+            x: cursor_x + cell_padding + x_offset,
+            y: row_area.y + cell_padding,
+            width: box_width,
+            height: content_h,
+        };
+        match p.cell.element.layout(trc.ctx, cell_area, warnings, trc.page) {
+            LayoutResult::Fit(node) => nodes.push(node),
+            LayoutResult::Split { current, .. } => nodes.push(current),
+        }
+    }
+    nodes
+}
+
+/// Renders one atomic block (`block.len() == 1` for the overwhelmingly
+/// common non-`rowspan` case — identical `RenderNode` shape to
+/// `render_row` above, so existing single-row tests/output are
+/// unaffected).
+///
+/// A `block.len() > 1` block wraps every row in one non-striped, clipping
+/// outer `Group` (its area spans the whole block, so a `rowspan` cell
+/// drawn from an earlier row is never clipped by a row boundary it
+/// extends past) with each row's own stripe painted as a plain
+/// background `Rect` child instead of the `Group.background` field.
+fn render_block(
+    trc: &TableRenderCtx,
+    inner: &Rect,
+    warnings: &mut Vec<LayoutWarning>,
+    block: std::ops::Range<usize>,
+    block_heights: &[f32], // one entry per row in `block`, in order
+    block_top_y: f32,
+    row_backgrounds: &[Option<Color>], // indexed by absolute row index
+) -> RenderNode {
+    if block.len() == 1 {
+        let row_idx = block.start;
+        let row_area = Rect {
+            x: inner.x,
+            y: inner.y + block_top_y,
+            width: inner.width,
+            height: block_heights[0],
+        };
+        let nodes = render_cells_starting_at(trc, &row_area, warnings, row_idx, 0, block_heights);
+        return RenderNode::Group {
+            area: row_area,
+            clip: true,
+            background: row_backgrounds[row_idx],
+            border: None,
+            corner_radius: 0.0,
+            children: nodes,
+        };
+    }
+
+    let block_area = Rect {
+        x: inner.x,
+        y: inner.y + block_top_y,
+        width: inner.width,
+        height: block_heights.iter().sum(),
+    };
+    let mut children = Vec::new();
+    let mut cursor_y = block_top_y;
+    for (local_idx, row_idx) in block.clone().enumerate() {
+        let row_h = block_heights[local_idx];
+        let row_area = Rect {
+            x: inner.x,
+            y: inner.y + cursor_y,
+            width: inner.width,
+            height: row_h,
+        };
+        if let Some(bg) = row_backgrounds[row_idx] {
+            children.push(RenderNode::Rect {
+                area: row_area,
+                background: Some(bg),
+                border: None,
+                corner_radius: 0.0,
+            });
+        }
+        children.extend(render_cells_starting_at(
+            trc,
+            &row_area,
+            warnings,
+            row_idx,
+            local_idx,
+            block_heights,
+        ));
+        cursor_y += row_h;
+    }
+    RenderNode::Group {
+        area: block_area,
+        clip: true,
+        background: None,
+        border: None,
+        corner_radius: 0.0,
+        children,
+    }
+}
+
 impl Layoutable for Table {
     fn measure(&self, ctx: &LayoutCtx, constraints: Constraints) -> Size {
         let (width, inner_width) = resolve_bound(self.common.width, constraints.max_width, self.common.padding);
@@ -227,73 +508,82 @@ impl Layoutable for Table {
             cursor_y += header_height;
         }
 
-        for (i, row) in self.rows.iter().enumerate() {
-            let absolute_i = self.row_offset + i;
-            let row_height = measure_row_height(ctx, row, &col_widths, self.cell_padding);
-            let remaining = (bound_height - cursor_y).max(0.0);
-            let stripe = self.striped.filter(|_| absolute_i % 2 == 1);
+        let (placements, is_continuation) = plan_grid(&self.rows, self.columns.len(), warnings, page);
+        let mut row_heights = natural_row_heights(ctx, &placements, self.rows.len(), &col_widths, self.cell_padding);
+        apply_rowspan_deficits(ctx, &placements, &mut row_heights, &col_widths, self.cell_padding);
+        let row_backgrounds: Vec<Option<Color>> = (0..self.rows.len())
+            .map(|i| self.striped.filter(|_| (self.row_offset + i) % 2 == 1))
+            .collect();
+        let trc = TableRenderCtx {
+            ctx,
+            table: self,
+            col_widths: &col_widths,
+            placements: &placements,
+            page,
+        };
 
-            if row_height <= remaining + EPS {
-                rendered.push(render_row(
-                    ctx,
-                    self,
-                    &col_widths,
+        for block in atomic_blocks(&is_continuation) {
+            let block_height: f32 = row_heights[block.clone()].iter().sum();
+            let remaining = (bound_height - cursor_y).max(0.0);
+
+            if block_height <= remaining + EPS {
+                rendered.push(render_block(
+                    &trc,
                     &inner,
                     warnings,
-                    page,
-                    RowRenderParams {
-                        cells: row,
-                        y: cursor_y,
-                        row_height,
-                        background: stripe,
-                    },
+                    block.clone(),
+                    &row_heights[block.clone()],
+                    cursor_y,
+                    &row_backgrounds,
                 ));
-                cursor_y += row_height;
+                cursor_y += block_height;
                 continue;
             }
 
             if cursor_y <= header_height + EPS {
-                // Only the header (or nothing) placed so far: this row is
-                // atomic and doesn't fit even a fresh page — force it,
-                // clip, warn (Grundprinzip 7), then move on.
-                rendered.push(render_row(
-                    ctx,
-                    self,
-                    &col_widths,
+                // Only the header (or nothing) placed so far: this block
+                // is atomic (a rowspan may never split across a page,
+                // #14) and doesn't fit even a fresh page — force it,
+                // clip from the bottom up, warn (Grundprinzip 7), then
+                // move on.
+                let forced_heights = shrink_row_heights_to_fit(&row_heights[block.clone()], remaining);
+                rendered.push(render_block(
+                    &trc,
                     &inner,
                     warnings,
-                    page,
-                    RowRenderParams {
-                        cells: row,
-                        y: cursor_y,
-                        row_height: remaining,
-                        background: stripe,
-                    },
+                    block.clone(),
+                    &forced_heights,
+                    cursor_y,
+                    &row_backgrounds,
                 ));
-                push_warning(
-                    warnings,
-                    LayoutWarningKind::ForcedPageBreak,
-                    page,
-                    format!("Table row {absolute_i} larger than one page"),
-                );
+                let start = self.row_offset + block.start;
+                let end = self.row_offset + block.end - 1;
+                let hint = if start == end {
+                    format!("Table row {start} larger than one page")
+                } else {
+                    format!("Table rows {start}-{end} (rowspan) larger than one page")
+                };
+                push_warning(warnings, LayoutWarningKind::ForcedPageBreak, page, hint);
                 cursor_y = bound_height;
                 continue;
             }
 
-            // Doesn't fit — move this row and everything after it to a
-            // continuation page, which repeats the header.
+            // Doesn't fit — move this block (and everything after it) to
+            // a continuation page, which repeats the header. Never split
+            // mid-block: that's exactly the invariant `atomic_blocks`
+            // exists to protect.
             if let Some(fixed_height) = self.common.height {
-                let overflow_hint = (!self.rows[i..].is_empty()).then_some("Table content exceeds its fixed height");
+                let overflow_hint = (!self.rows[block.start..].is_empty()).then_some("Table content exceeds its fixed height");
                 return clip_to_fixed_height(area, fixed_height, &self.common, rendered, warnings, page, overflow_hint);
             }
 
             let remainder = Table {
                 columns: self.columns.clone(),
                 header: self.header.clone(),
-                rows: self.rows[i..].to_vec(),
+                rows: self.rows[block.start..].to_vec(),
                 striped: self.striped,
                 cell_padding: self.cell_padding,
-                row_offset: absolute_i,
+                row_offset: self.row_offset + block.start,
                 common: Common {
                     height: None,
                     ..self.common
@@ -581,5 +871,125 @@ mod tests {
         // "42" is much narrower than the 100pt column; End-align must
         // push it toward the right edge, not leave it at x=0.
         assert!(cell_area.x > 50.0, "expected right-aligned cell, got x={}", cell_area.x);
+    }
+
+    fn cell(text: &str) -> TableCell {
+        TableCell::from(text)
+    }
+
+    #[test]
+    fn rowspan_cell_spans_multiple_rows_as_one_atomic_block() {
+        let table = Table::new()
+            .columns([TableColumn::fixed(30.0), TableColumn::fixed(30.0)])
+            .rows(vec![
+                vec![TableCell::new("Summe").rowspan(2), cell("Zeile 1")],
+                // Column 0 is covered by the rowspan cell above — this row
+                // supplies only its own (column 1) cell, same convention as
+                // HTML <tr>/<td>.
+                vec![cell("Zeile 2")],
+            ]);
+        let c = ctx();
+        let mut warnings = Vec::new();
+        let area = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 60.0,
+            height: 400.0,
+        };
+        let LayoutResult::Fit(RenderNode::Group { children: blocks, .. }) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
+            panic!("expected Fit");
+        };
+        assert!(warnings.is_empty(), "unexpected warnings: {warnings:?}");
+        // Both rows must merge into one atomic block, not two separate
+        // row groups.
+        assert_eq!(
+            blocks.len(),
+            1,
+            "expected the 2-row span to render as a single block, got {} top-level children",
+            blocks.len()
+        );
+        let RenderNode::Group {
+            area: block_area,
+            children: cells,
+            ..
+        } = &blocks[0]
+        else {
+            panic!("expected block group");
+        };
+        // 3 rendered cells total: "Summe" (once, spanning both rows),
+        // "Zeile 1", "Zeile 2".
+        assert_eq!(cells.len(), 3, "expected 3 rendered cells, got {}", cells.len());
+        // The block covers both rows' height (single-row height is
+        // 22.4pt, same constant as `striped_alternates_and_survives_a_split`).
+        assert!(
+            block_area.height > 30.0,
+            "block should cover both rows, got height {}",
+            block_area.height
+        );
+    }
+
+    #[test]
+    fn rowspan_never_splits_across_a_page_boundary() {
+        let mut rows: Vec<Vec<TableCell>> = (0..3).map(|i| vec![cell(&format!("R{i}")), cell("x")]).collect();
+        rows.push(vec![TableCell::new("Spanned").rowspan(2), cell("y0")]);
+        rows.push(vec![cell("y1")]);
+        let table = Table::new()
+            .columns([TableColumn::fixed(30.0), TableColumn::fixed(30.0)])
+            .rows(rows);
+        let c = ctx();
+        let mut warnings = Vec::new();
+        // Single-row height is 22.4pt (14.4pt line height + 2*4pt cell
+        // padding, same constant as `striped_alternates_and_survives_a_split`).
+        // 4 rows' worth of budget lands the natural split right in the
+        // middle of the 2-row span if it weren't treated as atomic.
+        let area = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 60.0,
+            height: 4.0 * 22.4,
+        };
+        let LayoutResult::Split { current, remainder } = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
+            panic!("expected a Split");
+        };
+        let RenderNode::Group { children, .. } = current else {
+            panic!("expected Group");
+        };
+        assert_eq!(
+            children.len(),
+            3,
+            "the rowspan block must not partially fit onto the current page, got {} rows",
+            children.len()
+        );
+        let Element::Table(remainder_table) = remainder else {
+            panic!("expected Table remainder");
+        };
+        assert_eq!(
+            remainder_table.rows.len(),
+            2,
+            "the whole 2-row span must move to the continuation page together"
+        );
+        assert_eq!(remainder_table.row_offset, 3);
+    }
+
+    #[test]
+    fn continuation_row_with_too_many_cells_still_reports_overflow() {
+        let table = Table::new()
+            .columns([TableColumn::fixed(30.0), TableColumn::fixed(30.0)])
+            .rows(vec![
+                vec![TableCell::new("Spanned").rowspan(2), cell("a")],
+                // Column 0 is blocked by the rowspan above (only column 1 is
+                // free); this row wrongly supplies 2 cells anyway.
+                vec![cell("b"), cell("c")],
+            ]);
+        let c = ctx();
+        let mut warnings = Vec::new();
+        let area = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 60.0,
+            height: 400.0,
+        };
+        let _ = Element::Table(table).layout(&c, area, &mut warnings, 1);
+        assert!(warnings.iter().any(|w| w.kind == LayoutWarningKind::TableRowOverflow));
     }
 }

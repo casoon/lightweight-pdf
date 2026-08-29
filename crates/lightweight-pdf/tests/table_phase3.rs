@@ -134,6 +134,37 @@ fn row_with_more_cells_than_columns_reports_a_layout_warning() {
 }
 
 #[test]
+fn rowspan_cell_renders_once_and_covering_row_omits_that_column() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::symmetric(56.0, 56.0));
+    doc.add(
+        Table::new()
+            .columns([TableColumn::fixed(140.0), TableColumn::fixed(140.0)])
+            .header(["Position", "Betrag"])
+            .rows(vec![
+                vec![TableCell::new("Gesamtsumme").rowspan(2), TableCell::from("Netto: 100,00 €")],
+                vec![TableCell::from("Brutto: 119,00 €")],
+            ]),
+    );
+
+    let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+    assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
+
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf --check failed:\n{log}");
+
+    let extracted = support::pdftotext(&bytes).unwrap();
+    assert!(extracted.contains("Gesamtsumme"), "missing spanning cell text, got:\n{extracted}");
+    assert!(extracted.contains("Netto: 100,00 €"));
+    assert!(extracted.contains("Brutto: 119,00 €"));
+    // The spanning cell's text must appear exactly once, not once per row.
+    assert_eq!(
+        extracted.matches("Gesamtsumme").count(),
+        1,
+        "a rowspan cell must render once, not once per spanned row"
+    );
+}
+
+#[test]
 fn table_spanning_multiple_pages_repeats_header_without_losing_rows() {
     let mut doc = Document::new(PageFormat::A4).margin(Margin::symmetric(56.0, 56.0));
     let rows: Vec<Vec<Element>> = (0..60)
