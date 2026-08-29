@@ -76,6 +76,12 @@ lightweight-pdf --example demo_invoice` etc.
   Table header cells built from plain strings (`Table::header(["A", ...])`)
   pick up `table_header` automatically. No `.theme(..)` call means
   unchanged output.
+- `Text::rich([Span::new("...", style), ...])`: multiple styles (font/size/
+  color) inside one text element, wrapped and paginated as a single
+  paragraph — mixed sizes on one line share that line's baseline (from the
+  tallest word), and a page split can land in the middle of a span. Not
+  supported for rich text: `Align::Justify`, `.url()`/`.link_to()`/
+  `.outline_level()`.
 - Automatic, page-count-stable pagination (two-pass) including
   header/footer bands, widow/orphan rule, and `keep_with_next`.
 - Tables that split across page boundaries (header repeats automatically)

@@ -472,3 +472,47 @@ fn document_theme_resolves_untouched_text_but_not_explicitly_styled_text() {
         "expected theme.heading1's size (60) for .heading1(), got:\n{content}"
     );
 }
+
+#[test]
+fn rich_text_renders_mixed_styles_on_one_paragraph() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::all(40.0));
+    doc.add(Text::rich([
+        Span::new("Normal ", TextStyle::default()),
+        Span::new(
+            "big red",
+            TextStyle {
+                size: 30.0,
+                color: Color::rgb(200, 0, 0),
+                ..Default::default()
+            },
+        ),
+        Span::new(" tail", TextStyle::default()),
+    ]));
+
+    let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+    assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf check failed: {log}");
+
+    let extracted = support::pdftotext(&bytes).unwrap();
+    for word in ["Normal", "big", "red", "tail"] {
+        assert!(extracted.contains(word), "missing {word:?} in extracted text:\n{extracted}");
+    }
+
+    let decompressed = support::decompressed(&bytes).unwrap();
+    let content = String::from_utf8_lossy(&decompressed);
+    assert!(
+        content.contains(" 30 Tf"),
+        "expected the larger span's size (30) in a Tf operator, got:\n{content}"
+    );
+    assert!(
+        content.contains(" 12 Tf"),
+        "expected the default span size (12) in a Tf operator, got:\n{content}"
+    );
+
+    let tj_count = count_tj_ops(&bytes);
+    assert!(
+        tj_count >= 3,
+        "expected one text-showing run per span (3 spans), got {tj_count} Tj ops"
+    );
+}

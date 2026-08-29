@@ -146,7 +146,36 @@ pub struct Text {
     /// `.heading1()`/`.heading2()`/`.heading3()`/`.caption()`/`.muted()`/
     /// `.table_header()` presets re-set a specific role afterwards.
     pub role: Option<ThemeRole>,
+    /// Set only by `Text::rich(..)` (issue #11) — a sequence of
+    /// independently-styled runs instead of one `style` for the whole
+    /// `content`. When `Some`, layout/render use this instead of
+    /// `content`/`style` (`content` is still populated, as the spans'
+    /// text concatenated, so anything that only reads `content` — e.g. a
+    /// future plain-text export — degrades to unstyled text instead of
+    /// seeing nothing). Rich text doesn't (yet) support
+    /// `url`/`anchor`/`link_to`/`outline_level`/`Align::Justify` — plain
+    /// `Text` remains the only way to get those.
+    /// Boxed, not `Option<Vec<Span>>` directly: `Text` is the payload of
+    /// `Element`'s largest variant (in turn embedded in `LayoutResult`
+    /// and every `Row`/`Column`'s `children: Vec<Element>`), and a bare
+    /// `Vec` here would cost every plain `Text` (the overwhelming
+    /// majority, where this field is always `None`) the full 24 bytes;
+    /// `Option<Box<Vec<Span>>>` costs 8.
+    pub spans: Option<Box<Vec<Span>>>,
     pub common: Common,
+}
+
+/// One independently-styled run within `Text::rich(..)`.
+#[derive(Clone, Debug)]
+pub struct Span {
+    pub text: String,
+    pub style: TextStyle,
+}
+
+impl Span {
+    pub fn new(text: impl Into<String>, style: TextStyle) -> Self {
+        Span { text: text.into(), style }
+    }
 }
 
 impl Text {
@@ -159,6 +188,29 @@ impl Text {
             link_to: None,
             outline_level: None,
             role: Some(ThemeRole::Body),
+            spans: None,
+            common: Common::default(),
+        }
+    }
+
+    /// A `Text` made of independently-styled `Span`s instead of one
+    /// uniform style — the paragraph still wraps and paginates as a
+    /// single unit, word boundaries and line breaks span across spans
+    /// freely, and mixed sizes on the same line share one baseline (see
+    /// `lightweight-pdf-layout::text::wrap_spans`).
+    pub fn rich(spans: impl IntoIterator<Item = Span>) -> Self {
+        let spans: Vec<Span> = spans.into_iter().collect();
+        let content = spans.iter().map(|s| s.text.as_str()).collect::<Vec<_>>().concat();
+        let style = spans.first().map(|s| s.style).unwrap_or_default();
+        Text {
+            content,
+            style,
+            url: None,
+            anchor: None,
+            link_to: None,
+            outline_level: None,
+            role: None,
+            spans: Some(Box::new(spans)),
             common: Common::default(),
         }
     }

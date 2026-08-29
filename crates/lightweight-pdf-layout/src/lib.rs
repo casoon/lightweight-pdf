@@ -18,5 +18,5 @@ pub use geometry::*;
 pub use layoutable::*;
 pub use pagination::*;
 pub use render_node::*;
-pub use text::{text_width_pt, wrap_text};
+pub use text::{text_width_pt, wrap_text, RichLine, StyledWord};
 pub use warnings::*;

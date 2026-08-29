@@ -87,7 +87,7 @@ mod tests {
     use super::*;
     use crate::pagination::paginate_body;
     use crate::warnings::LayoutWarningKind;
-    use lightweight_pdf_core::{Column, Common, Overflow as OverflowKind, Rect as RectElement, Row, Text as TextEl};
+    use lightweight_pdf_core::{Column, Common, Overflow as OverflowKind, Rect as RectElement, Row, Span, Text as TextEl, TextStyle};
 
     struct FixedMetrics;
     impl crate::font_resolver::FontMetrics for FixedMetrics {
@@ -429,5 +429,109 @@ mod tests {
         let c = Common::default();
         assert_eq!(c.width, None);
         assert_eq!(c.height, None);
+    }
+
+    // --- Text::rich(..) (issue #11) --------------------------------------
+
+    #[test]
+    fn rich_text_wraps_words_from_multiple_spans_in_order() {
+        let style = TextStyle {
+            size: 10.0,
+            line_height: 1.0,
+            ..Default::default()
+        };
+        let text = TextEl::rich([Span::new("AAAA", style), Span::new(" BBBB", style)]);
+        let c = ctx();
+        let mut warnings = Vec::new();
+        let area = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 400.0,
+            height: 100.0,
+        };
+        let LayoutResult::Fit(RenderNode::Group { children, .. }) = text.layout(&c, area, &mut warnings, 1) else {
+            panic!("expected Fit");
+        };
+        let RenderNode::RichTextLines { lines, .. } = &children[0] else {
+            panic!("expected RichTextLines");
+        };
+        assert_eq!(lines.len(), 1, "both words fit on one line");
+        let words: Vec<&str> = lines[0].words.iter().map(|w| w.text.as_str()).collect();
+        assert_eq!(words, vec!["AAAA", "BBBB"], "words from both spans, in order, on the same line");
+    }
+
+    #[test]
+    fn rich_text_mixed_sizes_share_one_line_height_and_ascent() {
+        let small = TextStyle {
+            size: 10.0,
+            line_height: 1.0,
+            ..Default::default()
+        };
+        let big = TextStyle {
+            size: 20.0,
+            line_height: 1.0,
+            ..Default::default()
+        };
+        let text = TextEl::rich([Span::new("a", small), Span::new(" B", big)]);
+        let c = ctx();
+        let mut warnings = Vec::new();
+        let area = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 400.0,
+            height: 100.0,
+        };
+        let LayoutResult::Fit(RenderNode::Group { children, .. }) = text.layout(&c, area, &mut warnings, 1) else {
+            panic!("expected Fit");
+        };
+        let RenderNode::RichTextLines { lines, .. } = &children[0] else {
+            panic!("expected RichTextLines");
+        };
+        assert_eq!(lines.len(), 1);
+        // FixedMetrics.ascent() == 800/1000 -> 16pt at size 20; the line's
+        // shared baseline reference must come from the larger word, not
+        // the smaller one placed first.
+        assert_eq!(lines[0].height, 20.0);
+        assert_eq!(lines[0].ascent_pt, 16.0);
+    }
+
+    #[test]
+    fn rich_text_can_split_in_the_middle_of_a_single_span() {
+        // One span, 5 short words -> 5 lines at width 15 (each "LN" word is
+        // 12pt, two of them plus a 3pt space is 27pt > 15).
+        let style = TextStyle {
+            size: 10.0,
+            line_height: 1.0,
+            ..Default::default()
+        };
+        let text = TextEl::rich([Span::new("L0 L1 L2 L3 L4", style)]);
+        let c = ctx();
+        let mut warnings = Vec::new();
+        let area = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 15.0,
+            height: 40.0, // fits 4 of 5 lines by height alone
+        };
+        match text.layout(&c, area, &mut warnings, 1) {
+            LayoutResult::Split { current, remainder } => {
+                let RenderNode::Group { children, .. } = current else {
+                    panic!("expected the clip-wrapping Group");
+                };
+                let RenderNode::RichTextLines { lines, .. } = &children[0] else {
+                    panic!("expected RichTextLines");
+                };
+                assert_eq!(lines.len(), 3, "widow/orphan rule pulls one line up, same as plain text");
+                match remainder {
+                    Element::Text(t) => {
+                        let spans = t.spans.expect("remainder of a rich Text must still be rich text");
+                        assert_eq!(spans.len(), 1, "the single span continues as a single span, split mid-span");
+                        assert_eq!(spans[0].text, "L3 L4");
+                    }
+                    other => panic!("expected Text remainder, got {other:?}"),
+                }
+            }
+            LayoutResult::Fit(_) => panic!("expected a Split"),
+        }
     }
 }

@@ -5,9 +5,9 @@ use super::shared::{line_height_pt, push_warning, size_with_defaults, EPS};
 use super::{LayoutCtx, LayoutResult, Layoutable};
 use crate::geometry::{Constraints, Rect, Size};
 use crate::render_node::RenderNode;
-use crate::text::{text_width_pt, wrap_text, wrap_text_marking_paragraph_ends};
+use crate::text::{text_width_pt, wrap_spans, wrap_text, wrap_text_marking_paragraph_ends, RichLine};
 use crate::warnings::{LayoutWarning, LayoutWarningKind};
-use lightweight_pdf_core::{Element, Line, Overflow, Rect as RectElement, Spacer, Text, TextStyle};
+use lightweight_pdf_core::{Align, Element, Line, Overflow, Rect as RectElement, Spacer, Span, Text, TextStyle};
 
 /// Threshold for the widow/orphan rule (Grundprinzip 9): a paragraph is
 /// never split leaving fewer than `N` lines on either side of the break.
@@ -77,6 +77,15 @@ fn text_lines_node(area: Rect, style: TextStyle, wrapped: WrappedLines, lh: f32,
 impl Layoutable for Text {
     fn measure(&self, ctx: &LayoutCtx, constraints: Constraints) -> Size {
         let width = self.common.width.unwrap_or(constraints.max_width);
+        if let Some(spans) = &self.spans {
+            let rich_lines = wrap_spans(ctx.resolver, spans, width);
+            let actual_width = rich_lines.iter().map(|l| rich_line_width(ctx.resolver, l)).fold(0.0f32, f32::max);
+            let total_height: f32 = rich_lines.iter().map(|l| l.height).sum();
+            return Size {
+                width: self.common.width.unwrap_or(actual_width.min(width)),
+                height: self.common.height.unwrap_or(total_height),
+            };
+        }
         let lines = wrap_text(ctx.resolver, &self.style, &self.content, width);
         let lh = line_height_pt(&self.style);
         let actual_width = lines
@@ -90,6 +99,9 @@ impl Layoutable for Text {
     }
 
     fn layout(&self, ctx: &LayoutCtx, area: Rect, warnings: &mut Vec<LayoutWarning>, page: usize) -> LayoutResult {
+        if let Some(spans) = &self.spans {
+            return layout_rich_text(self, spans, ctx, area, warnings, page);
+        }
         push_missing_glyph_warnings(ctx, &self.style, &self.content, warnings, page);
         let (lines, paragraph_end) = wrap_text_marking_paragraph_ends(ctx.resolver, &self.style, &self.content, area.width);
         let wrapped = WrappedLines { lines, paragraph_end };
@@ -160,6 +172,148 @@ impl Layoutable for Text {
             current,
             remainder: Element::Text(remainder),
         }
+    }
+}
+
+// ---------------------------------------------------------------------
+// Text::rich(..) (issue #11) — mirrors the plain-text pagination
+// structure above (fit / widow-orphan split / forced-atomic), just with
+// a per-line height (`RichLine::height`, the tallest word's own) instead
+// of one uniform `line_height_pt` for the whole paragraph. No
+// Align::Justify, no url/anchor/link_to/outline_level support (V1 scope,
+// see `Text::spans`' doc comment) and no Ellipsis on a fixed-height box
+// (Clip only) — plain `Text` remains the only way to get those.
+// ---------------------------------------------------------------------
+
+fn rich_line_width(resolver: &dyn crate::font_resolver::FontResolver, line: &RichLine) -> f32 {
+    let mut width = 0.0f32;
+    for (i, word) in line.words.iter().enumerate() {
+        if i > 0 {
+            width += text_width_pt(resolver, word.style.font, word.style.size, " ");
+        }
+        width += text_width_pt(resolver, word.style.font, word.style.size, &word.text);
+    }
+    width
+}
+
+fn rich_text_lines_node(area: Rect, align: Align, lines: Vec<RichLine>) -> RenderNode {
+    let height: f32 = lines.iter().map(|l| l.height).sum();
+    RenderNode::clipped(
+        area,
+        RenderNode::RichTextLines {
+            area: Rect { height, ..area },
+            align,
+            lines,
+        },
+    )
+}
+
+/// Rebuilds a `Vec<Span>` from wrapped lines that didn't fit on the
+/// current page — the `Text::rich(..)` counterpart to plain `Text`'s
+/// `remainder_lines.join(" ")`. Adjacent words with the *same* style
+/// merge into one `Span` (joined by a space); a style change always
+/// starts a new one.
+fn rebuild_spans_from_lines(lines: &[RichLine]) -> Vec<Span> {
+    let mut spans: Vec<Span> = Vec::new();
+    for line in lines {
+        for word in &line.words {
+            match spans.last_mut() {
+                Some(last) if last.style == word.style => {
+                    last.text.push(' ');
+                    last.text.push_str(&word.text);
+                }
+                _ => spans.push(Span::new(word.text.clone(), word.style)),
+            }
+        }
+    }
+    spans
+}
+
+fn layout_rich_text(
+    text: &Text,
+    spans: &[Span],
+    ctx: &LayoutCtx,
+    area: Rect,
+    warnings: &mut Vec<LayoutWarning>,
+    page: usize,
+) -> LayoutResult {
+    for span in spans {
+        push_missing_glyph_warnings(ctx, &span.style, &span.text, warnings, page);
+    }
+    let rich_lines = wrap_spans(ctx.resolver, spans, area.width);
+    let heights: Vec<f32> = rich_lines.iter().map(|l| l.height).collect();
+    let total_height: f32 = heights.iter().sum();
+    let n = rich_lines.len();
+
+    if total_height <= area.height + EPS || n <= 1 {
+        if total_height > area.height + EPS {
+            push_warning(warnings, LayoutWarningKind::TextClipped, page, text_clipped_hint(&text.content));
+        }
+        return LayoutResult::Fit(rich_text_lines_node(area, text.style.align, rich_lines));
+    }
+
+    if text.common.height.is_some() {
+        // No Ellipsis for rich text (V1 scope) — Clip only: keep as many
+        // whole lines as fit, same "never split a fixed-height box"
+        // invariant as plain Text's layout_text_fixed_overflow.
+        let mut kept = Vec::new();
+        let mut acc = 0.0f32;
+        for line in rich_lines {
+            if acc + line.height > area.height + EPS && !kept.is_empty() {
+                break;
+            }
+            acc += line.height;
+            kept.push(line);
+        }
+        if kept.len() < n {
+            push_warning(warnings, LayoutWarningKind::TextClipped, page, text_clipped_hint(&text.content));
+        }
+        return LayoutResult::Fit(rich_text_lines_node(area, text.style.align, kept));
+    }
+
+    // Same widow/orphan rule as plain text (count-based, height-agnostic)
+    // — only the fit budget itself (a running height sum instead of
+    // `count * uniform_height`) differs.
+    let mut split_at = 0;
+    let mut acc = 0.0f32;
+    for (i, h) in heights.iter().enumerate() {
+        if acc + h > area.height + EPS {
+            break;
+        }
+        acc += h;
+        split_at = i + 1;
+    }
+    if n < 2 * WIDOW_ORPHAN_N || split_at < WIDOW_ORPHAN_N {
+        // Short paragraph, or an orphan (too few lines before the break).
+        split_at = 0;
+    } else if n - split_at < WIDOW_ORPHAN_N {
+        let adjusted = n.saturating_sub(WIDOW_ORPHAN_N);
+        split_at = if adjusted >= WIDOW_ORPHAN_N { adjusted } else { 0 };
+    }
+
+    if split_at == 0 {
+        return LayoutResult::Split {
+            current: RenderNode::Empty,
+            remainder: Element::Text(text.clone()),
+        };
+    }
+
+    let (current_lines, remainder_lines) = rich_lines.split_at(split_at);
+    let current_height: f32 = current_lines.iter().map(|l| l.height).sum();
+    let current = rich_text_lines_node(
+        Rect {
+            height: current_height,
+            ..area
+        },
+        text.style.align,
+        current_lines.to_vec(),
+    );
+
+    let mut remainder = text.clone();
+    remainder.spans = Some(Box::new(rebuild_spans_from_lines(remainder_lines)));
+    LayoutResult::Split {
+        current,
+        remainder: Element::Text(remainder),
     }
 }
 

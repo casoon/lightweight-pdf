@@ -6,7 +6,7 @@ use super::{pdf_rect_y, to_rgb, RenderCtx, RenderError};
 use crate::fonts::{FontRegistry, RegisteredFont};
 use lightweight_pdf_core::{Align, FontKey, TextStyle, Watermark};
 use lightweight_pdf_fonts::{EmbeddedFontMetrics, FontSubset};
-use lightweight_pdf_layout::{align_offset, PageRender, Rect, RenderNode};
+use lightweight_pdf_layout::{align_offset, PageRender, Rect, RenderNode, RichLine};
 use lightweight_pdf_writer::{CidFont, ContentBuilder, PdfDocument, TextRotation};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
@@ -22,6 +22,13 @@ fn collect_chars_in_node(node: &RenderNode, used: &mut HashMap<FontKey, BTreeSet
             let set = used.entry(style.font).or_default();
             for line in lines {
                 set.extend(line.chars());
+            }
+        }
+        RenderNode::RichTextLines { lines, .. } => {
+            for line in lines {
+                for word in &line.words {
+                    used.entry(word.style.font).or_default().extend(word.text.chars());
+                }
             }
         }
     }
@@ -301,6 +308,53 @@ pub(super) fn render_text_lines(
                 action,
             });
         }
+    }
+}
+
+/// Draws a `Text::rich(..)` paragraph's wrapped lines — mirrors
+/// `render_text_lines` but each word carries its own style, so the font
+/// resource and color can switch mid-line and the shared baseline comes
+/// from the line's own precomputed `ascent_pt` (the tallest word's ascent)
+/// rather than one style's ascent. No `Align::Justify` and no
+/// link/anchor annotations — out of scope for V1 rich text (see
+/// `layout_rich_text` in the layout crate).
+pub(super) fn render_rich_text_lines(area: &Rect, align: Align, lines: &[RichLine], ctx: &mut RenderCtx) {
+    let mut line_top = area.y;
+    for line in lines {
+        if !line.words.is_empty() {
+            let baseline_pdf_y = ctx.page_height - (line_top + line.ascent_pt);
+
+            let mut natural_width = 0.0f32;
+            for (i, word) in line.words.iter().enumerate() {
+                if let Some((font, _)) = font_resource(ctx.embedded, word.style.font) {
+                    if i > 0 {
+                        natural_width += line_width_pt(font, word.style.size, " ");
+                    }
+                    natural_width += line_width_pt(font, word.style.size, &word.text);
+                }
+            }
+            let mut cursor_x = area.x + align_offset(align, area.width, natural_width);
+
+            for (i, word) in line.words.iter().enumerate() {
+                let Some((font, resource)) = font_resource(ctx.embedded, word.style.font) else {
+                    continue; // nothing usable subset for this word's font (defensive only)
+                };
+                if i > 0 {
+                    cursor_x += line_width_pt(font, word.style.size, " ");
+                }
+                let bytes = encode_cid(&word.text, &font.char_to_gid);
+                ctx.cb.text(
+                    &resource,
+                    word.style.size,
+                    cursor_x,
+                    baseline_pdf_y,
+                    to_rgb(word.style.color),
+                    &bytes,
+                );
+                cursor_x += line_width_pt(font, word.style.size, &word.text);
+            }
+        }
+        line_top += line.height;
     }
 }
 

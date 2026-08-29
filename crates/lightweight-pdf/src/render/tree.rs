@@ -156,6 +156,10 @@ pub(super) fn render_node(node: &RenderNode, ctx: &mut RenderCtx) -> Result<(), 
             text::render_text_lines(area, style, lines, paragraph_end, *line_height_pt, target, ctx);
             Ok(())
         }
+        RenderNode::RichTextLines { area, align, lines } => {
+            text::render_rich_text_lines(area, *align, lines, ctx);
+            Ok(())
+        }
         RenderNode::Image {
             area,
             bytes,

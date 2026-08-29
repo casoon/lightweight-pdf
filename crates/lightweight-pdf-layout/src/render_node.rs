@@ -1,4 +1,5 @@
 use crate::geometry::Rect;
+use crate::text::RichLine;
 use lightweight_pdf_core::{Align, Border, Color, ImageFormat, TextStyle};
 use std::sync::Arc;
 
@@ -25,6 +26,18 @@ pub enum RenderNode {
         /// `Text::outline_level` — the PDF bookmark tree is built from
         /// these, in document order, once pagination is final.
         outline_level: Option<u8>,
+    },
+    /// `Text::rich(..)` (issue #11) — the multi-style counterpart to
+    /// `TextLines`. Deliberately a separate variant rather than a shape
+    /// change to `TextLines`: every existing `TextLines` consumer (facade
+    /// rendering, font-collection, outline/anchor collection) keeps
+    /// working unmodified for plain `Text`, and this variant just isn't
+    /// handled by any of the outline/anchor/link machinery yet (rich text
+    /// doesn't support those in V1, see `Text::spans`' doc comment).
+    RichTextLines {
+        area: Rect,
+        align: Align,
+        lines: Vec<RichLine>,
     },
     Rect {
         area: Rect,
@@ -83,6 +96,7 @@ impl RenderNode {
         match self {
             RenderNode::Empty => 0.0,
             RenderNode::TextLines { area, .. }
+            | RenderNode::RichTextLines { area, .. }
             | RenderNode::Rect { area, .. }
             | RenderNode::Group { area, .. }
             | RenderNode::Image { area, .. } => area.height,
