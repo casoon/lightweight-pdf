@@ -165,6 +165,45 @@ fn rowspan_cell_renders_once_and_covering_row_omits_that_column() {
 }
 
 #[test]
+fn per_cell_background_and_border_render_and_override_the_stripe() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::symmetric(56.0, 56.0));
+    doc.add(
+        Table::new()
+            .columns([TableColumn::fixed(140.0), TableColumn::fixed(140.0)])
+            .striped(Color::rgb(240, 240, 240))
+            .rows(vec![
+                vec![TableCell::from("Position"), TableCell::from("Menge")],
+                vec![
+                    TableCell::new("Rueckstand")
+                        .background(Color::rgb(255, 0, 0))
+                        .border(Border::solid(1.0, Color::rgb(120, 0, 0))),
+                    TableCell::from("-3"),
+                ],
+            ]),
+    );
+
+    let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+    assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
+
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf --check failed:\n{log}");
+
+    let extracted = support::pdftotext(&bytes).unwrap();
+    assert!(extracted.contains("Rueckstand"));
+    assert!(extracted.contains("-3"));
+
+    // The cell's own fill color (1.0/0/0) and stroke color (120/255=0.47..)
+    // must show up as PDF `rg`/`RG` color operators — proof the cell-level
+    // Rect actually got emitted, not just the row's zebra stripe.
+    let text = String::from_utf8_lossy(&bytes);
+    assert!(text.contains("1 0 0 rg"), "expected the cell's own red fill color, got:\n{text}");
+    assert!(
+        text.contains(" RG"),
+        "expected a stroked border operator for the cell's own border, got:\n{text}"
+    );
+}
+
+#[test]
 fn table_spanning_multiple_pages_repeats_header_without_losing_rows() {
     let mut doc = Document::new(PageFormat::A4).margin(Margin::symmetric(56.0, 56.0));
     let rows: Vec<Vec<Element>> = (0..60)

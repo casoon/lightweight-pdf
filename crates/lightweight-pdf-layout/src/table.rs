@@ -64,8 +64,9 @@ fn measure_row_height(ctx: &LayoutCtx, cells: &[TableCell], col_widths: &[f32], 
         let span = cell.colspan.max(1);
         let end_idx = (col_idx + span).min(col_widths.len());
         let total_w: f32 = col_widths[col_idx..end_idx].iter().sum();
-        let inner_w = (total_w - 2.0 * cell_padding).max(0.0);
-        let h = measure_at_width(ctx, &cell.element, inner_w).height + 2.0 * cell_padding;
+        let padding = cell.padding.unwrap_or(cell_padding);
+        let inner_w = (total_w - 2.0 * padding).max(0.0);
+        let h = measure_at_width(ctx, &cell.element, inner_w).height + 2.0 * padding;
         max_h = max_h.max(h);
         col_idx = end_idx;
     }
@@ -127,15 +128,29 @@ fn layout_row_cells(
         let end_idx = (col_idx + span).min(table.columns.len());
         let total_w: f32 = col_widths[col_idx..end_idx].iter().sum();
         let col_align = cell.align.unwrap_or(table.columns[col_idx].align);
+        let padding = cell.padding.unwrap_or(cell_padding);
 
-        let inner_w = (total_w - 2.0 * cell_padding).max(0.0);
-        let content_h = (row_area.height - 2.0 * cell_padding).max(0.0);
+        let inner_w = (total_w - 2.0 * padding).max(0.0);
+        let content_h = (row_area.height - 2.0 * padding).max(0.0);
         let cell_size = measure_at_width(ctx, &cell.element, inner_w);
         let box_width = cell_size.width.min(inner_w).max(0.0);
         let x_offset = align_offset(col_align, inner_w, box_width);
+        if cell.background.is_some() || cell.border.is_some() {
+            nodes.push(RenderNode::Rect {
+                area: Rect {
+                    x: cursor_x,
+                    y: row_area.y,
+                    width: total_w,
+                    height: row_area.height,
+                },
+                background: cell.background,
+                border: cell.border,
+                corner_radius: 0.0,
+            });
+        }
         let cell_area = Rect {
-            x: cursor_x + cell_padding + x_offset,
-            y: row_area.y + cell_padding,
+            x: cursor_x + padding + x_offset,
+            y: row_area.y + padding,
             width: box_width,
             height: content_h,
         };
@@ -271,8 +286,9 @@ fn natural_row_heights(ctx: &LayoutCtx, placements: &[CellPlacement], num_rows: 
         if p.cell.rowspan.max(1) > 1 {
             continue;
         }
-        let inner_w = (col_widths[p.col_start..p.col_end].iter().sum::<f32>() - 2.0 * cell_padding).max(0.0);
-        let h = measure_at_width(ctx, &p.cell.element, inner_w).height + 2.0 * cell_padding;
+        let padding = p.cell.padding.unwrap_or(cell_padding);
+        let inner_w = (col_widths[p.col_start..p.col_end].iter().sum::<f32>() - 2.0 * padding).max(0.0);
+        let h = measure_at_width(ctx, &p.cell.element, inner_w).height + 2.0 * padding;
         heights[p.row] = heights[p.row].max(h);
     }
     heights
@@ -288,8 +304,9 @@ fn apply_rowspan_deficits(ctx: &LayoutCtx, placements: &[CellPlacement], heights
         if span <= 1 {
             continue;
         }
-        let inner_w = (col_widths[p.col_start..p.col_end].iter().sum::<f32>() - 2.0 * cell_padding).max(0.0);
-        let needed = measure_at_width(ctx, &p.cell.element, inner_w).height + 2.0 * cell_padding;
+        let padding = p.cell.padding.unwrap_or(cell_padding);
+        let inner_w = (col_widths[p.col_start..p.col_end].iter().sum::<f32>() - 2.0 * padding).max(0.0);
+        let needed = measure_at_width(ctx, &p.cell.element, inner_w).height + 2.0 * padding;
         let end_row = (p.row + span).min(heights.len());
         let available: f32 = heights[p.row..end_row].iter().sum();
         if needed > available {
@@ -366,15 +383,35 @@ fn render_cells_starting_at(
         let total_w: f32 = trc.col_widths[p.col_start..p.col_end].iter().sum();
         let col_align = p.cell.align.unwrap_or(trc.table.columns[p.col_start].align);
         let cursor_x = row_area.x + trc.col_widths[..p.col_start].iter().sum::<f32>();
+        let padding = p.cell.padding.unwrap_or(cell_padding);
 
-        let inner_w = (total_w - 2.0 * cell_padding).max(0.0);
-        let content_h = (cell_h - 2.0 * cell_padding).max(0.0);
+        let cell_box = Rect {
+            x: cursor_x,
+            y: row_area.y,
+            width: total_w,
+            height: cell_h,
+        };
+        // A cell's own background/border paints over its *whole* box
+        // (not just the padded content area), and — precedence: cell
+        // beats row beats column — over whatever the row's zebra stripe
+        // already painted underneath it.
+        if p.cell.background.is_some() || p.cell.border.is_some() {
+            nodes.push(RenderNode::Rect {
+                area: cell_box,
+                background: p.cell.background,
+                border: p.cell.border,
+                corner_radius: 0.0,
+            });
+        }
+
+        let inner_w = (total_w - 2.0 * padding).max(0.0);
+        let content_h = (cell_h - 2.0 * padding).max(0.0);
         let cell_size = measure_at_width(trc.ctx, &p.cell.element, inner_w);
         let box_width = cell_size.width.min(inner_w).max(0.0);
         let x_offset = align_offset(col_align, inner_w, box_width);
         let cell_area = Rect {
-            x: cursor_x + cell_padding + x_offset,
-            y: row_area.y + cell_padding,
+            x: cursor_x + padding + x_offset,
+            y: row_area.y + padding,
             width: box_width,
             height: content_h,
         };
@@ -991,5 +1028,77 @@ mod tests {
         };
         let _ = Element::Table(table).layout(&c, area, &mut warnings, 1);
         assert!(warnings.iter().any(|w| w.kind == LayoutWarningKind::TableRowOverflow));
+    }
+
+    #[test]
+    fn cell_background_overrides_the_row_stripe() {
+        let stripe = Color::rgb(240, 240, 240);
+        let cell_bg = Color::rgb(255, 0, 0);
+        let table = Table::new()
+            .columns([TableColumn::fixed(30.0), TableColumn::fixed(30.0)])
+            .striped(stripe)
+            .rows(vec![
+                vec![cell("a"), cell("b")],
+                vec![TableCell::new("c").background(cell_bg), cell("d")], // striped row (index 1)
+            ]);
+        let c = ctx();
+        let mut warnings = Vec::new();
+        let area = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 60.0,
+            height: 400.0,
+        };
+        let LayoutResult::Fit(RenderNode::Group { children: blocks, .. }) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
+            panic!("expected Fit");
+        };
+        let RenderNode::Group {
+            background: row_bg,
+            children: cells,
+            ..
+        } = &blocks[1]
+        else {
+            panic!("expected row group");
+        };
+        // The row's own Group.background still carries the stripe...
+        assert_eq!(*row_bg, Some(stripe));
+        // ...but the styled cell paints its own Rect on top of it, with
+        // its own color, not the stripe's.
+        let has_cell_rect = cells
+            .iter()
+            .any(|n| matches!(n, RenderNode::Rect { background: Some(bg), .. } if *bg == cell_bg));
+        assert!(
+            has_cell_rect,
+            "expected a cell-level background Rect overriding the stripe, got: {cells:?}"
+        );
+    }
+
+    #[test]
+    fn cell_padding_overrides_the_table_default() {
+        let table = Table::new()
+            .columns([TableColumn::fixed(60.0)])
+            .cell_padding(4.0)
+            .rows(vec![vec![TableCell::new("x").padding(20.0)]]);
+        let c = ctx();
+        let mut warnings = Vec::new();
+        let area = Rect {
+            x: 0.0,
+            y: 0.0,
+            width: 60.0,
+            height: 400.0,
+        };
+        let LayoutResult::Fit(RenderNode::Group { children: blocks, .. }) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
+            panic!("expected Fit");
+        };
+        // Row height must reflect the cell's own (larger) padding, not
+        // the table's default 4.0 — content height (14.4pt line) + 2*20pt.
+        let RenderNode::Group { area: row_area, .. } = &blocks[0] else {
+            panic!("expected row group");
+        };
+        assert!(
+            row_area.height > 14.4 + 2.0 * 20.0 - EPS,
+            "expected the cell's own padding to grow the row, got height {}",
+            row_area.height
+        );
     }
 }

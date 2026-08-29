@@ -4,7 +4,7 @@
 //! no separate cell-content model.
 
 use crate::element::Element;
-use crate::style::{Align, Color, Common};
+use crate::style::{Align, Border, Color, Common};
 
 /// A column's width: `fixed(w)` reserves an exact width, `flex(weight)`
 /// shares the leftover space proportionally (taffy `flex-grow` analogy,
@@ -54,6 +54,13 @@ pub struct TableCell {
     /// "placeholder" cell type.
     pub rowspan: usize,
     pub align: Option<Align>,
+    /// Overrides the row's zebra stripe for this cell only (precedence:
+    /// cell beats row beats column — the same order `.align()` already
+    /// follows against `TableColumn::align`).
+    pub background: Option<Color>,
+    pub border: Option<Border>,
+    /// Overrides `Table::cell_padding` for this cell only.
+    pub padding: Option<f32>,
 }
 
 impl TableCell {
@@ -63,6 +70,9 @@ impl TableCell {
             colspan: 1,
             rowspan: 1,
             align: None,
+            background: None,
+            border: None,
+            padding: None,
         }
     }
 
@@ -78,6 +88,21 @@ impl TableCell {
 
     pub fn align(mut self, align: Align) -> Self {
         self.align = Some(align);
+        self
+    }
+
+    pub fn background(mut self, color: Color) -> Self {
+        self.background = Some(color);
+        self
+    }
+
+    pub fn border(mut self, border: Border) -> Self {
+        self.border = Some(border);
+        self
+    }
+
+    pub fn padding(mut self, padding: f32) -> Self {
+        self.padding = Some(padding);
         self
     }
 }
