@@ -82,7 +82,7 @@ jobs:
         run: cargo build --release --target wasm32-unknown-unknown -p lightweight-pdf --no-default-features --features wasm,wasm-size-probe,default-fonts,compress
       - name: Measure Generator config
         run: |
-          f=target/wasm32-unknown-unknown/release/lightweight-pdf.wasm
+          f=target/wasm32-unknown-unknown/release/lightweight_pdf.wasm
           wasm-opt -Oz --all-features "$f" -o /tmp/generator.opt.wasm
           gzip -9 -c /tmp/generator.opt.wasm > /tmp/generator.opt.wasm.gz
           echo "### Generator size" >> "$GITHUB_STEP_SUMMARY"
@@ -93,7 +93,7 @@ jobs:
         run: cargo build --release --target wasm32-unknown-unknown -p lightweight-pdf --no-default-features --features wasm,wasm-size-probe,default-fonts,png,compress
       - name: Measure Standard config
         run: |
-          f=target/wasm32-unknown-unknown/release/lightweight-pdf.wasm
+          f=target/wasm32-unknown-unknown/release/lightweight_pdf.wasm
           wasm-opt -Oz --all-features "$f" -o /tmp/standard.opt.wasm
           gzip -9 -c /tmp/standard.opt.wasm > /tmp/standard.opt.wasm.gz
           echo "### Standard size" >> "$GITHUB_STEP_SUMMARY"

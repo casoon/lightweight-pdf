@@ -104,7 +104,7 @@ fn build_png(bytes: &[u8]) -> Result<ImageXObject, ImageEmbedError> {
             let pixel_count = width.checked_mul(height).ok_or(ImageEmbedError::DecodeFailed)?;
             let mut rgb = Vec::with_capacity(pixel_count * 3);
             let mut alpha = Vec::with_capacity(pixel_count);
-            for px in pixels.chunks_exact(4) {
+            for px in pixels.as_chunks::<4>().0 {
                 rgb.extend_from_slice(&px[0..3]);
                 alpha.push(px[3]);
             }
