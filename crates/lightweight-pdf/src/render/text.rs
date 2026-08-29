@@ -37,6 +37,39 @@ pub(super) fn collect_chars_in_page(page: &PageRender, used: &mut HashMap<FontKe
     }
 }
 
+/// `Text::anchor(name)` targets, resolved to a concrete `(page_index, y)`
+/// once the whole document is laid out — needs the finished, already-paginated
+/// `RenderNode` tree (final page numbers, final positions), so this walks
+/// `paginated.pages` once *before* the per-page render loop in
+/// `render_document`, not during layout itself.
+fn collect_anchors_in_node(node: &RenderNode, page_index: usize, page_height: f32, anchors: &mut HashMap<String, (usize, f32)>) {
+    match node {
+        RenderNode::Group { children, .. } => {
+            for child in children {
+                collect_anchors_in_node(child, page_index, page_height, anchors);
+            }
+        }
+        RenderNode::TextLines {
+            anchor: Some(name), area, ..
+        } => {
+            // First occurrence wins: a reused anchor name is a caller bug
+            // either way, and "jump to the first one" degrades sanely.
+            anchors.entry(name.clone()).or_insert((page_index, page_height - area.y));
+        }
+        _ => {}
+    }
+}
+
+pub(super) fn collect_anchors_in_page(page: &PageRender, page_index: usize, page_height: f32, anchors: &mut HashMap<String, (usize, f32)>) {
+    if let Some(header) = &page.header {
+        collect_anchors_in_node(header, page_index, page_height, anchors);
+    }
+    collect_anchors_in_node(&page.body, page_index, page_height, anchors);
+    if let Some(footer) = &page.footer {
+        collect_anchors_in_node(footer, page_index, page_height, anchors);
+    }
+}
+
 /// A font actually embedded in the output: its PDF resource/font index,
 /// the character-to-CID mapping content streams encode text with (CID ==
 /// the subset's own glyph ID, `CIDToGIDMap /Identity`), and the per-GID
@@ -84,13 +117,32 @@ fn font_resource(embedded: &HashMap<FontKey, EmbeddedFont>, key: FontKey) -> Opt
 /// rule for `Align::Justify`).
 const MAX_JUSTIFY_GAP_MULTIPLIER: f32 = 3.0;
 
+/// `Text::url`/`Text::link_to`, resolved: at most one of the two ever
+/// produces an annotation, `url` taking priority when both are set (see
+/// `Text::link_to`'s doc comment in `lightweight-pdf-core`).
+pub(super) enum LinkTarget<'a> {
+    None,
+    Uri(&'a str),
+    Anchor(&'a str),
+}
+
+impl<'a> LinkTarget<'a> {
+    pub(super) fn from_text(url: Option<&'a str>, link_to: Option<&'a str>) -> Self {
+        match (url, link_to) {
+            (Some(uri), _) => LinkTarget::Uri(uri),
+            (None, Some(anchor)) => LinkTarget::Anchor(anchor),
+            (None, None) => LinkTarget::None,
+        }
+    }
+}
+
 pub(super) fn render_text_lines(
     area: &Rect,
     style: &TextStyle,
     lines: &[String],
     paragraph_end: &[bool],
     line_height_pt: f32,
-    url: Option<&str>,
+    target: LinkTarget,
     ctx: &mut RenderCtx,
 ) {
     let Some((font, resource)) = font_resource(ctx.embedded, style.font) else {
@@ -128,12 +180,24 @@ pub(super) fn render_text_lines(
             (x, x + line_width)
         };
 
-        if let Some(target_url) = url {
+        let action = match target {
+            LinkTarget::Uri(uri) => Some(lightweight_pdf_writer::PdfLinkAction::Uri(uri.to_string())),
+            // A dangling `link_to` (typo, anchor never registered) degrades
+            // to plain, non-clickable text rather than failing the render —
+            // consistent with `font_resource`'s "nothing usable, no-op"
+            // treatment above.
+            LinkTarget::Anchor(name) => ctx
+                .anchors
+                .get(name)
+                .map(|&(page_index, y)| lightweight_pdf_writer::PdfLinkAction::GoTo { page_index, y }),
+            LinkTarget::None => None,
+        };
+        if let Some(action) = action {
             let y0 = ctx.page_height - (line_top + line_height_pt);
             let y1 = ctx.page_height - line_top;
             ctx.annotations.push(lightweight_pdf_writer::PdfLinkAnnotation {
                 rect: (x0, y0, x1, y1),
-                uri: target_url.to_string(),
+                action,
             });
         }
     }

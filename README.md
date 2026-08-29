@@ -55,7 +55,9 @@ lightweight-pdf --example demo_invoice` etc.
   deterministic `/ID` (hashed from document content, never a random source)
   on every document.
 - Hyperlinks: `Text::url(...)` emits a PDF URI link annotation over the
-  rendered text.
+  rendered text; `Text::anchor(name)`/`.link_to(name)` do the same for
+  internal jumps (e.g. a table of contents entry to a heading elsewhere
+  in the document), resolved to a `/Dest` once pagination is final.
 - Automatic, page-count-stable pagination (two-pass) including
   header/footer bands, widow/orphan rule, and `keep_with_next`.
 - Tables that split across page boundaries (header repeats automatically)

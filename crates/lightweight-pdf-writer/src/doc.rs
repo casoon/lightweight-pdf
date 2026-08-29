@@ -74,9 +74,20 @@ pub struct ImageXObject {
 }
 
 #[derive(Clone, Debug)]
+pub enum PdfLinkAction {
+    /// `/A << /S /URI /URI (...) >>` — an external link.
+    Uri(String),
+    /// `/Dest [pageRef /XYZ null y null]` — an internal jump target.
+    /// `page_index` is resolved against the writer's own `page_refs`
+    /// (built before any page is written, so a forward reference to a
+    /// later page is fine) at write time, not by the caller.
+    GoTo { page_index: usize, y: f32 },
+}
+
+#[derive(Clone, Debug)]
 pub struct PdfLinkAnnotation {
     pub rect: (f32, f32, f32, f32),
-    pub uri: String,
+    pub action: PdfLinkAction,
 }
 
 #[derive(Default)]
@@ -296,15 +307,24 @@ impl PdfDocument {
             let mut annot_refs = Vec::new();
             for annot in &page.annotations {
                 let id = w.alloc();
+                let action = match &annot.action {
+                    PdfLinkAction::Uri(uri) => format!("/A << /S /URI /URI {} >>", format_pdf_string(uri)),
+                    PdfLinkAction::GoTo { page_index, y } => {
+                        // Falls back to this annotation's own page if
+                        // `page_index` is somehow out of range — a link to
+                        // itself is a harmless no-op, not a broken PDF.
+                        let target = page_refs.get(*page_index).copied().unwrap_or(page_ref);
+                        format!("/Dest [{} /XYZ null {} null]", target.write(), fmt_num(*y))
+                    }
+                };
                 w.object(
                     id,
                     &format!(
-                        "<< /Type /Annot /Subtype /Link /Rect [{x0} {y0} {x1} {y1}] /Border [0 0 0] /A << /S /URI /URI {uri} >> >>",
+                        "<< /Type /Annot /Subtype /Link /Rect [{x0} {y0} {x1} {y1}] /Border [0 0 0] {action} >>",
                         x0 = fmt_num(annot.rect.0),
                         y0 = fmt_num(annot.rect.1),
                         x1 = fmt_num(annot.rect.2),
                         y1 = fmt_num(annot.rect.3),
-                        uri = format_pdf_string(&annot.uri),
                     ),
                 );
                 annot_refs.push(id);
@@ -429,6 +449,32 @@ mod tests {
         assert!(text.contains("/Type /Page"));
         assert!(text.contains("/MediaBox [0 0 595 842]"));
         assert!(text.contains("%%EOF"));
+    }
+
+    #[test]
+    fn writes_a_goto_destination_for_an_internal_link_annotation() {
+        let mut doc = PdfDocument::new();
+        doc.add_page(PdfPage {
+            width: 595.0,
+            height: 842.0,
+            content: Vec::new(),
+            annotations: vec![PdfLinkAnnotation {
+                rect: (10.0, 20.0, 100.0, 40.0),
+                action: PdfLinkAction::GoTo { page_index: 1, y: 700.0 },
+            }],
+        });
+        doc.add_page(PdfPage {
+            width: 595.0,
+            height: 842.0,
+            content: Vec::new(),
+            annotations: Vec::new(),
+        });
+        let bytes = doc.write();
+        let text = String::from_utf8_lossy(&bytes);
+        assert!(text.contains("/Subtype /Link"));
+        assert!(text.contains("/Dest ["));
+        assert!(text.contains("/XYZ null 700 null"));
+        assert!(!text.contains("/S /URI"), "a GoTo annotation must not also emit a URI action");
     }
 
     #[test]

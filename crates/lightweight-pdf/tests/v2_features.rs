@@ -166,6 +166,65 @@ fn text_with_hyperlink_url_emits_link_annotation() {
     assert!(text.contains("/Annots"));
 }
 
+/// The object number referenced by the first `N 0 R` inside a
+/// `/Dest [...]` array.
+fn dest_object_number(text: &str) -> u32 {
+    let after = text.split("/Dest [").nth(1).expect("expected a /Dest array in the output");
+    after
+        .split(' ')
+        .next()
+        .and_then(|n| n.parse().ok())
+        .expect("expected an object number right after '/Dest ['")
+}
+
+#[test]
+fn link_to_jumps_to_a_different_page_than_a_same_page_anchor() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::symmetric(56.0, 56.0));
+    doc.add(Text::new("Sprung zum Anhang").link_to("appendix"));
+    doc.add(Text::new("Toter Link").link_to("nonexistent-anchor"));
+    // Enough filler content to force the anchor onto a later page.
+    for i in 0..120 {
+        doc.add(Text::new(format!("Fuelltext Zeile {i:03}")));
+    }
+    doc.add(Text::new("Anhang").anchor("appendix").heading1());
+
+    let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+    assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf check failed: {log}");
+
+    let page_count = support::page_count(&bytes).unwrap();
+    assert!(page_count > 1, "expected the filler content to force a page break");
+
+    let text = String::from_utf8_lossy(&bytes);
+    // Exactly one /Dest: the valid link_to resolved, the dangling one
+    // silently produced no annotation at all (degrades to plain text).
+    assert_eq!(
+        text.matches("/Dest [").count(),
+        1,
+        "expected exactly one resolved internal link, got:\n{text}"
+    );
+
+    // The destination is a real /Type /Page object, and not page 1 itself
+    // (the first entry of /Pages' /Kids) — i.e. it genuinely jumps forward
+    // to the page the anchor ended up on, not back to the link's own page.
+    let dest_obj = dest_object_number(&text);
+    let dest_obj_decl = format!("\n{dest_obj} 0 obj");
+    assert!(text.contains(&dest_obj_decl), "destination object {dest_obj} not found in output");
+    let dest_obj_body = text.split(&dest_obj_decl).nth(1).unwrap().split("endobj").next().unwrap();
+    assert!(
+        dest_obj_body.contains("/Type /Page"),
+        "destination object {dest_obj} is not a /Type /Page object: {dest_obj_body}"
+    );
+
+    let kids = text.split("/Kids [").nth(1).unwrap().split(']').next().unwrap();
+    let first_page_obj: u32 = kids.split(' ').next().unwrap().parse().unwrap();
+    assert_ne!(
+        dest_obj, first_page_obj,
+        "internal link must not point back at its own (first) page"
+    );
+}
+
 #[test]
 fn text_italic_and_bold_italic_methods_work() {
     let mut doc = Document::new(PageFormat::A4);

@@ -122,6 +122,15 @@ pub struct Text {
     pub content: String,
     pub style: TextStyle,
     pub url: Option<String>,
+    /// Registers this element as an internal jump target other `Text`
+    /// elements can point at via `.link_to(name)` — analogous to an HTML
+    /// `id`. Independent of `url`/`link_to`: an element can be a target,
+    /// a source, both, or neither.
+    pub anchor: Option<String>,
+    /// Internal counterpart to `url`: jumps to whatever element in this
+    /// document called `.anchor(name)` with the same name, instead of an
+    /// external URI. If both `url` and `link_to` are set, `url` wins.
+    pub link_to: Option<String>,
     pub common: Common,
 }
 
@@ -131,12 +140,24 @@ impl Text {
             content: content.into(),
             style: TextStyle::default(),
             url: None,
+            anchor: None,
+            link_to: None,
             common: Common::default(),
         }
     }
 
     pub fn url(mut self, url: impl Into<String>) -> Self {
         self.url = Some(url.into());
+        self
+    }
+
+    pub fn anchor(mut self, name: impl Into<String>) -> Self {
+        self.anchor = Some(name.into());
+        self
+    }
+
+    pub fn link_to(mut self, anchor: impl Into<String>) -> Self {
+        self.link_to = Some(anchor.into());
         self
     }
 

@@ -34,7 +34,27 @@ impl WrappedLines {
     }
 }
 
-fn text_lines_node(area: Rect, style: TextStyle, wrapped: WrappedLines, lh: f32, url: Option<String>) -> RenderNode {
+/// `Text`'s three link-related fields, bundled for the same reason as
+/// `WrappedLines`: one parameter through the split/overflow helpers
+/// instead of three, all cloned together at each `Text::layout` exit
+/// point.
+struct TextLinks {
+    url: Option<String>,
+    anchor: Option<String>,
+    link_to: Option<String>,
+}
+
+impl TextLinks {
+    fn from(text: &Text) -> Self {
+        TextLinks {
+            url: text.url.clone(),
+            anchor: text.anchor.clone(),
+            link_to: text.link_to.clone(),
+        }
+    }
+}
+
+fn text_lines_node(area: Rect, style: TextStyle, wrapped: WrappedLines, lh: f32, links: TextLinks) -> RenderNode {
     let height = wrapped.lines.len() as f32 * lh;
     RenderNode::clipped(
         area,
@@ -44,7 +64,9 @@ fn text_lines_node(area: Rect, style: TextStyle, wrapped: WrappedLines, lh: f32,
             lines: wrapped.lines,
             paragraph_end: wrapped.paragraph_end,
             line_height_pt: lh,
-            url,
+            url: links.url,
+            anchor: links.anchor,
+            link_to: links.link_to,
         },
     )
 }
@@ -75,7 +97,7 @@ impl Layoutable for Text {
             if total_height > area.height + EPS {
                 push_warning(warnings, LayoutWarningKind::TextClipped, page, text_clipped_hint(&self.content));
             }
-            return LayoutResult::Fit(text_lines_node(area, self.style, wrapped, lh, self.url.clone()));
+            return LayoutResult::Fit(text_lines_node(area, self.style, wrapped, lh, TextLinks::from(self)));
         }
 
         // An explicit, fixed `.height(...)` means this box's overflow is
@@ -122,7 +144,7 @@ impl Layoutable for Text {
                 paragraph_end: current_paragraph_end.to_vec(),
             },
             lh,
-            self.url.clone(),
+            TextLinks::from(self),
         );
         let remainder_text = remainder_lines.join(" ");
         let mut remainder = self.clone();
@@ -150,7 +172,7 @@ fn layout_text_fixed_overflow(
 ) -> RenderNode {
     let max_lines = max_lines_fitting(area.height, lh, wrapped.len());
     if max_lines >= wrapped.len() {
-        return text_lines_node(area, text.style, wrapped, lh, text.url.clone());
+        return text_lines_node(area, text.style, wrapped, lh, TextLinks::from(text));
     }
     push_warning(warnings, LayoutWarningKind::TextClipped, page, text_clipped_hint(&text.content));
     let take = if text.common.overflow == Overflow::Ellipsis {
@@ -178,7 +200,7 @@ fn layout_text_fixed_overflow(
             paragraph_end: kept_paragraph_end,
         },
         lh,
-        text.url.clone(),
+        TextLinks::from(text),
     )
 }
 

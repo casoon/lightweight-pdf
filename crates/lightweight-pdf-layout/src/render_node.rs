@@ -20,6 +20,8 @@ pub enum RenderNode {
         paragraph_end: Vec<bool>,
         line_height_pt: f32,
         url: Option<String>,
+        anchor: Option<String>,
+        link_to: Option<String>,
     },
     Rect {
         area: Rect,

@@ -76,16 +76,27 @@ fn pdf_rect_y(page_height: f32, y_top: f32, height: f32) -> f32 {
 
 /// Shared state every `render_*` helper in `tree`/`text` needs: the
 /// page-space-to-PDF-space conversion input, the fonts embedded for this
-/// page, and the two sinks (`pdf` for images/font resources, `cb` for
-/// content-stream ops) content actually gets written to. Bundled into one
-/// `&mut` so per-variant helpers stay under clippy's argument-count limit
-/// without losing any of them.
+/// page, the resolved `Text::anchor` targets for internal links, and the
+/// two sinks (`pdf` for images/font resources, `cb` for content-stream
+/// ops) content actually gets written to. Bundled into one `&mut` so
+/// per-variant helpers stay under clippy's argument-count limit without
+/// losing any of them.
 struct RenderCtx<'a> {
     page_height: f32,
     embedded: &'a HashMap<FontKey, EmbeddedFont>,
+    anchors: &'a HashMap<String, (usize, f32)>,
     pdf: &'a mut PdfDocument,
     cb: &'a mut ContentBuilder,
     annotations: &'a mut Vec<lightweight_pdf_writer::PdfLinkAnnotation>,
+}
+
+/// The two whole-document, read-only lookups every page's render pass
+/// needs — bundled into one parameter (alongside `pdf`, which stays
+/// separate since it's `&mut`) so `render_page` doesn't grow past
+/// clippy's argument-count limit.
+struct DocumentLookups<'a> {
+    embedded: &'a HashMap<FontKey, EmbeddedFont>,
+    anchors: &'a HashMap<String, (usize, f32)>,
 }
 
 /// Renders one page's header/watermark/body/footer into a fresh content
@@ -96,7 +107,7 @@ fn render_page(
     body_area: Rect,
     page_width: f32,
     page_height: f32,
-    embedded: &HashMap<FontKey, EmbeddedFont>,
+    lookups: &DocumentLookups,
     pdf: &mut PdfDocument,
 ) -> Result<PdfPage, RenderError> {
     let mut cb = ContentBuilder::new();
@@ -107,11 +118,12 @@ fn render_page(
     // normal content always draws on top of it afterwards, which is
     // what guarantees it never makes text unreadable.
     if let Some(watermark) = watermark {
-        text::draw_watermark(watermark, body_area, page_height, embedded, &mut cb);
+        text::draw_watermark(watermark, body_area, page_height, lookups.embedded, &mut cb);
     }
     let mut ctx = RenderCtx {
         page_height,
-        embedded,
+        embedded: lookups.embedded,
+        anchors: lookups.anchors,
         pdf,
         cb: &mut cb,
         annotations: &mut annotations,
@@ -144,6 +156,15 @@ fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec
         used_chars.entry(watermark.font).or_default().extend(watermark.text.chars());
     }
 
+    // `Text::anchor` targets need their final page/position, which only
+    // exists once the whole document is paginated — resolved here, once,
+    // before the per-page render loop below (which needs it to turn
+    // `Text::link_to` into a `/Dest`).
+    let mut anchors: HashMap<String, (usize, f32)> = HashMap::new();
+    for (page_index, page) in paginated.pages.iter().enumerate() {
+        text::collect_anchors_in_page(page, page_index, paginated.page_height, &mut anchors);
+    }
+
     let mut pdf = PdfDocument::new();
     pdf.metadata.title = doc.metadata.title.clone();
     pdf.metadata.author = doc.metadata.author.clone();
@@ -154,6 +175,10 @@ fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec
     pdf.metadata.mod_date = doc.metadata.mod_date.map(|d| d.to_pdf_string());
 
     let embedded = text::embed_fonts(&mut pdf, fonts, &used_chars)?;
+    let lookups = DocumentLookups {
+        embedded: &embedded,
+        anchors: &anchors,
+    };
 
     for page in &paginated.pages {
         let pdf_page = render_page(
@@ -162,7 +187,7 @@ fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec
             paginated.body_area,
             paginated.page_width,
             paginated.page_height,
-            &embedded,
+            &lookups,
             &mut pdf,
         )?;
         pdf.add_page(pdf_page);
