@@ -3,6 +3,10 @@
 //! and an optional watermark. (Phase 6 DoD, `plan/phases/phase-6-business-
 //! polish.md`.)
 //!
+//! Also demonstrates `Document::theme(..)` (issue #16): headings get a
+//! brand color and the cover subtitle uses `.muted()` — set once, here,
+//! instead of a `.color(..)` call on every heading this document adds.
+//!
 //! Run: `cargo run -p lightweight-pdf --example report`
 
 use lightweight_pdf::*;
@@ -10,9 +14,35 @@ use lightweight_pdf::*;
 #[path = "common/mod.rs"]
 mod common;
 
+/// A brand-colored variant of the default theme — only `heading1`/
+/// `heading2`/`heading3` differ from `Theme::default()`, so every
+/// `.heading1()`/`.heading2()`/`.heading3()` in this document picks up
+/// the accent color automatically; nothing else about them (size, bold,
+/// `keep_with_next`, outline level) changes.
+fn brand_theme() -> Theme {
+    let accent = Color::rgb(0x1a, 0x3c, 0x6e);
+    let defaults = Theme::default();
+    Theme {
+        heading1: TextStyle {
+            color: accent,
+            ..defaults.heading1
+        },
+        heading2: TextStyle {
+            color: accent,
+            ..defaults.heading2
+        },
+        heading3: TextStyle {
+            color: accent,
+            ..defaults.heading3
+        },
+        ..defaults
+    }
+}
+
 fn main() {
     let mut doc = Document::new(PageFormat::A4)
         .margin(Margin::symmetric(56.0, 56.0))
+        .theme(brand_theme())
         .header(Header::new(20.0, |_ctx| {
             Text::new("Jahresbericht 2026 \u{2014} Muster GmbH").size(9.0).into()
         }))
@@ -30,7 +60,7 @@ fn main() {
     doc.add(Text::new("Jahresbericht 2026").heading1().align(Align::Center));
     doc.add(Spacer::new(8.0));
     doc.add(Text::new("Muster GmbH").align(Align::Center));
-    doc.add(Text::new("vorgelegt am 20. August 2026").align(Align::Center));
+    doc.add(Text::new("vorgelegt am 20. August 2026").muted().align(Align::Center));
     doc.add(Element::PageBreak);
 
     // --- content ---------------------------------------------------------

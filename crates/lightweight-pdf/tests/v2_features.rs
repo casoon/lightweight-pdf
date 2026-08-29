@@ -440,3 +440,35 @@ fn justify_never_stretches_a_single_line_paragraph() {
     // Align::Start.
     assert_eq!(count_tj_ops(&bytes), 1);
 }
+
+#[test]
+fn document_theme_resolves_untouched_text_but_not_explicitly_styled_text() {
+    let mut theme = Theme::default();
+    theme.body.size = 30.0;
+    theme.heading1.size = 60.0;
+
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::all(40.0)).theme(theme);
+    doc.add(Text::new("Themed body text")); // untouched -> Theme::body
+    doc.add(Text::new("Explicit size").size(11.0)); // explicit -> theme must not touch this
+    doc.add(Text::new("Themed heading").heading1()); // preset -> Theme::heading1
+
+    let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+    assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf check failed: {log}");
+
+    let decompressed = support::decompressed(&bytes).unwrap();
+    let content = String::from_utf8_lossy(&decompressed);
+    assert!(
+        content.contains(" 30 Tf"),
+        "expected theme.body's size (30) in a Tf operator, got:\n{content}"
+    );
+    assert!(
+        content.contains(" 11 Tf"),
+        "expected the explicit .size(11.0) to survive theming, got:\n{content}"
+    );
+    assert!(
+        content.contains(" 60 Tf"),
+        "expected theme.heading1's size (60) for .heading1(), got:\n{content}"
+    );
+}

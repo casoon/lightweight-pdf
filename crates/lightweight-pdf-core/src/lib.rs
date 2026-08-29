@@ -9,6 +9,7 @@ mod image;
 mod list;
 mod style;
 mod table;
+mod theme;
 mod watermark;
 
 pub use currency::*;
@@ -18,6 +19,7 @@ pub use image::*;
 pub use list::*;
 pub use style::*;
 pub use table::*;
+pub use theme::{Theme, ThemeRole};
 pub use watermark::*;
 
 #[cfg(test)]

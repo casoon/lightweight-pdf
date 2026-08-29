@@ -5,6 +5,7 @@ use crate::image::Image;
 use crate::list::List;
 use crate::style::{Align, Border, Color, Common, FontKey, Overflow, TextStyle};
 use crate::table::Table;
+use crate::theme::ThemeRole;
 
 /// One element in the document tree. Enum-based (not `Box<dyn Layoutable>`)
 /// — a closed, small set of primitives.
@@ -136,6 +137,15 @@ pub struct Text {
     /// the PDF bookmark sidebar without being an actual heading preset.
     /// `None` (the default for plain `Text`) means "not a bookmark".
     pub outline_level: Option<u8>,
+    /// Theme eligibility (`Document::theme(..)`, ADR/issue #16): `Some`
+    /// means "resolve this element's style from the theme's matching role
+    /// the next time it's added to a themed `Document`." `Text::new()`
+    /// defaults this to `Some(ThemeRole::Body)`; every style-mutating
+    /// method below (`.size()`, `.bold()`, `.color()`, ...) clears it back
+    /// to `None` since the caller has taken over styling by hand. The
+    /// `.heading1()`/`.heading2()`/`.heading3()`/`.caption()`/`.muted()`/
+    /// `.table_header()` presets re-set a specific role afterwards.
+    pub role: Option<ThemeRole>,
     pub common: Common,
 }
 
@@ -148,6 +158,7 @@ impl Text {
             anchor: None,
             link_to: None,
             outline_level: None,
+            role: Some(ThemeRole::Body),
             common: Common::default(),
         }
     }
@@ -172,36 +183,56 @@ impl Text {
         self
     }
 
+    /// Opts a `Text` into theme resolution under `role` without going
+    /// through one of the named presets — e.g. a custom role-like use
+    /// that isn't `.heading1()`/`.caption()`/etc.
+    pub fn role(mut self, role: ThemeRole) -> Self {
+        self.role = Some(role);
+        self
+    }
+
     pub fn size(mut self, size: f32) -> Self {
         self.style.size = size;
+        self.role = None;
         self
     }
 
     pub fn bold(mut self) -> Self {
         self.style.font = FontKey::SANS_BOLD;
+        self.role = None;
         self
     }
 
     pub fn italic(mut self) -> Self {
         self.style.font = FontKey::SANS_ITALIC;
+        self.role = None;
         self
     }
 
     pub fn bold_italic(mut self) -> Self {
         self.style.font = FontKey::SANS_BOLD_ITALIC;
+        self.role = None;
         self
     }
 
     pub fn font(mut self, font: FontKey) -> Self {
         self.style.font = font;
+        self.role = None;
         self
     }
 
     pub fn color(mut self, color: Color) -> Self {
         self.style.color = color;
+        self.role = None;
         self
     }
 
+    /// Unlike the other style setters, `.align()` does *not* clear
+    /// `role`: alignment is a positioning choice independent of which
+    /// named style a `Text` resolves from (`.heading1().align(Center)`
+    /// should stay theme-eligible as a heading, just centered) — see
+    /// `theme::apply_theme`, which resolves every role field except
+    /// `align` and always leaves whatever `.align()` set alone.
     pub fn align(mut self, align: Align) -> Self {
         self.style.align = align;
         self
@@ -209,6 +240,7 @@ impl Text {
 
     pub fn line_height(mut self, line_height: f32) -> Self {
         self.style.line_height = line_height;
+        self.role = None;
         self
     }
 
@@ -221,15 +253,35 @@ impl Text {
     /// heading hierarchy without a separate API (`.outline_level(n)`
     /// overrides this for the rare case the derivation doesn't fit).
     pub fn heading1(self) -> Self {
-        self.size(24.0).bold().keep_with_next().outline_level(1)
+        self.size(24.0).bold().keep_with_next().outline_level(1).role(ThemeRole::Heading1)
     }
 
     pub fn heading2(self) -> Self {
-        self.size(18.0).bold().keep_with_next().outline_level(2)
+        self.size(18.0).bold().keep_with_next().outline_level(2).role(ThemeRole::Heading2)
     }
 
     pub fn heading3(self) -> Self {
-        self.size(14.0).bold().keep_with_next().outline_level(3)
+        self.size(14.0).bold().keep_with_next().outline_level(3).role(ThemeRole::Heading3)
+    }
+
+    /// `Theme::caption` preset — a smaller, muted-gray label (e.g. under
+    /// an image, or a secondary line under a heading).
+    pub fn caption(self) -> Self {
+        self.size(9.0).color(Color::rgb(0x66, 0x66, 0x66)).role(ThemeRole::Caption)
+    }
+
+    /// `Theme::muted` preset — body-sized text in the same muted gray as
+    /// `.caption()`, for de-emphasized inline text rather than a label.
+    pub fn muted(self) -> Self {
+        self.color(Color::rgb(0x66, 0x66, 0x66)).role(ThemeRole::Muted)
+    }
+
+    /// `Theme::table_header` preset. `Table::header([...])` cells built
+    /// from plain strings pick this role up automatically (see
+    /// `theme::apply_theme`); use this directly for a `Text` header cell
+    /// built by hand, or for header-like text outside a `Table`.
+    pub fn table_header(self) -> Self {
+        self.bold().role(ThemeRole::TableHeader)
     }
 
     common_builder_methods!();

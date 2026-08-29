@@ -162,6 +162,10 @@ pub struct Document {
     pub footer_visible_from: usize,
     pub watermark: Option<crate::watermark::Watermark>,
     pub metadata: DocumentMetadata,
+    /// `None` (the default) means every element renders exactly as it
+    /// always did — `Document::theme(..)` opts in per-document, resolved
+    /// once per element as it's `.add()`-ed (see `theme::apply_theme`).
+    pub theme: Option<crate::theme::Theme>,
     pub children: Vec<Element>,
 }
 
@@ -177,8 +181,14 @@ impl Document {
             footer_visible_from: 1,
             watermark: None,
             metadata: DocumentMetadata::default(),
+            theme: None,
             children: Vec::new(),
         }
+    }
+
+    pub fn theme(mut self, theme: crate::theme::Theme) -> Self {
+        self.theme = Some(theme);
+        self
     }
 
     /// Effective page dimensions (width, height) in PDF points, accounting for orientation.
@@ -276,7 +286,11 @@ impl Document {
     }
 
     pub fn add(&mut self, element: impl Into<Element>) -> &mut Self {
-        self.children.push(element.into());
+        let mut element = element.into();
+        if let Some(theme) = &self.theme {
+            crate::theme::apply_theme(&mut element, theme);
+        }
+        self.children.push(element);
         self
     }
 }

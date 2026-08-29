@@ -67,6 +67,15 @@ lightweight-pdf --example demo_invoice` etc.
 - Content streams, embedded font programs, and raw image samples are
   `/FlateDecode`-compressed by default (`compress` feature, on unless
   explicitly disabled) — typically 40-60% smaller output.
+- `Document::theme(Theme { .. })`: named style roles (`body`, `caption`,
+  `heading1`/`2`/`3`, `table_header`, `muted`) resolved once, when an
+  element is added — no cascade. `Text::new()` and the `.heading1()`/`.heading2()`/
+  `.heading3()`/`.caption()`/`.muted()`/`.table_header()` presets are
+  theme-eligible until any other style call (`.size()`, `.color()`, ...)
+  opts them back out; `.align()` is independent of theming either way.
+  Table header cells built from plain strings (`Table::header(["A", ...])`)
+  pick up `table_header` automatically. No `.theme(..)` call means
+  unchanged output.
 - Automatic, page-count-stable pagination (two-pass) including
   header/footer bands, widow/orphan rule, and `keep_with_next`.
 - Tables that split across page boundaries (header repeats automatically)
