@@ -83,7 +83,6 @@ fn record_parent(parent_tree: &mut ParentTree, page_index: usize, mcid: u32, ele
     row[mcid] = Some(elem_ref);
 }
 
-#[allow(clippy::only_used_in_recursion)]
 fn write_struct_elem(
     w: &mut PdfWriter,
     node: &PdfStructNode,

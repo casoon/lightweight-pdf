@@ -60,6 +60,12 @@ pub enum RenderError {
     /// the `tagged-pdf` feature (issue #27) — same reasoning as
     /// `PdfAFeatureDisabled`.
     TaggedPdfFeatureDisabled,
+    /// `render_with_fonts`/`render_with_fonts_and_diagnostics` were called
+    /// with a `FontRegistry` nothing was ever registered on — layout has
+    /// no error channel of its own (every width/wrap lookup just falls
+    /// back to whatever `FontRegistry::entry` finds), so this is checked
+    /// up front instead of surfacing as a panic once layout starts.
+    NoFontsRegistered,
 }
 
 impl core::fmt::Display for RenderError {
@@ -84,6 +90,12 @@ impl core::fmt::Display for RenderError {
                 write!(
                     f,
                     "Document::pdf_ua() was set but this crate wasn't built with the `tagged-pdf` feature"
+                )
+            }
+            RenderError::NoFontsRegistered => {
+                write!(
+                    f,
+                    "FontRegistry has no fonts registered — call register()/register_named() (or with_defaults()/with_fonts()) first"
                 )
             }
         }
@@ -247,6 +259,9 @@ fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec
     #[cfg(not(feature = "tagged-pdf"))]
     if doc.pdf_ua {
         return Err(RenderError::TaggedPdfFeatureDisabled);
+    }
+    if fonts.is_empty() {
+        return Err(RenderError::NoFontsRegistered);
     }
 
     let ctx = LayoutCtx::new(fonts);

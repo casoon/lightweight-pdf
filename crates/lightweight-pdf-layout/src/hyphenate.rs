@@ -50,6 +50,10 @@ pub fn auto_hyphenate(text: &str, lang: HyphenationLanguage) -> String {
     let dict = dictionary_for(lang);
     let mut out = String::with_capacity(text.len());
     let mut word_start = None;
+    // `start` and `i` below are always char-boundary offsets into this same
+    // `text` (`char_indices()`'s own contract), so `&text[start..i]` /
+    // `&text[start..]` can never panic on a non-boundary or out-of-range
+    // index.
     for (i, ch) in text.char_indices() {
         if ch.is_whitespace() {
             if let Some(start) = word_start.take() {

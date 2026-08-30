@@ -3,6 +3,8 @@
 *.wasm
 !assets/**/*.wasm
 .DS_Store
+# cargo-judge output — regenerated on demand, never meant to be committed.
+/.judge/
 # Output of `cargo run --example invoice`/`report` — written to the repo
 # root, never meant to be committed. examples/demo_*.pdf are tracked on
 # purpose (checked-in sample output).

@@ -513,10 +513,10 @@ fn render_block(
             width: inner.width,
             height: row_h,
         };
-        // Each visual row gets its own `TableRow` tag (issue #27) even
+        // Each visual row gets its own `TableRow` tag (issue #27), even
         // though a `rowspan` cell's content lives in an earlier row's
-        // node — this loop already has per-row granularity, so getting
-        // one `/TR` per row here is no extra work.
+        // node: the per-row granularity needed for one `/TR` per row is
+        // already present in this loop's structure.
         let mut row_children = Vec::new();
         if let Some(bg) = row_backgrounds[row_idx] {
             row_children.push(RenderNode::Rect {
@@ -1114,6 +1114,8 @@ mod tests {
             width: 60.0,
             height: 400.0,
         };
+        // Only the `warnings` out-parameter matters for this test; the
+        // layout result itself is exercised elsewhere.
         let _ = Element::Table(table).layout(&c, area, &mut warnings, 1);
         assert!(warnings.iter().any(|w| w.kind == LayoutWarningKind::TableRowOverflow));
     }

@@ -137,6 +137,19 @@ impl FontRegistry {
         self.fonts.iter().map(|(&k, v)| (k, v)).collect()
     }
 
+    /// `true` if nothing was ever registered — checked by
+    /// `render::render_document` before layout starts, so an empty
+    /// registry becomes `RenderError::NoFontsRegistered` instead of
+    /// `entry()`'s fallback panicking with nothing to fall back to.
+    pub fn is_empty(&self) -> bool {
+        self.fonts.is_empty()
+    }
+
+    /// Panics if `self` is empty. Safe everywhere it's actually called
+    /// (every width/wrap calculation during layout, via `FontResolver`
+    /// below) because `render::render_document` rejects an empty
+    /// registry up front with `RenderError::NoFontsRegistered`, before
+    /// layout — the only caller of `entry()` — ever runs.
     pub fn entry(&self, key: FontKey) -> &RegisteredFont {
         self.fonts
             .get(&key)

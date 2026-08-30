@@ -48,6 +48,9 @@ fn fonts_lists_the_bundled_default_weights() {
 #[test]
 fn render_from_template_and_data_produces_a_pdf_and_exits_zero() {
     let out_path = std::env::temp_dir().join("lwpdf-cli-test-render.pdf");
+    // Best-effort: clear a leftover file from a previous failed run. Not an
+    // error if there's nothing to remove — the assertions below are what
+    // actually verify this test's outcome, not this cleanup.
     let _ = std::fs::remove_file(&out_path);
 
     let output = lwpdf()
@@ -67,6 +70,8 @@ fn render_from_template_and_data_produces_a_pdf_and_exits_zero() {
     assert!(out_path.exists(), "expected {out_path:?} to be written");
     let bytes = std::fs::read(&out_path).unwrap();
     assert!(bytes.starts_with(b"%PDF-"), "expected a PDF file");
+    // Best-effort cleanup — this test's assertions already ran; a failure
+    // to remove the temp file isn't this test's concern.
     std::fs::remove_file(&out_path).ok();
 }
 
@@ -108,5 +113,6 @@ fn render_error_exits_with_code_one() {
         .expect("lwpdf render should run");
 
     assert_eq!(output.status.code(), Some(1), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    // Best-effort cleanup — this test's assertion already ran.
     std::fs::remove_file(&template_path).ok();
 }

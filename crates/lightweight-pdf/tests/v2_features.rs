@@ -80,9 +80,10 @@ fn document_id_is_deterministic_across_identical_renders() {
         doc.add(Text::new("Same content, same /ID"));
         doc.render().expect("render should succeed")
     };
+    let first = build();
+    let second = build();
     assert_eq!(
-        build(),
-        build(),
+        first, second,
         "two renders of the same Document must be byte-identical, including /ID"
     );
 }
@@ -100,9 +101,10 @@ fn rendering_is_deterministic_with_multiple_font_weights() {
         doc.add(Text::new("Bold text").bold());
         doc.render().expect("render should succeed")
     };
+    let first = build();
+    let second = build();
     assert_eq!(
-        build(),
-        build(),
+        first, second,
         "two renders of the same multi-font-weight Document must be byte-identical"
     );
 }
@@ -380,6 +382,21 @@ fn italic_with_nothing_registered_under_the_key_is_a_typed_error_not_a_silent_fa
     assert!(
         matches!(err, RenderError::MissingFont(key) if key == FontKey::SANS_ITALIC),
         "expected RenderError::MissingFont(SANS_ITALIC), got: {err:?}"
+    );
+}
+
+#[test]
+fn rendering_with_an_empty_font_registry_is_a_typed_error_not_a_panic() {
+    let fonts = FontRegistry::empty();
+    let mut doc = Document::new(PageFormat::A4);
+    doc.add(Text::new("Hello"));
+
+    let err = doc
+        .render_with_fonts(&fonts)
+        .expect_err("nothing registered — render must not panic inside layout");
+    assert!(
+        matches!(err, RenderError::NoFontsRegistered),
+        "expected RenderError::NoFontsRegistered, got: {err:?}"
     );
 }
 

@@ -114,6 +114,9 @@ pub fn check_snapshot(snapshot_dir: &Path, name: &str, pdf_bytes: &[u8], dpi: u3
         // a page-count shrink doesn't leave a stale reference behind.
         let mut stale = rendered_pages.len() + 1;
         while reference_path(snapshot_dir, name, stale).exists() {
+            // Best-effort: `.exists()` above already confirmed there's
+            // something to remove; a failure here just leaves the stale
+            // file for next time, it doesn't affect this run's snapshots.
             std::fs::remove_file(reference_path(snapshot_dir, name, stale)).ok();
             stale += 1;
         }
@@ -179,6 +182,9 @@ fn rasterize(pdf_bytes: &[u8], dpi: u32) -> Result<Vec<Vec<u8>>, SnapshotError> 
         .output()
         .map_err(|e| SnapshotError::Rasterize(format!("run pdftoppm: {e}")))?;
     if !output.status.success() {
+        // Best-effort cleanup of the temp dir before returning the real
+        // error below — a failure to remove it doesn't change the outcome
+        // of this rasterize call.
         std::fs::remove_dir_all(&dir).ok();
         return Err(SnapshotError::Rasterize(format!(
             "pdftoppm failed:\n{}{}",
@@ -195,6 +201,8 @@ fn rasterize(pdf_bytes: &[u8], dpi: u32) -> Result<Vec<Vec<u8>>, SnapshotError> 
         pages.push(bytes);
         page += 1;
     }
+    // Best-effort cleanup — the PNG bytes are already read into `pages`
+    // above, so a failure to remove the temp dir doesn't affect the result.
     std::fs::remove_dir_all(&dir).ok();
     Ok(pages)
 }
@@ -311,6 +319,9 @@ mod tests {
     #[test]
     fn snapshot_lifecycle() {
         let dir = std::env::temp_dir().join(format!("lightweight-pdf-testing-test-{}", std::process::id()));
+        // Best-effort: clear a leftover dir from a previous failed run;
+        // `create_dir_all` inside `check_snapshot` below is what actually
+        // needs to succeed.
         std::fs::remove_dir_all(&dir).ok();
         let pdf = tiny_pdf();
 
@@ -335,6 +346,7 @@ mod tests {
         };
         assert!(diff_path.exists(), "expected a diff image at {}", diff_path.display());
 
+        // Best-effort cleanup — this test's assertions already ran.
         std::fs::remove_dir_all(&dir).ok();
     }
 }
