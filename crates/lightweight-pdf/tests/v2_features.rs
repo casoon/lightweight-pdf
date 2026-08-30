@@ -88,6 +88,26 @@ fn document_id_is_deterministic_across_identical_renders() {
 }
 
 #[test]
+fn rendering_is_deterministic_with_multiple_font_weights() {
+    // Regression test: embedding more than one font weight used to embed
+    // them in `HashMap` iteration order (a fresh random seed every
+    // `HashMap::new()`, even within one process), so object numbers — and
+    // therefore the whole rendered byte stream — could differ between two
+    // structurally-identical documents purely by chance.
+    let build = || {
+        let mut doc = Document::new(PageFormat::A4).title("Determinism Check");
+        doc.add(Text::new("Regular text"));
+        doc.add(Text::new("Bold text").bold());
+        doc.render().expect("render should succeed")
+    };
+    assert_eq!(
+        build(),
+        build(),
+        "two renders of the same multi-font-weight Document must be byte-identical"
+    );
+}
+
+#[test]
 fn table_cell_with_colspan_and_alignment() {
     let mut doc = Document::new(PageFormat::A4).margin(Margin::all(30.0));
     doc.add(

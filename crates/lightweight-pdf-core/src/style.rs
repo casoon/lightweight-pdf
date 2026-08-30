@@ -11,7 +11,7 @@
 /// ever seen in a document, acceptable for "parse a document, render it,
 /// done" but not for a long-running process parsing unbounded distinct
 /// names in a hot loop.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub struct FontKey(pub &'static str);
 
 impl FontKey {

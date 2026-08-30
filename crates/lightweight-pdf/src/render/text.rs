@@ -478,7 +478,17 @@ pub(super) fn embed_fonts(
     used_chars: &HashMap<FontKey, BTreeSet<char>>,
 ) -> Result<HashMap<FontKey, EmbeddedFont>, RenderError> {
     let mut embedded: HashMap<FontKey, EmbeddedFont> = HashMap::new();
-    for (&key, chars) in used_chars {
+    // Deterministic order: `used_chars` is a `HashMap`, whose iteration
+    // order varies per instance (a fresh random seed every `HashMap::new()`,
+    // even within one process) — iterating it directly would make font
+    // embedding order, and therefore every PDF object number from here on,
+    // pick a different order per render call despite identical content.
+    // Two structurally-identical documents (or the same document rendered
+    // twice) must still produce byte-identical output.
+    let mut keys: Vec<FontKey> = used_chars.keys().copied().collect();
+    keys.sort_by_key(|k| k.0);
+    for key in keys {
+        let chars = &used_chars[&key];
         if chars.is_empty() {
             continue;
         }
