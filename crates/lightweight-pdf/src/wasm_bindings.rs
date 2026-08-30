@@ -39,6 +39,7 @@ impl From<&LayoutWarning> for WasmWarning {
             LayoutWarningKind::HeaderFooterOverflow => "header_footer_overflow",
             LayoutWarningKind::MissingGlyph { .. } => "missing_glyph",
             LayoutWarningKind::TableRowOverflow => "table_row_overflow",
+            LayoutWarningKind::MissingAltText => "missing_alt_text",
         };
         WasmWarning {
             page: w.page,
