@@ -41,6 +41,26 @@ English-language sample documents (invoice, quote, credentials hand-off,
 concept, API documentation, audit report, and a custom-font demo) — run with `cargo run -p
 lightweight-pdf --example demo_invoice` etc.
 
+## CLI (`lwpdf`)
+
+No Rust code needed: `cargo install --path crates/lightweight-pdf-cli`
+(or, once published, `cargo install lightweight-pdf-cli`) installs a
+`lwpdf` binary that renders the JSON document/template format above.
+
+```sh
+lwpdf render examples/invoice-template.json --data examples/invoice-data.json -o invoice.pdf
+lwpdf validate examples/invoice-template.json --data examples/invoice-data.json  # parse only, no PDF
+lwpdf fonts                                                                       # list default font weights
+```
+
+Diagnostics (layout warnings, parse errors) go to stderr. Exit codes: `0`
+success, `1` the input was valid but rendering itself failed (e.g. a
+missing font weight), `2` an input problem (missing file, malformed
+JSON, an unresolved template placeholder). `--allow-missing` on
+`render`/`validate` resolves a missing placeholder to an empty string
+instead of failing (see `MissingPlaceholder` above). Own crate
+(`lightweight-pdf-cli`) so the library itself never depends on `clap`.
+
 ## Features
 
 - Layout primitives: `Text`, `Column`, `Row`, `Table`, `List`, `Image`,

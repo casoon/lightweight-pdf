@@ -1,0 +1,15 @@
+[package]
+name = "lightweight-pdf-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Command-line renderer for lightweight-pdf: JSON document/template + data in, PDF out — no Rust code needed"
+
+[[bin]]
+name = "lwpdf"
+path = "src/main.rs"
+
+[dependencies]
+lightweight-pdf = { path = "../lightweight-pdf", version = "0.2.1", features = ["serde"] }
+clap = { version = "4", features = ["derive"] }
