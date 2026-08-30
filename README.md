@@ -41,6 +41,31 @@ English-language sample documents (invoice, quote, credentials hand-off,
 concept, API documentation, audit report, and a custom-font demo) — run with `cargo run -p
 lightweight-pdf --example demo_invoice` etc.
 
+## Comparison
+
+Checked directly against each project's own README/crates.io page in
+August 2026 (not from memory) — dates and version numbers below are as
+of then. Numbers not published anywhere are marked "not measured/published"
+rather than guessed.
+
+| | Layout & pagination | WASM | Wasm/binary size | Dependencies | Fonts/subsetting | Images | License | Maintenance |
+|---|---|---|---|---|---|---|---|---|
+| **lightweight-pdf** (this project) | Own layout primitives + automatic, page-count-stable pagination (two-pass) | First-class target, CI-tested | ~1.2 MiB / ~590 KiB gzip (`wasm` + `default-fonts` + `compress`, [measured](examples/worker/README.md)) | 1 required (`skrifa`); no `image`/GUI/shaping stack | Own TrueType subsetter, only used glyphs embedded | JPEG passthrough, PNG decode+re-embed (feature-gated) | MIT | Active (this repo) |
+| [printpdf](https://github.com/fschutt/printpdf) | Added a basic layout system (incl. automatic page-breaking) on top of a lower-level API | Yes, documented, with a hosted demo | Not measured/published | 24 direct deps, incl. a GUI layout engine (`azul-*`) and `image` | Font shaping via `allsorts`; auto-subsetting on save | Via `image` crate | MIT | Active — v0.12.7, last published 2026-08-29 |
+| [genpdf](https://git.sr.ht/~ireas/genpdf-rs) | Layout on top of an old printpdf + rusttype pairing | Not documented | Not measured/published | Depends on a printpdf/rusttype pairing from 2021 | Via rusttype | Via printpdf | Apache-2.0 OR MIT | Unmaintained — v0.2.0, last published 2021-06-17 |
+| [Typst](https://github.com/typst/typst) | Full typesetting system with its own markup language — not a document-tree API | The web app compiles to WASM; not primarily built as an embeddable library for "call a function, get PDF bytes" | Reported WASM builds run tens of MiB | Large compiler: own layout/math engine, font shaping | Full shaping/subsetting | Full raster/vector support | Apache-2.0 | Active |
+| [krilla](https://github.com/LaurenzV/krilla) / [pdf-writer](https://github.com/typst/pdf-writer) | None — krilla's own docs list "text layouting, tables, page breaking, headers/footers" as explicitly out of scope; pdf-writer is lower-level still | Not documented (pure Rust, plausible) | Not measured/published | 23 direct deps (krilla) | Full text shaping (rustybuzz/skrifa) | Full raster/vector support | MIT OR Apache-2.0 | Active — krilla v0.8.2, last published 2026-06-04 |
+| Headless Chrome / wkhtmltopdf | Full HTML/CSS layout via a real browser/WebKit engine | No — needs a native browser binary, not a wasm target | Chromium alone is hundreds of MiB | A whole browser | Whatever the OS/browser provides | Full | Chromium: BSD-style. wkhtmltopdf: LGPLv3 | Headless Chrome: active. wkhtmltopdf: [abandonware, archived since Jan 2023](https://github.com/wkhtmltopdf/wkhtmltopdf) |
+
+Where this project is behind, honestly: krilla already ships Tagged PDF/
+PDF-UA and PDF/A-1/2/3/4 conformance out of the box — this repo doesn't
+yet (tracked, open: PDF/A-3b and Tagged PDF/PDF-UA). And every HTML-based
+approach (Typst's own language included) accepts far richer input than
+this project's fixed JSON/builder document tree — there's no way to hand
+this project arbitrary HTML/CSS or a full typesetting language and get a
+sensible result; that's a deliberate scope boundary, not an oversight,
+but it's a real limitation if that's what you need.
+
 ## CLI (`lwpdf`)
 
 No Rust code needed: `cargo install --path crates/lightweight-pdf-cli`
