@@ -59,6 +59,13 @@ jobs:
 
   audit:
     runs-on: ubuntu-latest
+    # `rustsec/audit-check` reports findings as a check-run annotation via
+    # the API, which needs this explicit grant (the default `GITHUB_TOKEN`
+    # is read-only here) — surfaced by the `hyphenation` feature's first
+    # informational (non-vulnerability) advisory, an unmaintained
+    # transitive dependency (`bincode`, RUSTSEC-2025-0141).
+    permissions:
+      checks: write
     steps:
       - uses: actions/checkout@v4
       # No `deny-warnings`: reports advisories without failing the workflow
