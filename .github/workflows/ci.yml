@@ -89,14 +89,17 @@ jobs:
       # proposals (found while wiring up issue #22's wasm-bindgen
       # bindings) that produce a binary real JS engines fail to
       # instantiate ("unknown import kind") — a measured-but-unloadable
-      # artifact. The two flags below are exactly what rustc's current
-      # wasm32-unknown-unknown target actually emits by default.
+      # artifact. The flags below are exactly `rustc --target
+      # wasm32-unknown-unknown --print cfg`'s `target_feature` list for
+      # this target (i.e. what it actually emits by default) — not a
+      # trial-and-error subset, so a future rustc enabling one more
+      # default feature would need this list updated too.
       - name: Build Generator config
         run: cargo build --release --target wasm32-unknown-unknown -p lightweight-pdf --no-default-features --features wasm,wasm-size-probe,default-fonts,compress
       - name: Measure Generator config
         run: |
           f=target/wasm32-unknown-unknown/release/lightweight_pdf.wasm
-          wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int "$f" -o /tmp/generator.opt.wasm
+          wasm-opt -Oz --enable-bulk-memory --enable-multivalue --enable-mutable-globals --enable-nontrapping-float-to-int --enable-reference-types --enable-sign-ext "$f" -o /tmp/generator.opt.wasm
           gzip -9 -c /tmp/generator.opt.wasm > /tmp/generator.opt.wasm.gz
           echo "### Generator size" >> "$GITHUB_STEP_SUMMARY"
           echo "raw: $(stat -c%s "$f") bytes" >> "$GITHUB_STEP_SUMMARY"
@@ -107,7 +110,7 @@ jobs:
       - name: Measure Standard config
         run: |
           f=target/wasm32-unknown-unknown/release/lightweight_pdf.wasm
-          wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int "$f" -o /tmp/standard.opt.wasm
+          wasm-opt -Oz --enable-bulk-memory --enable-multivalue --enable-mutable-globals --enable-nontrapping-float-to-int --enable-reference-types --enable-sign-ext "$f" -o /tmp/standard.opt.wasm
           gzip -9 -c /tmp/standard.opt.wasm > /tmp/standard.opt.wasm.gz
           echo "### Standard size" >> "$GITHUB_STEP_SUMMARY"
           echo "raw: $(stat -c%s "$f") bytes" >> "$GITHUB_STEP_SUMMARY"
