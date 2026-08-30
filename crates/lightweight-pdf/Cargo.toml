@@ -33,6 +33,10 @@ serde = ["lightweight-pdf-core/serde"]
 name = "serde_json"
 required-features = ["serde"]
 
+[[test]]
+name = "template"
+required-features = ["serde"]
+
 [[example]]
 name = "demo_invoice"
 path = "../../examples/demo_invoice.rs"

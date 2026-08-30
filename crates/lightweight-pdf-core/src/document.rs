@@ -362,6 +362,10 @@ pub enum DocumentJsonError {
     /// dropping them.
     HeaderOrFooterNotSupported,
     Json(serde_json::Error),
+    /// From `Document::from_template` (issue #18): placeholder/`$each`
+    /// resolution against the data tree failed before JSON parsing of
+    /// the resolved document even started.
+    Template(crate::template::TemplateError),
 }
 
 #[cfg(feature = "serde")]
@@ -381,6 +385,7 @@ impl std::fmt::Display for DocumentJsonError {
                 )
             }
             DocumentJsonError::Json(e) => write!(f, "{e}"),
+            DocumentJsonError::Template(e) => write!(f, "{e}"),
         }
     }
 }
@@ -390,6 +395,7 @@ impl std::error::Error for DocumentJsonError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             DocumentJsonError::Json(e) => Some(e),
+            DocumentJsonError::Template(e) => Some(e),
             _ => None,
         }
     }
@@ -405,6 +411,19 @@ impl Document {
             return Err(DocumentJsonError::UnsupportedSchemaVersion(schema.schema_version));
         }
         Ok(schema.document)
+    }
+
+    /// `crate::template::render_template` + `from_json` in one call — a
+    /// template document (with `{{path}}` placeholders and/or `$each`
+    /// repetition, see the `template` module) plus a separate data
+    /// document, no Rust code needed (issue #18).
+    pub fn from_template(
+        template_json: &str,
+        data_json: &str,
+        on_missing: crate::template::MissingPlaceholder,
+    ) -> Result<Document, DocumentJsonError> {
+        let resolved = crate::template::render_template(template_json, data_json, on_missing).map_err(DocumentJsonError::Template)?;
+        Document::from_json(&resolved)
     }
 
     /// The inverse of `from_json` — round-trips to a byte-identical

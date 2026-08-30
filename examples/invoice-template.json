@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "document": {
+    "page_format": "A4",
+    "margin": { "top": 40.0, "right": 40.0, "bottom": 40.0, "left": 40.0 },
+    "metadata": { "title": "{{invoice.number}}" },
+    "children": [
+      {
+        "type": "text",
+        "content": "Rechnung {{invoice.number}}",
+        "style": { "size": 22.0, "font": "sans-bold" }
+      },
+      {
+        "type": "text",
+        "content": "{{customer.name}}"
+      },
+      {
+        "type": "table",
+        "columns": [
+          { "width": { "flex": 1.0 } },
+          { "width": { "fixed": 80.0 }, "align": "end" }
+        ],
+        "header": [
+          { "element": { "type": "text", "content": "Beschreibung" } },
+          { "element": { "type": "text", "content": "Betrag" } }
+        ],
+        "rows": [
+          {
+            "$each": "invoice.items",
+            "template": [
+              { "element": { "type": "text", "content": "{{description}}" } },
+              { "element": { "type": "text", "content": "{{amount}}" } }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "text",
+        "content": "Gesamtsumme: {{invoice.total}}",
+        "style": { "font": "sans-bold" }
+      }
+    ]
+  }
+}

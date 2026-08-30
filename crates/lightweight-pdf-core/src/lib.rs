@@ -9,6 +9,8 @@ mod image;
 mod list;
 mod style;
 mod table;
+#[cfg(feature = "serde")]
+mod template;
 mod theme;
 mod watermark;
 
@@ -19,6 +21,8 @@ pub use image::*;
 pub use list::*;
 pub use style::*;
 pub use table::*;
+#[cfg(feature = "serde")]
+pub use template::{render_template, MissingPlaceholder, TemplateError};
 pub use theme::{Theme, ThemeRole};
 pub use watermark::*;
 

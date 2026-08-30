@@ -85,6 +85,21 @@ lightweight-pdf --example demo_invoice` etc.
   JSON: `Header`/`Footer` (Rust closures) — `to_json()` refuses outright
   if either is set rather than silently dropping them. `Image` embeds as
   base64 (`{"bytes_base64": "...", "common": {...}}`).
+- Data-driven templates (`serde` feature, builds on the above):
+  `Document::from_template(template_json, data_json, MissingPlaceholder)`
+  resolves `"{{path.to.value}}"` placeholders in a template document
+  against a separate data document, no Rust code needed — a placeholder
+  that's the *entire* string value resolves to the data's own JSON type
+  (a number stays a number); embedded in more text it's always a string.
+  A missing path is a clear error by default, or an empty string with
+  `MissingPlaceholder::Empty`. Row/list repetition is a JSON construct,
+  not a text marker: `{"$each": "items", "template": <value>}` wherever
+  it appears as an array element expands to one copy of `template` per
+  element, with the element's own fields resolved before falling back to
+  the outer data — deliberately array-iteration only, no conditions, no
+  expressions, no filters. `render_template()` alone (without a
+  `Document`) also works, for other consumers of the same JSON schema.
+  See `examples/invoice-template.json` + `examples/invoice-data.json`.
 - Content streams, embedded font programs, and raw image samples are
   `/FlateDecode`-compressed by default (`compress` feature, on unless
   explicitly disabled) — typically 40-60% smaller output.
