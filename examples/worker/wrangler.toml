@@ -1,0 +1,9 @@
+name = "lightweight-pdf-worker-example"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+# Not required at runtime (the worker always passes its own `wasmModule` to
+# `render()`, so the npm package's Node-vs-browser `fetch` fallback path
+# that imports `node:fs/promises` never actually runs here) — enabled
+# anyway to silence wrangler's static-analysis bundling warning about that
+# import, and as a safety net.
+compatibility_flags = ["nodejs_compat"]

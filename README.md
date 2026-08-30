@@ -85,6 +85,13 @@ package from source. Published from `.github/workflows/release-npm.yml`,
 a tag-triggered release job only — never part of the PR path, which
 already proves the bindings compile via the existing `wasm-size` CI job.
 
+## Cloudflare Worker starter
+
+`examples/worker/` is a deployable-in-five-minutes Worker: `POST` a JSON
+document, get a PDF back. Measured module size and cold-start/render
+timings (via `wrangler dev`/`deploy --dry-run`) are in its own README —
+that's exactly the numbers this crate's target audience decides on.
+
 ## Features
 
 - Layout primitives: `Text`, `Column`, `Row`, `Table`, `List`, `Image`,

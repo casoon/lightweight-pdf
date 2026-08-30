@@ -1,0 +1,18 @@
+{
+  "name": "lightweight-pdf-worker-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@casoon/lightweight-pdf": "file:../../bindings/js"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5",
+    "typescript": "^5.6.0",
+    "wrangler": "^4"
+  }
+}
