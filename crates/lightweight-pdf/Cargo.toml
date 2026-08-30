@@ -31,6 +31,7 @@ wasm-size-probe = []
 png = ["dep:png"]
 compress = ["lightweight-pdf-writer/compress"]
 hyphenation = ["lightweight-pdf-layout/hyphenation"]
+pdf-a = ["lightweight-pdf-writer/pdf-a"]
 serde = ["dep:serde", "lightweight-pdf-core/serde"]
 schemars = ["lightweight-pdf-core/schemars"]
 
@@ -78,3 +79,8 @@ path = "../../examples/demo_report.rs"
 [[example]]
 name = "demo_custom_font"
 path = "../../examples/demo_custom_font.rs"
+
+[[example]]
+name = "demo_pdf_a3b"
+path = "../../examples/demo_pdf_a3b.rs"
+required-features = ["pdf-a", "png"]

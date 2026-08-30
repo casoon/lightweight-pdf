@@ -199,3 +199,35 @@ jobs:
             size=$(stat -c%s "examples/${d}.pdf")
             echo "${d}: ${avg_ms}ms avg, ${size} bytes output" >> "$GITHUB_STEP_SUMMARY"
           done
+
+  # Issue #25: veraPDF confirms PDF/A-3b conformance. Brings its own JVM —
+  # the most expensive plausible CI addition — so this stays its own job
+  # (never inside `test`), checks a single representative document (not
+  # every demo), and uses the official `verapdf/cli` container image
+  # instead of installing veraPDF in the job.
+  pdf-a-conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            relevant:
+              - 'crates/lightweight-pdf-writer/**'
+              - 'crates/lightweight-pdf-core/**'
+              - 'crates/lightweight-pdf-fonts/**'
+              - 'crates/lightweight-pdf/**'
+              - 'examples/demo_pdf_a3b.rs'
+              - '.github/workflows/ci.yml'
+      - if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        uses: dtolnay/rust-toolchain@stable
+      - if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        uses: Swatinem/rust-cache@v2
+      - name: Build PDF/A-3b demo
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        run: cargo run -p lightweight-pdf --example demo_pdf_a3b --features pdf-a,png
+      - name: Verify with veraPDF (flavour 3b)
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        run: |
+          docker run --rm -v "$PWD/examples:/data" verapdf/cli --flavour 3b --format text /data/demo_pdf_a3b.pdf

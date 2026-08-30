@@ -90,6 +90,16 @@ impl PdfDate {
             self.year, self.month, self.day, self.hour, self.minute, self.second
         )
     }
+
+    /// ISO 8601, as XMP (`xmp:CreateDate`/`xmp:ModifyDate`) wants it — the
+    /// same fields as `to_pdf_string`, just reordered/repunctuated, not a
+    /// second date representation (issue #25).
+    pub fn to_xmp_string(self) -> String {
+        format!(
+            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+            self.year, self.month, self.day, self.hour, self.minute, self.second
+        )
+    }
 }
 
 #[cfg_attr(
@@ -199,6 +209,16 @@ pub struct Document {
     /// once per element as it's `.add()`-ed (see `theme::apply_theme`).
     #[cfg_attr(feature = "serde", serde(default))]
     pub theme: Option<crate::theme::Theme>,
+    /// Set by `.pdf_a3b()` (issue #25): asks the facade to write a
+    /// PDF/A-3b-conformant document (XMP metadata, `/OutputIntent` with an
+    /// embedded sRGB ICC profile, transparency-group colour space) instead
+    /// of the default output. Always present on `Document` regardless of
+    /// the facade's `pdf-a` Cargo feature (this flag itself costs
+    /// nothing) — `render()` returns `RenderError::PdfAFeatureDisabled` if
+    /// this is `true` but that feature isn't compiled in, rather than
+    /// silently rendering a non-conformant PDF.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub pdf_a3b: bool,
     #[cfg_attr(feature = "serde", serde(default))]
     pub children: Vec<Element>,
 }
@@ -221,12 +241,23 @@ impl Document {
             watermark: None,
             metadata: DocumentMetadata::default(),
             theme: None,
+            pdf_a3b: false,
             children: Vec::new(),
         }
     }
 
     pub fn theme(mut self, theme: crate::theme::Theme) -> Self {
         self.theme = Some(theme);
+        self
+    }
+
+    /// Opt in to PDF/A-3b-conformant output (issue #25) — see
+    /// `Document::pdf_a3b`'s field doc comment. Needs the facade's `pdf-a`
+    /// Cargo feature; without it, `render()` returns
+    /// `RenderError::PdfAFeatureDisabled` rather than silently ignoring
+    /// this.
+    pub fn pdf_a3b(mut self) -> Self {
+        self.pdf_a3b = true;
         self
     }
 

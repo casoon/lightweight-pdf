@@ -38,7 +38,8 @@ More complete examples: `crates/lightweight-pdf/examples/invoice.rs` (a
 German DIN-5008-style invoice with a multi-page table) and
 `.../examples/report.rs`. `examples/demo_*.rs` at the repo root are further,
 English-language sample documents (invoice, quote, credentials hand-off,
-concept, API documentation, audit report, and a custom-font demo) — run with `cargo run -p
+concept, API documentation, audit report, a custom-font demo, and a
+PDF/A-3b conformance demo) — run with `cargo run -p
 lightweight-pdf --example demo_invoice` etc.
 
 Page 1 of three of those demos, rendered — regenerate with
@@ -268,6 +269,14 @@ baseline being updated in the same commit.
 - Watermarking as a document-level feature (rotated, repeated text drawn
   beneath the page content) — deliberately no general transform/rotation
   API.
+- `Document::pdf_a3b()` (`pdf-a` feature): PDF/A-3b-conformant output —
+  XMP metadata kept in sync with `/Info`, `/OutputIntent` with an
+  embedded sRGB ICC profile, and a transparency-group colour space for
+  any page with an alpha-channel image. Verified against the [veraPDF](https://verapdf.org/)
+  validator, both locally and in CI (`pdf-a-conformance` job, against
+  `examples/demo_pdf_a3b.rs`); without the feature, calling it makes
+  `render()` return `RenderError::PdfAFeatureDisabled` instead of
+  silently producing non-conformant output.
 
 ## Cargo features (crate `lightweight-pdf`)
 
@@ -281,6 +290,7 @@ baseline being updated in the same commit.
 | `schemars`          |         | Generates a JSON Schema for the document/template format (`schemars`; implies `serde`) — what `lwpdf schema`/the npm package's generated TypeScript types are built from. |
 | `wasm`              |         | Targets `wasm32-unknown-unknown` with `wasm-bindgen` JS bindings (implies `serde`) — see the npm package section above. |
 | `wasm-size-probe`   |         | Internal, non-public `extern "C"` function used to measure WASM build size (CI); requires `default-fonts`. |
+| `pdf-a`             |         | `Document::pdf_a3b()`: PDF/A-3b-conformant output (XMP metadata synced with `/Info`, `/OutputIntent` with an embedded sRGB ICC profile, transparency-group colour space) — verified against the official `verapdf` validator, see below. Costs ~4.3 KiB gzip (measured, `wasm-size` config): the embedded profile is the ICC Consortium's own 3 KiB reference `sRGB2014.icc`, not the "several hundred KB" a full CMYK/ICC-v4 profile can run — the fear that motivated gating this behind a feature at all turned out not to apply here. |
 
 ## Workspace
 

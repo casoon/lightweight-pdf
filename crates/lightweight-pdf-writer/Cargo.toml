@@ -12,3 +12,8 @@ miniz_oxide = { version = "0.8", optional = true, default-features = false, feat
 [features]
 default = ["compress"]
 compress = ["dep:miniz_oxide"]
+# PDF/A-3b output (issue #25): XMP metadata, `/OutputIntent` with an
+# embedded sRGB ICC profile (`assets/sRGB2014.icc`, ICC's own freely
+# redistributable reference profile, 3 KiB — small enough that gating it
+# is about explicitness, not size), transparency-group colour space.
+pdf-a = []

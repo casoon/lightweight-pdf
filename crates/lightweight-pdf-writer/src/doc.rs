@@ -120,6 +120,15 @@ pub struct PdfMetadata {
     /// `lightweight_pdf_core::PdfDate` before handing it over.
     pub creation_date: Option<String>,
     pub mod_date: Option<String>,
+    /// ISO 8601 versions of the two dates above, for XMP (`xmp:CreateDate`/
+    /// `xmp:ModifyDate`, issue #25) — a second field rather than
+    /// reformatting `creation_date`/`mod_date` here, keeping this crate's
+    /// "no date logic of its own" property (see above): the facade
+    /// already has `PdfDate` and formats both strings from it.
+    #[cfg(feature = "pdf-a")]
+    pub xmp_creation_date: Option<String>,
+    #[cfg(feature = "pdf-a")]
+    pub xmp_mod_date: Option<String>,
 }
 
 #[derive(Default)]
@@ -132,6 +141,11 @@ pub struct PdfDocument {
     /// all (not an empty one — a reader shouldn't see a bookmark panel
     /// with nothing in it for a document with no headings).
     pub outline: Vec<PdfOutlineNode>,
+    /// Set by the facade when `Document::pdf_a3b()` was called (issue
+    /// #25) — adds XMP metadata, `/OutputIntent` (embedded sRGB ICC
+    /// profile) and a transparency-group colour space per page.
+    #[cfg(feature = "pdf-a")]
+    pub pdf_a3b: bool,
 }
 
 impl PdfDocument {
@@ -164,6 +178,19 @@ impl PdfDocument {
 
     pub fn add_page(&mut self, page: PdfPage) {
         self.pages.push(page);
+    }
+
+    /// `self.pdf_a3b` when the `pdf-a` feature is compiled in, `false`
+    /// otherwise — one place for the `#[cfg(...)]` instead of scattering
+    /// it through `write()`.
+    #[cfg(feature = "pdf-a")]
+    fn is_pdf_a3b(&self) -> bool {
+        self.pdf_a3b
+    }
+
+    #[cfg(not(feature = "pdf-a"))]
+    fn is_pdf_a3b(&self) -> bool {
+        false
     }
 
     /// FontDescriptor `/Flags`: bit 6 (32) = Nonsymbolic, bit 7 (64) =
@@ -203,6 +230,45 @@ impl PdfDocument {
         body.push_str("end\n");
         body.push_str("end");
         body.into_bytes()
+    }
+
+    /// The ICC Consortium's own reference sRGB profile (v4, `sRGB2014.icc`,
+    /// 3 KiB) — "may be copied, distributed, embedded, made, used, and
+    /// sold without restriction" per color.org's own license terms for
+    /// this file, unaltered here. Small enough that PDF/A-3b's mandatory
+    /// `/OutputIntent` (ISO 19005-3 6.2.4.3) barely moves output size —
+    /// see issue #25's size-impact question.
+    #[cfg(feature = "pdf-a")]
+    const SRGB_ICC_PROFILE: &[u8] = include_bytes!("../assets/sRGB2014.icc");
+
+    /// Writes the embedded-ICC-profile stream and the `/OutputIntent`
+    /// dictionary that references it, returning the latter's ref (what
+    /// `/OutputIntents` in the Catalog holds an array of).
+    #[cfg(feature = "pdf-a")]
+    fn write_output_intent(w: &mut PdfWriter) -> Ref {
+        let profile_ref = w.alloc();
+        w.compressed_stream(profile_ref, "/N 3", Self::SRGB_ICC_PROFILE);
+        let intent_ref = w.alloc();
+        w.object(
+            intent_ref,
+            &format!(
+                "<< /Type /OutputIntent /S /GTS_PDFA1 /OutputConditionIdentifier (sRGB IEC61966-2.1) /Info (sRGB IEC61966-2.1) /DestOutputProfile {} >>",
+                profile_ref.write()
+            ),
+        );
+        intent_ref
+    }
+
+    /// Writes the XMP metadata stream (issue #25) and returns its ref —
+    /// `/Type /Metadata /Subtype /XML`, left uncompressed (conventional
+    /// for XMP packets: some tooling scans for `<?xpacket` directly
+    /// without going through `/FlateDecode`).
+    #[cfg(feature = "pdf-a")]
+    fn write_xmp_metadata(w: &mut PdfWriter, metadata: &PdfMetadata) -> Ref {
+        let xmp = build_xmp_packet(metadata);
+        let id = w.alloc();
+        w.stream(id, "/Type /Metadata /Subtype /XML", xmp.as_bytes());
+        id
     }
 
     /// Writes one image XObject (recursing once for `smask`, PNG alpha)
@@ -319,7 +385,14 @@ impl PdfDocument {
     /// array). Zips `pages` with their pre-allocated refs rather than
     /// indexing by position, so the pairing can't panic even if the two
     /// ever fell out of step.
-    fn write_pages(w: &mut PdfWriter, pages: &[PdfPage], pages_ref: Ref, font_resources: &str, image_resources: &str) -> Vec<Ref> {
+    fn write_pages(
+        w: &mut PdfWriter,
+        pages: &[PdfPage],
+        pages_ref: Ref,
+        font_resources: &str,
+        image_resources: &str,
+        pdf_a3b: bool,
+    ) -> Vec<Ref> {
         let page_refs: Vec<Ref> = (0..pages.len()).map(|_| w.alloc()).collect();
         let content_refs: Vec<Ref> = (0..pages.len()).map(|_| w.alloc()).collect();
 
@@ -337,14 +410,19 @@ impl PdfDocument {
                         format!("/Dest [{} /XYZ null {} null]", target.write(), fmt_num(*y))
                     }
                 };
+                // PDF/A-3b (ISO 19005-3 6.5.2): every annotation needs an
+                // `/F` flags entry — `4` is the Print bit alone (Hidden/
+                // NoView unset, both forbidden by the same clause).
+                let flags_entry = if pdf_a3b { " /F 4" } else { "" };
                 w.object(
                     id,
                     &format!(
-                        "<< /Type /Annot /Subtype /Link /Rect [{x0} {y0} {x1} {y1}] /Border [0 0 0] {action} >>",
+                        "<< /Type /Annot /Subtype /Link /Rect [{x0} {y0} {x1} {y1}] /Border [0 0 0]{flags} {action} >>",
                         x0 = fmt_num(annot.rect.0),
                         y0 = fmt_num(annot.rect.1),
                         x1 = fmt_num(annot.rect.2),
                         y1 = fmt_num(annot.rect.3),
+                        flags = flags_entry,
                     ),
                 );
                 annot_refs.push(id);
@@ -357,15 +435,27 @@ impl PdfDocument {
                 String::new()
             };
 
+            // PDF/A-3b (issue #25, ISO 19005-3 6.2.10): a page with a
+            // transparent object (PNG alpha via `/SMask`) needs a defined
+            // blending colour space — declared once per page rather than
+            // only on pages that actually use transparency, since that's
+            // simpler and costs a few bytes.
+            let group_entry = if pdf_a3b {
+                " /Group << /Type /Group /S /Transparency /CS /DeviceRGB >>"
+            } else {
+                ""
+            };
+
             w.object(
                 page_ref,
                 &format!(
-                    "<< /Type /Page /Parent {parent} /MediaBox [0 0 {w} {h}] /Resources << /Font << {fonts} >> /XObject << {images} >> >> /Contents {content}{annots} >>",
+                    "<< /Type /Page /Parent {parent} /MediaBox [0 0 {w} {h}] /Resources << /Font << {fonts} >> /XObject << {images} >> >>{group} /Contents {content}{annots} >>",
                     parent = pages_ref.write(),
                     w = fmt_num(page.width),
                     h = fmt_num(page.height),
                     fonts = font_resources,
                     images = image_resources,
+                    group = group_entry,
                     content = content_ref.write(),
                     annots = annots_entry,
                 ),
@@ -417,8 +507,10 @@ impl PdfDocument {
         let image_refs: Vec<Ref> = self.images.iter().map(|img| Self::write_image(&mut w, img)).collect();
         let image_resources = Self::resource_entries(&image_refs, Self::image_resource_name);
 
+        let pdf_a3b = self.is_pdf_a3b();
+
         let font_resources = Self::write_fonts(&mut w, &self.fonts);
-        let page_refs = Self::write_pages(&mut w, &self.pages, pages_ref, &font_resources, &image_resources);
+        let page_refs = Self::write_pages(&mut w, &self.pages, pages_ref, &font_resources, &image_resources, pdf_a3b);
 
         let kids = Self::join_with_space(&page_refs, |r| r.write());
         w.object(pages_ref, &format!("<< /Type /Pages /Kids [{kids}] /Count {} >>", self.pages.len()));
@@ -427,9 +519,21 @@ impl PdfDocument {
             Some(outlines_ref) => format!(" /Outlines {}", outlines_ref.write()),
             None => String::new(),
         };
+
+        #[cfg(feature = "pdf-a")]
+        let pdf_a_entry = if pdf_a3b {
+            let output_intent_ref = Self::write_output_intent(&mut w);
+            let metadata_ref = Self::write_xmp_metadata(&mut w, &self.metadata);
+            format!(" /OutputIntents [{}] /Metadata {}", output_intent_ref.write(), metadata_ref.write())
+        } else {
+            String::new()
+        };
+        #[cfg(not(feature = "pdf-a"))]
+        let pdf_a_entry = String::new();
+
         w.object(
             catalog_ref,
-            &format!("<< /Type /Catalog /Pages {}{outlines_entry} >>", pages_ref.write()),
+            &format!("<< /Type /Catalog /Pages {}{outlines_entry}{pdf_a_entry} >>", pages_ref.write()),
         );
 
         let mut info_entries = Vec::new();
@@ -535,6 +639,74 @@ fn write_outline_siblings(w: &mut PdfWriter, nodes: &[PdfOutlineNode], ref_nodes
 fn format_pdf_string(s: &str) -> String {
     let escaped = s.replace('\\', "\\\\").replace('(', "\\(").replace(')', "\\)");
     format!("({escaped})")
+}
+
+/// Escapes the five XML predefined entities' triggers that can appear in
+/// caller-supplied metadata text — enough for XMP's RDF/XML, which never
+/// needs attribute-quote escaping here (everything below goes in element
+/// content, not an attribute value).
+#[cfg(feature = "pdf-a")]
+fn xml_escape(s: &str) -> String {
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+}
+
+/// Builds the XMP packet (issue #25): `dc:title`/`dc:creator`/
+/// `dc:description`/`pdf:Keywords`/`xmp:CreatorTool`/`xmp:CreateDate`/
+/// `xmp:ModifyDate` mirror `PdfMetadata`'s `/Info` fields 1:1 (ISO
+/// 19005-3 6.7.3 — the two are required to stay consistent, so this
+/// reads from the very same `PdfMetadata` the `/Info` dict is built
+/// from, never a separately-tracked copy), plus the `pdfaid:part`/
+/// `pdfaid:conformance` conformance markers every PDF/A file needs.
+#[cfg(feature = "pdf-a")]
+fn build_xmp_packet(metadata: &PdfMetadata) -> String {
+    let mut props = String::new();
+    if let Some(ref title) = metadata.title {
+        props.push_str(&format!(
+            "<dc:title><rdf:Alt><rdf:li xml:lang=\"x-default\">{}</rdf:li></rdf:Alt></dc:title>",
+            xml_escape(title)
+        ));
+    }
+    if let Some(ref author) = metadata.author {
+        props.push_str(&format!(
+            "<dc:creator><rdf:Seq><rdf:li>{}</rdf:li></rdf:Seq></dc:creator>",
+            xml_escape(author)
+        ));
+    }
+    if let Some(ref subject) = metadata.subject {
+        props.push_str(&format!(
+            "<dc:description><rdf:Alt><rdf:li xml:lang=\"x-default\">{}</rdf:li></rdf:Alt></dc:description>",
+            xml_escape(subject)
+        ));
+    }
+    if let Some(ref keywords) = metadata.keywords {
+        props.push_str(&format!("<pdf:Keywords>{}</pdf:Keywords>", xml_escape(keywords)));
+    }
+    if let Some(ref creator) = metadata.creator {
+        props.push_str(&format!("<xmp:CreatorTool>{}</xmp:CreatorTool>", xml_escape(creator)));
+    }
+    if let Some(ref created) = metadata.xmp_creation_date {
+        props.push_str(&format!("<xmp:CreateDate>{created}</xmp:CreateDate>"));
+    }
+    if let Some(ref modified) = metadata.xmp_mod_date {
+        props.push_str(&format!("<xmp:ModifyDate>{modified}</xmp:ModifyDate>"));
+    }
+    props.push_str("<pdfaid:part>3</pdfaid:part><pdfaid:conformance>B</pdfaid:conformance>");
+
+    format!(
+        "<?xpacket begin=\"\u{feff}\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>\
+<x:xmpmeta xmlns:x=\"adobe:ns:meta/\">\
+<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\
+<rdf:Description rdf:about=\"\" \
+xmlns:dc=\"http://purl.org/dc/elements/1.1/\" \
+xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\" \
+xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\" \
+xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\">\
+{props}\
+</rdf:Description>\
+</rdf:RDF>\
+</x:xmpmeta>\
+<?xpacket end=\"w\"?>"
+    )
 }
 
 #[cfg(test)]
@@ -715,5 +887,45 @@ mod tests {
         let bytes = doc.write();
         let text = String::from_utf8_lossy(&bytes);
         assert!(text.contains("/Filter /DCTDecode"));
+    }
+
+    #[cfg(feature = "pdf-a")]
+    #[test]
+    fn writes_output_intent_and_xmp_metadata_when_pdf_a3b_is_set() {
+        let mut doc = PdfDocument::new();
+        doc.pdf_a3b = true;
+        doc.metadata.title = Some("Rechnung".to_string());
+        doc.add_page(PdfPage {
+            width: 200.0,
+            height: 200.0,
+            content: Vec::new(),
+            annotations: Vec::new(),
+        });
+        let bytes = doc.write();
+        let text = String::from_utf8_lossy(&bytes);
+        assert!(text.contains("/OutputIntents ["));
+        assert!(text.contains("/S /GTS_PDFA1"));
+        assert!(text.contains("/DestOutputProfile"));
+        assert!(text.contains("/Type /Metadata /Subtype /XML"));
+        assert!(text.contains("<pdfaid:part>3</pdfaid:part>"));
+        assert!(text.contains("<pdfaid:conformance>B</pdfaid:conformance>"));
+        assert!(text.contains("<dc:title><rdf:Alt><rdf:li xml:lang=\"x-default\">Rechnung</rdf:li></rdf:Alt></dc:title>"));
+    }
+
+    #[cfg(feature = "pdf-a")]
+    #[test]
+    fn omits_pdf_a_entries_when_pdf_a3b_is_not_set() {
+        let mut doc = PdfDocument::new();
+        doc.add_page(PdfPage {
+            width: 200.0,
+            height: 200.0,
+            content: Vec::new(),
+            annotations: Vec::new(),
+        });
+        let bytes = doc.write();
+        let text = String::from_utf8_lossy(&bytes);
+        assert!(!text.contains("/OutputIntents"));
+        assert!(!text.contains("/Type /Metadata"));
+        assert!(!text.contains("/Group"));
     }
 }

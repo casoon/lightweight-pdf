@@ -46,6 +46,10 @@ pub enum RenderError {
     /// registered under — a typed error instead of silently substituting
     /// the registry's default font.
     MissingFont(FontKey),
+    /// `Document::pdf_a3b()` was set but this crate wasn't compiled with
+    /// the `pdf-a` feature — a clear error instead of silently rendering
+    /// a non-conformant PDF the caller believes is PDF/A-3b (issue #25).
+    PdfAFeatureDisabled,
 }
 
 impl core::fmt::Display for RenderError {
@@ -54,6 +58,12 @@ impl core::fmt::Display for RenderError {
             RenderError::Font(e) => write!(f, "font error: {e}"),
             RenderError::Image(e) => write!(f, "image error: {e}"),
             RenderError::MissingFont(key) => write!(f, "no font registered for key {key:?}"),
+            RenderError::PdfAFeatureDisabled => {
+                write!(
+                    f,
+                    "Document::pdf_a3b() was set but this crate wasn't built with the `pdf-a` feature"
+                )
+            }
         }
     }
 }
@@ -151,6 +161,11 @@ fn render_page(
 }
 
 fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec<LayoutWarning>), RenderError> {
+    #[cfg(not(feature = "pdf-a"))]
+    if doc.pdf_a3b {
+        return Err(RenderError::PdfAFeatureDisabled);
+    }
+
     let ctx = LayoutCtx::new(fonts);
     let paginated = paginate(doc, &ctx);
 
@@ -180,6 +195,12 @@ fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec
     pdf.metadata.creator = doc.metadata.creator.clone();
     pdf.metadata.creation_date = doc.metadata.creation_date.map(|d| d.to_pdf_string());
     pdf.metadata.mod_date = doc.metadata.mod_date.map(|d| d.to_pdf_string());
+    #[cfg(feature = "pdf-a")]
+    {
+        pdf.metadata.xmp_creation_date = doc.metadata.creation_date.map(|d| d.to_xmp_string());
+        pdf.metadata.xmp_mod_date = doc.metadata.mod_date.map(|d| d.to_xmp_string());
+        pdf.pdf_a3b = doc.pdf_a3b;
+    }
 
     let embedded = text::embed_fonts(&mut pdf, fonts, &used_chars)?;
     let lookups = DocumentLookups {

@@ -11,7 +11,7 @@ name = "lwpdf"
 path = "src/main.rs"
 
 [dependencies]
-lightweight-pdf = { path = "../lightweight-pdf", version = "0.2.1", features = ["serde", "schemars"] }
+lightweight-pdf = { path = "../lightweight-pdf", version = "0.2.1", features = ["serde", "schemars", "pdf-a"] }
 clap = { version = "4", features = ["derive"] }
 schemars = "1"
 serde_json = "1"
