@@ -6,6 +6,7 @@
 
 use crate::geometry::{Constraints, Rect, Size};
 use crate::layoutable::{coerce_to_fit_and_warn, LayoutCtx, LayoutResult, Layoutable};
+use crate::render_node::{RenderNode, StructRole};
 use crate::warnings::LayoutWarning;
 use lightweight_pdf_core::{Align, Column, List, Marker, Row, Text};
 
@@ -39,6 +40,68 @@ fn to_column(list: &List) -> Column {
     col
 }
 
+/// Tags each item row (issue #27): `to_column`'s `Row(marker, content)`
+/// becomes `ListItem(ListItemLabel(marker), ListItemBody(content))` —
+/// `marker`/`content` are already individually tagged (`Paragraph`, or
+/// whatever their own element type resolves to) by the recursive
+/// `Element::layout` dispatch; this just adds the list-specific layer
+/// around them, same "some structural nesting, not maximally minimal"
+/// trade-off as table cells.
+fn tag_list_items(node: RenderNode) -> RenderNode {
+    let RenderNode::Group {
+        area,
+        clip,
+        background,
+        border,
+        corner_radius,
+        children: rows,
+    } = node
+    else {
+        return node;
+    };
+    let tagged_rows = rows
+        .into_iter()
+        .map(|row| {
+            let RenderNode::Group {
+                area: row_area,
+                clip: row_clip,
+                background: row_bg,
+                border: row_border,
+                corner_radius: row_cr,
+                children: cells,
+            } = row
+            else {
+                return row;
+            };
+            let roles = [StructRole::ListItemLabel, StructRole::ListItemBody];
+            let tagged_cells = cells
+                .into_iter()
+                .zip(roles)
+                .map(|(cell, role)| RenderNode::tagged(role, cell))
+                .collect();
+            RenderNode::tagged(
+                StructRole::ListItem,
+                RenderNode::Group {
+                    area: row_area,
+                    clip: row_clip,
+                    background: row_bg,
+                    border: row_border,
+                    corner_radius: row_cr,
+                    children: tagged_cells,
+                },
+            )
+        })
+        .collect();
+    RenderNode::Group {
+        area,
+        clip,
+        background,
+        border,
+        corner_radius,
+        children: tagged_rows,
+    }
+}
+
 impl Layoutable for List {
     fn measure(&self, ctx: &LayoutCtx, constraints: Constraints) -> Size {
         to_column(self).measure(ctx, constraints)
@@ -49,12 +112,8 @@ impl Layoutable for List {
         // Row) — if the translated Column would need to split, keep what
         // fits and clip+warn on the rest instead of silently dropping it.
         let result = to_column(self).layout(ctx, area, warnings, page);
-        LayoutResult::Fit(coerce_to_fit_and_warn(
-            result,
-            warnings,
-            page,
-            "List content exceeds available space",
-        ))
+        let node = coerce_to_fit_and_warn(result, warnings, page, "List content exceeds available space");
+        LayoutResult::Fit(tag_list_items(node))
     }
 }
 
@@ -105,16 +164,19 @@ mod tests {
             width: 300.0,
             height: 300.0,
         };
-        let LayoutResult::Fit(RenderNode::Group { children: rows, .. }) = list.layout(&c, area, &mut warnings, 1) else {
+        let LayoutResult::Fit(node) = list.layout(&c, area, &mut warnings, 1) else {
             panic!("expected Fit");
+        };
+        let RenderNode::Group { children: rows, .. } = node else {
+            panic!("expected Group");
         };
         assert_eq!(rows.len(), 3);
 
         fn marker_of(row: &RenderNode) -> String {
-            let RenderNode::Group { children: cells, .. } = row else {
+            let RenderNode::Group { children: cells, .. } = row.untagged() else {
                 panic!("expected row group")
             };
-            let RenderNode::Group { children: wrap, .. } = &cells[0] else {
+            let RenderNode::Group { children: wrap, .. } = cells[0].untagged() else {
                 panic!("expected clip wrapper")
             };
             let RenderNode::TextLines { lines, .. } = &wrap[0] else {
@@ -138,13 +200,16 @@ mod tests {
             width: 200.0,
             height: 100.0,
         };
-        let LayoutResult::Fit(RenderNode::Group { children: rows, .. }) = list.layout(&c, area, &mut warnings, 1) else {
+        let LayoutResult::Fit(node) = list.layout(&c, area, &mut warnings, 1) else {
             panic!("expected Fit");
         };
-        let RenderNode::Group { children: cells, .. } = &rows[0] else {
+        let RenderNode::Group { children: rows, .. } = node else {
+            panic!("expected Group");
+        };
+        let RenderNode::Group { children: cells, .. } = rows[0].untagged() else {
             panic!("expected row group")
         };
-        let RenderNode::Group { area: content_area, .. } = &cells[1] else {
+        let RenderNode::Group { area: content_area, .. } = cells[1].untagged() else {
             panic!("expected clip wrapper for content cell")
         };
         // marker_width (16) + row gap (6) = 22; content should claim the

@@ -4,8 +4,12 @@
 
 mod content;
 mod doc;
+#[cfg(feature = "tagged-pdf")]
+mod struct_tree;
 mod writer;
 
 pub use content::*;
 pub use doc::*;
+#[cfg(feature = "tagged-pdf")]
+pub use struct_tree::*;
 pub use writer::*;

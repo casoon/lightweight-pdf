@@ -69,6 +69,31 @@ impl ContentBuilder {
         self.op("Q");
     }
 
+    /// `/{tag} << /MCID n >> BDC` — begins a marked-content sequence tied
+    /// to a structure-tree leaf (issue #27, ISO 32000-1 14.6). Matching
+    /// [`Self::end_marked_content`] closes it.
+    pub fn begin_marked_content(&mut self, tag: &str, mcid: u32) {
+        self.op(&format!("/{tag} << /MCID {mcid} >> BDC"));
+    }
+
+    /// `/Artifact BMC` — begins a marked-content sequence explicitly
+    /// excluded from the structure tree (pagination/decoration: running
+    /// headers/footers, watermarks — ISO 32000-1 14.8.2.2). `BMC`
+    /// (single operand, no properties dict), not `BDC`: nothing here
+    /// needs a `/Properties` lookup or an inline dict, and `BDC` without
+    /// one is a malformed operator call, not merely a stylistic choice —
+    /// found via an actual veraPDF PDF/UA run flagging "Undefined
+    /// property /Artifact in a content stream", not from the spec text
+    /// alone.
+    pub fn begin_artifact(&mut self) {
+        self.op("/Artifact BMC");
+    }
+
+    /// `EMC` — ends a `begin_marked_content`/`begin_artifact` scope.
+    pub fn end_marked_content(&mut self) {
+        self.op("EMC");
+    }
+
     /// Formats `<x> <y> <w> <h>` — the rectangle-operand pair shared by
     /// every rectangle-drawing primitive ([`Self::clip_rect`],
     /// [`Self::rect_op`], and transitively [`Self::fill_rect`]/

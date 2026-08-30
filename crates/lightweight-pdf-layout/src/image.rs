@@ -66,6 +66,7 @@ impl Layoutable for Image {
             width_px: self.width_px,
             height_px: self.height_px,
             components: self.components,
+            alt: self.alt.clone(),
         };
         LayoutResult::Fit(RenderNode::clipped(area, node))
     }

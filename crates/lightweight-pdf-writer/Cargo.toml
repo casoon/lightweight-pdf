@@ -22,3 +22,9 @@ pdf-a = []
 # schema on top of `pdf-a`'s XMP packet (ZUGFeRD *is* PDF/A-3 plus this,
 # not an independent format).
 zugferd = ["pdf-a"]
+# Tagged PDF/PDF-UA (issue #27): structure tree (/StructTreeRoot),
+# marked content (BDC/EMC with MCIDs), /MarkInfo, /Lang, artifact-marked
+# watermark/header/footer. Implies `pdf-a` (ADR-019: PDF/UA without
+# PDF/A isn't a supported combination) — reuses its XMP/OutputIntent
+# machinery, adds `pdfuaid:*` alongside the existing `pdfaid:*`.
+tagged-pdf = ["pdf-a"]

@@ -25,6 +25,10 @@ pub enum LayoutWarningKind {
     /// A table row had more cells than the table declares columns — the
     /// extra cells were dropped rather than rendered.
     TableRowOverflow,
+    /// `Document::pdf_ua()` is set and an `Image` has no `.alt(...)` text
+    /// (issue #27) — it still renders (and still gets a `/Figure` tag),
+    /// just with an empty `/Alt`.
+    MissingAltText,
 }
 
 #[derive(Clone, Debug)]

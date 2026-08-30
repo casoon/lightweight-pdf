@@ -29,7 +29,7 @@
 use crate::font_resolver::FontResolver;
 use crate::geometry::{Constraints, Rect, Size};
 use crate::layoutable::{line_height_pt, LayoutCtx, LayoutResult, Layoutable};
-use crate::render_node::RenderNode;
+use crate::render_node::{RenderNode, StructRole};
 use crate::text::text_width_pt;
 use crate::warnings::LayoutWarning;
 use lightweight_pdf_core::{Align, Element, TableOfContents, TextStyle};
@@ -118,6 +118,7 @@ fn collect_anchor_pages_in_node(node: &RenderNode, page_number: usize, out: &mut
                 collect_anchor_pages_in_node(child, page_number, out);
             }
         }
+        RenderNode::Tagged { inner, .. } => collect_anchor_pages_in_node(inner, page_number, out),
         RenderNode::TextLines { anchor: Some(name), .. } => {
             out.entry(name.clone()).or_insert(page_number);
         }
@@ -216,7 +217,13 @@ impl Layoutable for TableOfContents {
                     width: area.width,
                     height: lh,
                 };
-                entry_node(ctx.resolver, &self.style, heading, &page_text, entry_area, self.leader)
+                // `entry_node` builds its `RenderNode` directly, not via
+                // `Element::layout`'s dispatch — so it needs its own
+                // explicit tag (issue #27), unlike `Text`/`Image`/etc.
+                RenderNode::tagged(
+                    StructRole::TocItem,
+                    entry_node(ctx.resolver, &self.style, heading, &page_text, entry_area, self.leader),
+                )
             })
             .collect();
 

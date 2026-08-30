@@ -33,6 +33,7 @@ compress = ["lightweight-pdf-writer/compress"]
 hyphenation = ["lightweight-pdf-layout/hyphenation"]
 pdf-a = ["lightweight-pdf-writer/pdf-a"]
 zugferd = ["pdf-a", "lightweight-pdf-writer/zugferd"]
+tagged-pdf = ["pdf-a", "lightweight-pdf-writer/tagged-pdf"]
 serde = ["dep:serde", "lightweight-pdf-core/serde"]
 schemars = ["lightweight-pdf-core/schemars"]
 
@@ -52,6 +53,10 @@ required-features = ["serde"]
 [[test]]
 name = "template"
 required-features = ["serde"]
+
+[[test]]
+name = "tagged_pdf"
+required-features = ["tagged-pdf", "png"]
 
 [[example]]
 name = "demo_invoice"
@@ -90,3 +95,8 @@ required-features = ["pdf-a", "png"]
 name = "demo_zugferd"
 path = "../../examples/demo_zugferd.rs"
 required-features = ["zugferd"]
+
+[[example]]
+name = "demo_pdf_ua"
+path = "../../examples/demo_pdf_ua.rs"
+required-features = ["tagged-pdf", "png"]

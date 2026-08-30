@@ -21,11 +21,28 @@ pub(crate) use shared::{
 
 use crate::font_resolver::FontResolver;
 use crate::geometry::{Constraints, Rect, Size};
-use crate::render_node::RenderNode;
+use crate::render_node::{RenderNode, StructRole};
 use crate::toc::TocHeading;
 use crate::warnings::LayoutWarning;
 use lightweight_pdf_core::Element;
 use std::collections::HashMap;
+
+/// Wraps a `LayoutResult`'s `RenderNode` (the `Fit` case, or `Split`'s
+/// `current`/already-fitted part) with `role` — `Split`'s `remainder` is
+/// still an `Element`, not a `RenderNode` yet, and gets tagged again on
+/// its own when it's laid out on the next page (issue #27: a logical
+/// element split across pages becomes sibling `StructElem`s, one per
+/// page, rather than one element straddling a page boundary — simpler,
+/// and still valid tagged PDF).
+pub(crate) fn wrap_result(result: LayoutResult, role: StructRole) -> LayoutResult {
+    match result {
+        LayoutResult::Fit(node) => LayoutResult::Fit(RenderNode::tagged(role, node)),
+        LayoutResult::Split { current, remainder } => LayoutResult::Split {
+            current: RenderNode::tagged(role, current),
+            remainder,
+        },
+    }
+}
 
 pub struct LayoutCtx<'a> {
     pub resolver: &'a dyn FontResolver,
@@ -93,16 +110,31 @@ impl Layoutable for Element {
 
     fn layout(&self, ctx: &LayoutCtx, area: Rect, warnings: &mut Vec<LayoutWarning>, page: usize) -> LayoutResult {
         match self {
-            Element::Text(t) => t.layout(ctx, area, warnings, page),
+            // Structure-tree tagging (issue #27): attached here, at the
+            // one place every element's `RenderNode` output already
+            // passes through, rather than at each element's own
+            // construction site. `Table`/`List`/`TableOfContents` tag
+            // their own row/cell/item structure internally (only they
+            // know it) — this just adds the outer `Table`/`List`/`Toc`
+            // wrapper. `Row`/`Column`/`Spacer`/`Line`/`Rect` are left
+            // unwrapped: pure containers contribute no content of their
+            // own (their children tag themselves recursively).
+            Element::Text(t) => {
+                let role = match t.outline_level {
+                    Some(n) => StructRole::Heading(n),
+                    None => StructRole::Paragraph,
+                };
+                wrap_result(t.layout(ctx, area, warnings, page), role)
+            }
             Element::Row(r) => r.layout(ctx, area, warnings, page),
             Element::Column(c) => c.layout(ctx, area, warnings, page),
             Element::Spacer(s) => s.layout(ctx, area, warnings, page),
             Element::Line(l) => l.layout(ctx, area, warnings, page),
             Element::Rect(r) => r.layout(ctx, area, warnings, page),
-            Element::Table(t) => t.layout(ctx, area, warnings, page),
-            Element::Image(i) => i.layout(ctx, area, warnings, page),
-            Element::List(l) => l.layout(ctx, area, warnings, page),
-            Element::TableOfContents(t) => t.layout(ctx, area, warnings, page),
+            Element::Table(t) => wrap_result(t.layout(ctx, area, warnings, page), StructRole::Table),
+            Element::Image(i) => wrap_result(i.layout(ctx, area, warnings, page), StructRole::Figure),
+            Element::List(l) => wrap_result(l.layout(ctx, area, warnings, page), StructRole::List),
+            Element::TableOfContents(t) => wrap_result(t.layout(ctx, area, warnings, page), StructRole::Toc),
             Element::PageBreak => LayoutResult::Fit(RenderNode::Empty),
         }
     }
@@ -228,7 +260,7 @@ mod tests {
         assert_eq!(children.len(), 2);
         let rects: Vec<Rect> = children
             .iter()
-            .map(|n| match n {
+            .map(|n| match n.untagged() {
                 RenderNode::Group { area, .. } => *area,
                 other => panic!("expected nested Group, got {other:?}"),
             })

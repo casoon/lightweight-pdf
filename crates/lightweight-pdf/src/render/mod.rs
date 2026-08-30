@@ -26,6 +26,8 @@
 //! `default-fonts`, this module's private render pipeline is still
 //! reachable through those two, not dead code.
 
+#[cfg(feature = "tagged-pdf")]
+mod struct_tree;
 mod text;
 mod tree;
 
@@ -54,6 +56,10 @@ pub enum RenderError {
     /// with the `zugferd` feature (issue #26) — same reasoning as
     /// `PdfAFeatureDisabled`.
     ZugferdFeatureDisabled,
+    /// `Document::pdf_ua()` was set but this crate wasn't compiled with
+    /// the `tagged-pdf` feature (issue #27) — same reasoning as
+    /// `PdfAFeatureDisabled`.
+    TaggedPdfFeatureDisabled,
 }
 
 impl core::fmt::Display for RenderError {
@@ -72,6 +78,12 @@ impl core::fmt::Display for RenderError {
                 write!(
                     f,
                     "Document::zugferd_xml() was set but this crate wasn't built with the `zugferd` feature"
+                )
+            }
+            RenderError::TaggedPdfFeatureDisabled => {
+                write!(
+                    f,
+                    "Document::pdf_ua() was set but this crate wasn't built with the `tagged-pdf` feature"
                 )
             }
         }
@@ -114,6 +126,28 @@ struct RenderCtx<'a> {
     pdf: &'a mut PdfDocument,
     cb: &'a mut ContentBuilder,
     annotations: &'a mut Vec<lightweight_pdf_writer::PdfLinkAnnotation>,
+    /// This page's 0-based index — a `ContentRef`'s `/Pg` (issue #27).
+    #[cfg(feature = "tagged-pdf")]
+    page_index: usize,
+    /// `None` when `tagged-pdf` isn't compiled in, or when it is but
+    /// `Document::pdf_ua()` wasn't called — `tree::render_node`'s
+    /// `RenderNode::Tagged` handling checks this to decide between
+    /// emitting `BDC`/`EMC`+building structure or rendering `inner`
+    /// completely transparently.
+    #[cfg(feature = "tagged-pdf")]
+    struct_tree: Option<&'a mut struct_tree::StructTreeBuilder>,
+    #[cfg(feature = "tagged-pdf")]
+    warnings: &'a mut Vec<LayoutWarning>,
+    /// Set for the duration of header/footer rendering (issue #27):
+    /// makes `tree::render_tagged` treat *every* descendant as an
+    /// artifact regardless of its own role, overriding whatever tag the
+    /// header/footer closure's own content (built from ordinary
+    /// `Element`s, individually tagged like any other content) would
+    /// otherwise get — running headers/footers are pagination decoration
+    /// project-wide, never real structure. Always present (not cfg-gated
+    /// on `tagged-pdf`): a plain `bool`, and `render_tagged` already
+    /// no-ops entirely when `struct_tree` is `None`.
+    force_artifact: bool,
 }
 
 /// The two whole-document, read-only lookups every page's render pass
@@ -127,24 +161,45 @@ struct DocumentLookups<'a> {
 
 /// Renders one page's header/watermark/body/footer into a fresh content
 /// stream and returns the finished `PdfPage`.
+#[allow(clippy::too_many_arguments)]
+#[cfg_attr(not(feature = "tagged-pdf"), allow(unused_variables))]
 fn render_page(
     page: &PageRender,
     watermark: Option<&Watermark>,
     body_area: Rect,
     page_width: f32,
     page_height: f32,
+    page_index: usize,
     lookups: &DocumentLookups,
     pdf: &mut PdfDocument,
+    #[cfg(feature = "tagged-pdf")] mut struct_tree: Option<&mut struct_tree::StructTreeBuilder>,
+    #[cfg(feature = "tagged-pdf")] warnings: &mut Vec<LayoutWarning>,
 ) -> Result<PdfPage, RenderError> {
     let mut cb = ContentBuilder::new();
     let mut annotations = Vec::new();
     cb.save();
     cb.clip_rect(0.0, 0.0, page_width, page_height);
+    #[cfg(feature = "tagged-pdf")]
+    if let Some(st) = struct_tree.as_deref_mut() {
+        st.start_page();
+    }
     // Watermark first (bottom layer, `05-overflow-and-robustness.md`):
     // normal content always draws on top of it afterwards, which is
-    // what guarantees it never makes text unreadable.
+    // what guarantees it never makes text unreadable. Marked as an
+    // artifact (issue #27) when tagging is active — it's pagination
+    // decoration, not real content, and must never enter reading order.
     if let Some(watermark) = watermark {
+        #[cfg(feature = "tagged-pdf")]
+        let is_tagged = struct_tree.is_some();
+        #[cfg(not(feature = "tagged-pdf"))]
+        let is_tagged = false;
+        if is_tagged {
+            cb.begin_artifact();
+        }
         text::draw_watermark(watermark, body_area, page_height, lookups.embedded, &mut cb);
+        if is_tagged {
+            cb.end_marked_content();
+        }
     }
     let mut ctx = RenderCtx {
         page_height,
@@ -153,12 +208,22 @@ fn render_page(
         pdf,
         cb: &mut cb,
         annotations: &mut annotations,
+        #[cfg(feature = "tagged-pdf")]
+        page_index,
+        #[cfg(feature = "tagged-pdf")]
+        struct_tree,
+        #[cfg(feature = "tagged-pdf")]
+        warnings,
+        force_artifact: false,
     };
     if let Some(header) = &page.header {
+        ctx.force_artifact = true;
         tree::render_node(header, &mut ctx)?;
+        ctx.force_artifact = false;
     }
     tree::render_node(&page.body, &mut ctx)?;
     if let Some(footer) = &page.footer {
+        ctx.force_artifact = true;
         tree::render_node(footer, &mut ctx)?;
     }
     cb.restore();
@@ -179,9 +244,14 @@ fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec
     if doc.zugferd_xml.is_some() {
         return Err(RenderError::ZugferdFeatureDisabled);
     }
+    #[cfg(not(feature = "tagged-pdf"))]
+    if doc.pdf_ua {
+        return Err(RenderError::TaggedPdfFeatureDisabled);
+    }
 
     let ctx = LayoutCtx::new(fonts);
-    let paginated = paginate(doc, &ctx);
+    #[cfg_attr(not(feature = "tagged-pdf"), allow(unused_mut))]
+    let mut paginated = paginate(doc, &ctx);
 
     let mut used_chars: HashMap<FontKey, BTreeSet<char>> = HashMap::new();
     for page in &paginated.pages {
@@ -219,6 +289,11 @@ fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec
     {
         pdf.zugferd_xml = doc.zugferd_xml.clone();
     }
+    pdf.lang = doc.lang.clone();
+    #[cfg(feature = "tagged-pdf")]
+    {
+        pdf.pdf_ua = doc.pdf_ua;
+    }
 
     let embedded = text::embed_fonts(&mut pdf, fonts, &used_chars)?;
     let lookups = DocumentLookups {
@@ -226,17 +301,30 @@ fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec
         anchors: &anchors,
     };
 
-    for page in &paginated.pages {
+    #[cfg(feature = "tagged-pdf")]
+    let mut struct_builder = doc.pdf_ua.then(struct_tree::StructTreeBuilder::new);
+
+    for (page_index, page) in paginated.pages.iter().enumerate() {
         let pdf_page = render_page(
             page,
             doc.watermark.as_ref(),
             paginated.body_area,
             paginated.page_width,
             paginated.page_height,
+            page_index,
             &lookups,
             &mut pdf,
+            #[cfg(feature = "tagged-pdf")]
+            struct_builder.as_mut(),
+            #[cfg(feature = "tagged-pdf")]
+            &mut paginated.warnings,
         )?;
         pdf.add_page(pdf_page);
+    }
+
+    #[cfg(feature = "tagged-pdf")]
+    if let Some(builder) = struct_builder {
+        pdf.struct_tree = Some(builder.finish());
     }
 
     Ok((pdf.write(), paginated.warnings))

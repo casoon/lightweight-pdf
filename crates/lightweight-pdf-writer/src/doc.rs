@@ -150,6 +150,22 @@ pub struct PdfDocument {
     /// (issue #26) — the raw ZUGFeRD/Factur-X invoice XML to embed.
     #[cfg(feature = "zugferd")]
     pub zugferd_xml: Option<Vec<u8>>,
+    /// Catalog `/Lang` (issue #27) — always available, not gated on
+    /// `tagged-pdf`: cheap, and meaningful to any reader/screen reader
+    /// regardless of whether the rest of the document is tagged.
+    pub lang: Option<String>,
+    /// Set by the facade when `Document::pdf_ua()` was called (issue
+    /// #27) — adds `/MarkInfo`, the `pdfuaid:*` XMP properties, and (via
+    /// `struct_tree`, populated by the facade during rendering)
+    /// `/StructTreeRoot`.
+    #[cfg(feature = "tagged-pdf")]
+    pub pdf_ua: bool,
+    /// The structure tree's root `Document` element, built by the facade
+    /// while rendering (mirrors how `outline` is built by
+    /// `text::build_outline`) — `None` until rendering finishes filling
+    /// it in, even when `pdf_ua` is set.
+    #[cfg(feature = "tagged-pdf")]
+    pub struct_tree: Option<crate::struct_tree::PdfStructNode>,
 }
 
 impl PdfDocument {
@@ -268,8 +284,8 @@ impl PdfDocument {
     /// for XMP packets: some tooling scans for `<?xpacket` directly
     /// without going through `/FlateDecode`).
     #[cfg(feature = "pdf-a")]
-    fn write_xmp_metadata(w: &mut PdfWriter, metadata: &PdfMetadata, zugferd: bool) -> Ref {
-        let xmp = build_xmp_packet(metadata, zugferd);
+    fn write_xmp_metadata(w: &mut PdfWriter, metadata: &PdfMetadata, zugferd: bool, pdf_ua: bool) -> Ref {
+        let xmp = build_xmp_packet(metadata, zugferd, pdf_ua);
         let id = w.alloc();
         w.stream(id, "/Type /Metadata /Subtype /XML", xmp.as_bytes());
         id
@@ -285,6 +301,18 @@ impl PdfDocument {
 
     #[cfg(all(feature = "pdf-a", not(feature = "zugferd")))]
     fn is_zugferd(&self) -> bool {
+        false
+    }
+
+    /// `self.pdf_ua` when the `tagged-pdf` feature is compiled in,
+    /// `false` otherwise (issue #27) — mirrors [`Self::is_pdf_a3b`].
+    #[cfg(feature = "tagged-pdf")]
+    fn is_pdf_ua(&self) -> bool {
+        self.pdf_ua
+    }
+
+    #[cfg(not(feature = "tagged-pdf"))]
+    fn is_pdf_ua(&self) -> bool {
         false
     }
 
@@ -458,11 +486,12 @@ impl PdfDocument {
         font_resources: &str,
         image_resources: &str,
         pdf_a3b: bool,
+        pdf_ua: bool,
     ) -> Vec<Ref> {
         let page_refs: Vec<Ref> = (0..pages.len()).map(|_| w.alloc()).collect();
         let content_refs: Vec<Ref> = (0..pages.len()).map(|_| w.alloc()).collect();
 
-        for ((page, &page_ref), &content_ref) in pages.iter().zip(&page_refs).zip(&content_refs) {
+        for (page_index, ((page, &page_ref), &content_ref)) in pages.iter().zip(&page_refs).zip(&content_refs).enumerate() {
             let mut annot_refs = Vec::new();
             for annot in &page.annotations {
                 let id = w.alloc();
@@ -512,16 +541,27 @@ impl PdfDocument {
                 ""
             };
 
+            // Issue #27: `/StructParents` is this page's key into
+            // `/ParentTree` (`struct_tree::write_struct_tree` assigns
+            // every page `0..page_refs.len()`, matching `page_index` here
+            // exactly).
+            let struct_parents_entry = if pdf_ua {
+                format!(" /StructParents {page_index}")
+            } else {
+                String::new()
+            };
+
             w.object(
                 page_ref,
                 &format!(
-                    "<< /Type /Page /Parent {parent} /MediaBox [0 0 {w} {h}] /Resources << /Font << {fonts} >> /XObject << {images} >> >>{group} /Contents {content}{annots} >>",
+                    "<< /Type /Page /Parent {parent} /MediaBox [0 0 {w} {h}] /Resources << /Font << {fonts} >> /XObject << {images} >> >>{group}{struct_parents} /Contents {content}{annots} >>",
                     parent = pages_ref.write(),
                     w = fmt_num(page.width),
                     h = fmt_num(page.height),
                     fonts = font_resources,
                     images = image_resources,
                     group = group_entry,
+                    struct_parents = struct_parents_entry,
                     content = content_ref.write(),
                     annots = annots_entry,
                 ),
@@ -574,9 +614,10 @@ impl PdfDocument {
         let image_resources = Self::resource_entries(&image_refs, Self::image_resource_name);
 
         let pdf_a3b = self.is_pdf_a3b();
+        let pdf_ua = self.is_pdf_ua();
 
         let font_resources = Self::write_fonts(&mut w, &self.fonts);
-        let page_refs = Self::write_pages(&mut w, &self.pages, pages_ref, &font_resources, &image_resources, pdf_a3b);
+        let page_refs = Self::write_pages(&mut w, &self.pages, pages_ref, &font_resources, &image_resources, pdf_a3b, pdf_ua);
 
         let kids = Self::join_with_space(&page_refs, |r| r.write());
         w.object(pages_ref, &format!("<< /Type /Pages /Kids [{kids}] /Count {} >>", self.pages.len()));
@@ -589,7 +630,7 @@ impl PdfDocument {
         #[cfg(feature = "pdf-a")]
         let pdf_a_entry = if pdf_a3b {
             let output_intent_ref = Self::write_output_intent(&mut w);
-            let metadata_ref = Self::write_xmp_metadata(&mut w, &self.metadata, self.is_zugferd());
+            let metadata_ref = Self::write_xmp_metadata(&mut w, &self.metadata, self.is_zugferd(), pdf_ua);
             let zugferd_entry = self.write_zugferd_catalog_entry(&mut w);
             format!(
                 " /OutputIntents [{}] /Metadata {}{zugferd_entry}",
@@ -602,9 +643,42 @@ impl PdfDocument {
         #[cfg(not(feature = "pdf-a"))]
         let pdf_a_entry = String::new();
 
+        #[cfg(feature = "tagged-pdf")]
+        let tagged_entry = if pdf_ua {
+            use crate::struct_tree::{write_struct_tree, PdfStructNode};
+            let empty_root = PdfStructNode::Elem {
+                tag: "Document",
+                alt: None,
+                attrs: None,
+                children: Vec::new(),
+            };
+            let root = self.struct_tree.as_ref().unwrap_or(&empty_root);
+            let (struct_tree_root_ref, _struct_parents) = write_struct_tree(&mut w, root, &page_refs);
+            // `/ViewerPreferences /DisplayDocTitle true` (ISO 14289-1
+            // 7.1, "the DisplayDocTitle... shall be true") — found via
+            // an actual veraPDF PDF/UA run, not from the spec text
+            // alone.
+            format!(
+                " /StructTreeRoot {} /MarkInfo << /Marked true >> /ViewerPreferences << /DisplayDocTitle true >>",
+                struct_tree_root_ref.write()
+            )
+        } else {
+            String::new()
+        };
+        #[cfg(not(feature = "tagged-pdf"))]
+        let tagged_entry = String::new();
+
+        let lang_entry = match &self.lang {
+            Some(lang) => format!(" /Lang {}", format_pdf_string(lang)),
+            None => String::new(),
+        };
+
         w.object(
             catalog_ref,
-            &format!("<< /Type /Catalog /Pages {}{outlines_entry}{pdf_a_entry} >>", pages_ref.write()),
+            &format!(
+                "<< /Type /Catalog /Pages {}{outlines_entry}{pdf_a_entry}{tagged_entry}{lang_entry} >>",
+                pages_ref.write()
+            ),
         );
 
         let mut info_entries = Vec::new();
@@ -707,7 +781,7 @@ fn write_outline_siblings(w: &mut PdfWriter, nodes: &[PdfOutlineNode], ref_nodes
     }
 }
 
-fn format_pdf_string(s: &str) -> String {
+pub(crate) fn format_pdf_string(s: &str) -> String {
     let escaped = s.replace('\\', "\\\\").replace('(', "\\(").replace(')', "\\)");
     format!("({escaped})")
 }
@@ -729,7 +803,7 @@ fn xml_escape(s: &str) -> String {
 /// from, never a separately-tracked copy), plus the `pdfaid:part`/
 /// `pdfaid:conformance` conformance markers every PDF/A file needs.
 #[cfg(feature = "pdf-a")]
-fn build_xmp_packet(metadata: &PdfMetadata, zugferd: bool) -> String {
+fn build_xmp_packet(metadata: &PdfMetadata, zugferd: bool, pdf_ua: bool) -> String {
     let mut props = String::new();
     if let Some(ref title) = metadata.title {
         props.push_str(&format!(
@@ -762,8 +836,24 @@ fn build_xmp_packet(metadata: &PdfMetadata, zugferd: bool) -> String {
         props.push_str(&format!("<xmp:ModifyDate>{modified}</xmp:ModifyDate>"));
     }
     props.push_str("<pdfaid:part>3</pdfaid:part><pdfaid:conformance>B</pdfaid:conformance>");
+    // PDF/UA-1 identification (issue #27) — `Document::pdf_ua()` always
+    // implies `pdf_a3b()` (ADR-019), so this XMP packet already carries
+    // the `pdfaid:*` markers above; PDF/UA just adds its own alongside
+    // them, both correctly describing the same file.
+    if pdf_ua {
+        props.push_str("<pdfuaid:part>1</pdfuaid:part>");
+    }
 
     let zugferd_block = if zugferd { ZUGFERD_XMP_EXTENSION } else { "" };
+    // PDF/A-3b's own XMP validation rejects any property that isn't
+    // either a predefined schema or described by a PDF/A Extension
+    // Schema (exactly the rule that motivated `ZUGFERD_XMP_EXTENSION`
+    // above) — `pdfuaid:part` needs the same treatment. Found via an
+    // actual veraPDF PDF/A-3b run on a `pdf_ua()` document failing with
+    // "XMP property is either not predefined, or is not defined in any
+    // XMP extension schema" — not something the spec text alone would
+    // have flagged ahead of time.
+    let pdfua_block = if pdf_ua { PDFUA_XMP_EXTENSION } else { "" };
 
     format!(
         "<?xpacket begin=\"\u{feff}\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>\
@@ -773,15 +863,39 @@ fn build_xmp_packet(metadata: &PdfMetadata, zugferd: bool) -> String {
 xmlns:dc=\"http://purl.org/dc/elements/1.1/\" \
 xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\" \
 xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\" \
-xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\">\
+xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\" \
+xmlns:pdfuaid=\"http://www.aiim.org/pdfua/ns/id/\">\
 {props}\
 </rdf:Description>\
 {zugferd_block}\
+{pdfua_block}\
 </rdf:RDF>\
 </x:xmpmeta>\
 <?xpacket end=\"w\"?>"
     )
 }
+
+#[cfg(all(feature = "pdf-a", not(feature = "tagged-pdf")))]
+const PDFUA_XMP_EXTENSION: &str = "";
+
+/// PDF/A Extension Schema description for the `pdfuaid` namespace (issue
+/// #27) — same shape as `ZUGFERD_XMP_EXTENSION`, one property
+/// (`part`, `Integer`).
+#[cfg(feature = "tagged-pdf")]
+const PDFUA_XMP_EXTENSION: &str = "\
+<rdf:Description rdf:about=\"\" \
+xmlns:pdfaExtension=\"http://www.aiim.org/pdfa/ns/extension/\" \
+xmlns:pdfaSchema=\"http://www.aiim.org/pdfa/ns/schema#\" \
+xmlns:pdfaProperty=\"http://www.aiim.org/pdfa/ns/property#\">\
+<pdfaExtension:schemas><rdf:Bag><rdf:li rdf:parseType=\"Resource\">\
+<pdfaSchema:schema>PDF/UA identification schema</pdfaSchema:schema>\
+<pdfaSchema:namespaceURI>http://www.aiim.org/pdfua/ns/id/</pdfaSchema:namespaceURI>\
+<pdfaSchema:prefix>pdfuaid</pdfaSchema:prefix>\
+<pdfaSchema:property><rdf:Seq>\
+<rdf:li rdf:parseType=\"Resource\"><pdfaProperty:name>part</pdfaProperty:name><pdfaProperty:valueType>Integer</pdfaProperty:valueType><pdfaProperty:category>internal</pdfaProperty:category><pdfaProperty:description>Indicates, as an integer, the part of ISO 14289 to which the file conforms</pdfaProperty:description></rdf:li>\
+</rdf:Seq></pdfaSchema:property>\
+</rdf:li></rdf:Bag></pdfaExtension:schemas>\
+</rdf:Description>";
 
 /// The Factur-X/ZUGFeRD 2.x XMP extension (issue #26): the `fx:*`
 /// property values (fixed for this crate's EN 16931/Comfort-only scope —
@@ -1081,5 +1195,61 @@ mod tests {
         assert!(!text.contains("/Type /Filespec"));
         assert!(!text.contains("/AF ["));
         assert!(!text.contains("xmlns:fx="));
+    }
+
+    #[cfg(feature = "tagged-pdf")]
+    #[test]
+    fn writes_struct_tree_mark_info_and_lang_when_pdf_ua_is_set() {
+        use crate::struct_tree::PdfStructNode;
+
+        let mut doc = PdfDocument::new();
+        doc.pdf_a3b = true;
+        doc.pdf_ua = true;
+        doc.lang = Some("en-US".to_string());
+        doc.add_page(PdfPage {
+            width: 200.0,
+            height: 200.0,
+            content: Vec::new(),
+            annotations: Vec::new(),
+        });
+        doc.struct_tree = Some(PdfStructNode::Elem {
+            tag: "Document",
+            alt: None,
+            attrs: None,
+            children: vec![PdfStructNode::Elem {
+                tag: "H1",
+                alt: None,
+                attrs: None,
+                children: vec![PdfStructNode::ContentRef { page_index: 0, mcid: 0 }],
+            }],
+        });
+        let bytes = doc.write();
+        let text = String::from_utf8_lossy(&bytes);
+        assert!(text.contains("/MarkInfo << /Marked true >>"));
+        assert!(text.contains("/Lang (en-US)"));
+        assert!(text.contains("/Type /StructTreeRoot"));
+        assert!(text.contains("/Type /StructElem /S /Document"));
+        assert!(text.contains("/Type /StructElem /S /H1"));
+        assert!(text.contains("/Type /MCR /Pg"));
+        assert!(text.contains("/StructParents 0"));
+        assert!(text.contains("/Nums ["));
+        assert!(text.contains("<pdfuaid:part>1</pdfuaid:part>"));
+    }
+
+    #[cfg(feature = "tagged-pdf")]
+    #[test]
+    fn omits_struct_tree_entries_when_pdf_ua_is_not_set() {
+        let mut doc = PdfDocument::new();
+        doc.add_page(PdfPage {
+            width: 200.0,
+            height: 200.0,
+            content: Vec::new(),
+            annotations: Vec::new(),
+        });
+        let bytes = doc.write();
+        let text = String::from_utf8_lossy(&bytes);
+        assert!(!text.contains("/StructTreeRoot"));
+        assert!(!text.contains("/MarkInfo"));
+        assert!(!text.contains("/StructParents"));
     }
 }

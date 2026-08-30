@@ -112,6 +112,7 @@ fn describe_warning(warning: &LayoutWarning) -> String {
         LayoutWarningKind::HeaderFooterOverflow => "header/footer content taller than its reserved band".to_string(),
         LayoutWarningKind::MissingGlyph { ch, font } => format!("missing glyph {ch:?} in font {:?}", font.0),
         LayoutWarningKind::TableRowOverflow => "table row taller than the available space".to_string(),
+        LayoutWarningKind::MissingAltText => "image has no alt text".to_string(),
     };
     format!("page {}: {kind} ({})", warning.page, warning.element_hint)
 }

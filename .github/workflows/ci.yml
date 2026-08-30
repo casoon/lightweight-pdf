@@ -200,11 +200,12 @@ jobs:
             echo "${d}: ${avg_ms}ms avg, ${size} bytes output" >> "$GITHUB_STEP_SUMMARY"
           done
 
-  # Issue #25: veraPDF confirms PDF/A-3b conformance. Brings its own JVM —
-  # the most expensive plausible CI addition — so this stays its own job
-  # (never inside `test`), checks a single representative document (not
-  # every demo), and uses the official `verapdf/cli` container image
-  # instead of installing veraPDF in the job.
+  # Issues #25/#27: veraPDF confirms PDF/A-3b and PDF/UA-1 conformance.
+  # Brings its own JVM — the most expensive plausible CI addition — so
+  # this stays its own job (never inside `test`), checks one
+  # representative document per flavour (not every demo), and uses the
+  # official `verapdf/cli` container image instead of installing veraPDF
+  # in the job.
   pdf-a-conformance:
     runs-on: ubuntu-latest
     steps:
@@ -217,8 +218,10 @@ jobs:
               - 'crates/lightweight-pdf-writer/**'
               - 'crates/lightweight-pdf-core/**'
               - 'crates/lightweight-pdf-fonts/**'
+              - 'crates/lightweight-pdf-layout/**'
               - 'crates/lightweight-pdf/**'
               - 'examples/demo_pdf_a3b.rs'
+              - 'examples/demo_pdf_ua.rs'
               - '.github/workflows/ci.yml'
       - if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
         uses: dtolnay/rust-toolchain@stable
@@ -231,3 +234,10 @@ jobs:
         if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
         run: |
           docker run --rm -v "$PWD/examples:/data" verapdf/cli --flavour 3b --format text /data/demo_pdf_a3b.pdf
+      - name: Build Tagged PDF/PDF-UA demo
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        run: cargo run -p lightweight-pdf --example demo_pdf_ua --features tagged-pdf,png
+      - name: Verify with veraPDF (flavour ua1)
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        run: |
+          docker run --rm -v "$PWD/examples:/data" verapdf/cli --flavour ua1 --format text /data/demo_pdf_ua.pdf

@@ -6,7 +6,9 @@
 use super::{pdf_rect_y, text, to_rgb, RenderCtx, RenderError};
 use crate::images;
 use lightweight_pdf_core::{Border, BorderStyle, Color, ImageFormat};
-use lightweight_pdf_layout::{Rect, RenderNode};
+#[cfg(feature = "tagged-pdf")]
+use lightweight_pdf_layout::{LayoutWarning, LayoutWarningKind};
+use lightweight_pdf_layout::{Rect, RenderNode, StructRole};
 use lightweight_pdf_writer::PdfDocument;
 
 /// Fills `area`'s background, if any — shared by `RenderNode::Group` (under
@@ -167,6 +169,75 @@ pub(super) fn render_node(node: &RenderNode, ctx: &mut RenderCtx) -> Result<(), 
             width_px,
             height_px,
             components,
+            alt: _,
         } => render_image(area, bytes, *format, *width_px, *height_px, *components, ctx),
+        RenderNode::Tagged { role, inner } => render_tagged(*role, inner, ctx),
     }
+}
+
+/// Handles a `RenderNode::Tagged` wrapper (issue #27) — transparent
+/// (`inner` renders exactly as if unwrapped) when structure-tree building
+/// isn't active; otherwise dispatches on `role`: `Artifact` gets `BDC
+/// /Artifact`/`EMC` with no structure-tree involvement at all, every
+/// other role opens a new `StructElem` (`enter`), renders `inner` (a
+/// grouping role's own children recurse and fill it; a leaf role emits
+/// exactly one marked-content span via `next_content_ref`), then closes
+/// it (`exit`) — see `StructTreeBuilder`'s doc comment for why both
+/// shapes share this same enter/exit call.
+#[cfg_attr(not(feature = "tagged-pdf"), allow(unused_variables))]
+fn render_tagged(role: StructRole, inner: &RenderNode, ctx: &mut RenderCtx) -> Result<(), RenderError> {
+    #[cfg(feature = "tagged-pdf")]
+    {
+        if ctx.struct_tree.is_none() {
+            return render_node(inner, ctx);
+        }
+        if role == StructRole::Artifact || ctx.force_artifact {
+            ctx.cb.begin_artifact();
+            render_node(inner, ctx)?;
+            ctx.cb.end_marked_content();
+            return Ok(());
+        }
+        ctx.struct_tree.as_deref_mut().expect("checked Some above").enter();
+        if role.is_grouping() {
+            render_node(inner, ctx)?;
+        } else {
+            let page_index = ctx.page_index;
+            let mcid = ctx
+                .struct_tree
+                .as_deref_mut()
+                .expect("checked Some above")
+                .next_content_ref(page_index);
+            ctx.cb.begin_marked_content(role.tag_name(), mcid);
+            render_node(inner, ctx)?;
+            ctx.cb.end_marked_content();
+        }
+        // PDF/UA-1 requires every Figure to have *some* /Alt (a real
+        // veraPDF run confirms it: omitting the key entirely fails
+        // "Figure structure element neither has an alternate description
+        // nor a replacement text", not just a quality nit) — an empty
+        // string satisfies that structural requirement while still
+        // being honest that no real description was given; inventing
+        // placeholder text would be actively misleading to a screen
+        // reader user, so this crate doesn't.
+        let alt = if role == StructRole::Figure {
+            let found = super::struct_tree::find_image_alt(inner);
+            if found.is_none() {
+                ctx.warnings.push(LayoutWarning {
+                    kind: LayoutWarningKind::MissingAltText,
+                    page: ctx.page_index + 1,
+                    element_hint: "Image without alt text".to_string(),
+                });
+            }
+            Some(found.unwrap_or_default())
+        } else {
+            None
+        };
+        ctx.struct_tree
+            .as_deref_mut()
+            .expect("checked Some above")
+            .exit(role.tag_name(), alt);
+        Ok(())
+    }
+    #[cfg(not(feature = "tagged-pdf"))]
+    render_node(inner, ctx)
 }

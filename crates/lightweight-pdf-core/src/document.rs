@@ -228,6 +228,22 @@ pub struct Document {
     /// outright rather than silently dropping it).
     #[cfg_attr(feature = "serde", serde(skip))]
     pub zugferd_xml: Option<Vec<u8>>,
+    /// Set by `.pdf_ua()` (issue #27): asks the facade to write a Tagged
+    /// PDF/PDF-UA-conformant document — a structure tree (`/StructTreeRoot`,
+    /// one `/StructElem` per heading/paragraph/table/list/figure),
+    /// marked content (`BDC`/`EMC` with MCIDs) in every content stream,
+    /// and watermark/header/footer content marked as artifacts rather
+    /// than structure. Always present regardless of the facade's
+    /// `tagged-pdf` Cargo feature (this flag costs nothing) —
+    /// `render()` returns `RenderError::TaggedPdfFeatureDisabled` if this
+    /// is `true` but that feature isn't compiled in.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub pdf_ua: bool,
+    /// Document natural language (e.g. `"en-US"`, `"de-DE"`) for the
+    /// Catalog's `/Lang` entry — required for PDF/UA, meaningful even
+    /// without it (screen readers use `/Lang` to pick a voice/language).
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub lang: Option<String>,
     #[cfg_attr(feature = "serde", serde(default))]
     pub children: Vec<Element>,
 }
@@ -252,6 +268,8 @@ impl Document {
             theme: None,
             pdf_a3b: false,
             zugferd_xml: None,
+            pdf_ua: false,
+            lang: None,
             children: Vec::new(),
         }
     }
@@ -281,6 +299,27 @@ impl Document {
     pub fn zugferd_xml(mut self, xml: impl Into<Vec<u8>>) -> Self {
         self.pdf_a3b = true;
         self.zugferd_xml = Some(xml.into());
+        self
+    }
+
+    /// Opt in to Tagged PDF/PDF-UA output (issue #27) — see
+    /// `Document::pdf_ua`'s field doc comment. Implies `.pdf_a3b()`: both
+    /// need the same XMP/`OutputIntent` machinery, and a combined
+    /// PDF/A+PDF/UA document (archival *and* accessible) is what most
+    /// real producers of this document class actually want — PDF/UA
+    /// without PDF/A isn't a supported combination (ADR-019 in the local
+    /// `plan/00-decisions.md`). Needs the facade's `tagged-pdf` Cargo
+    /// feature; without it, `render()` returns
+    /// `RenderError::TaggedPdfFeatureDisabled`.
+    pub fn pdf_ua(mut self) -> Self {
+        self.pdf_a3b = true;
+        self.pdf_ua = true;
+        self
+    }
+
+    /// Sets the Catalog's `/Lang` (e.g. `"en-US"`).
+    pub fn lang(mut self, lang: impl Into<String>) -> Self {
+        self.lang = Some(lang.into());
         self
     }
 

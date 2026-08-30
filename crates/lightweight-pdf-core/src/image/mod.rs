@@ -75,6 +75,17 @@ pub struct Image {
     /// 1 = Gray, 3 = RGB, 4 = RGBA (JPEG is always 1 or 3, never 4).
     pub components: u8,
     pub common: Common,
+    /// Alternate text description (issue #27) — becomes `/Alt` on this
+    /// image's `/Figure` structure element when `Document::pdf_ua()` is
+    /// set. `None` still renders (and still gets a `/Figure` tag, with an
+    /// empty `/Alt` so the structure tree stays well-formed) but
+    /// `render_with_diagnostics()` reports a
+    /// `LayoutWarningKind::MissingAltText` for it — and, verified against
+    /// veraPDF, the resulting PDF genuinely isn't PDF/UA-1-conformant
+    /// until real alt text is supplied (an empty `/Alt` doesn't satisfy
+    /// it; this crate won't invent placeholder text, since that would
+    /// mislead a screen reader user worse than an honest gap does).
+    pub alt: Option<String>,
 }
 
 #[cfg(feature = "serde")]
@@ -82,9 +93,10 @@ impl serde::Serialize for Image {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use base64::Engine;
         use serde::ser::SerializeStruct;
-        let mut state = serializer.serialize_struct("Image", 2)?;
+        let mut state = serializer.serialize_struct("Image", 3)?;
         state.serialize_field("bytes_base64", &base64::engine::general_purpose::STANDARD.encode(&self.bytes))?;
         state.serialize_field("common", &self.common)?;
+        state.serialize_field("alt", &self.alt)?;
         state.end()
     }
 }
@@ -103,6 +115,8 @@ impl<'de> serde::Deserialize<'de> for Image {
             bytes_base64: String,
             #[serde(default)]
             common: Common,
+            #[serde(default)]
+            alt: Option<String>,
         }
 
         let raw = Raw::deserialize(deserializer)?;
@@ -111,6 +125,7 @@ impl<'de> serde::Deserialize<'de> for Image {
             .map_err(serde::de::Error::custom)?;
         let mut image = Image::new(bytes).map_err(serde::de::Error::custom)?;
         image.common = raw.common;
+        image.alt = raw.alt;
         Ok(image)
     }
 }
@@ -127,7 +142,8 @@ impl schemars::JsonSchema for Image {
             "type": "object",
             "properties": {
                 "bytes_base64": { "type": "string" },
-                "common": generator.subschema_for::<Common>()
+                "common": generator.subschema_for::<Common>(),
+                "alt": { "type": ["string", "null"] }
             },
             "required": ["bytes_base64"],
             "additionalProperties": false
@@ -161,7 +177,15 @@ impl Image {
             height_px,
             components,
             common: Common::default(),
+            alt: None,
         })
+    }
+
+    /// Sets this image's alternate text description (issue #27) — see the
+    /// `alt` field's doc comment.
+    pub fn alt(mut self, alt: impl Into<String>) -> Self {
+        self.alt = Some(alt.into());
+        self
     }
 
     pub fn width(mut self, width: f32) -> Self {

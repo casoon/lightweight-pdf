@@ -9,7 +9,7 @@ use crate::layoutable::{
     clip_to_fixed_height, finish_fit, measure_at_width, push_warning, resolve_auto_size, resolve_bound, shrink_and_bound_height,
     wrap_children, LayoutCtx, LayoutResult, Layoutable,
 };
-use crate::render_node::{align_offset, RenderNode};
+use crate::render_node::{align_offset, RenderNode, StructRole};
 use crate::warnings::{LayoutWarning, LayoutWarningKind};
 use lightweight_pdf_core::{Color, ColumnWidth, Common, Element, Table, TableCell, TableColumn};
 
@@ -135,14 +135,16 @@ fn layout_row_cells(
         let cell_size = measure_at_width(ctx, &cell.element, inner_w);
         let box_width = cell_size.width.min(inner_w).max(0.0);
         let x_offset = align_offset(col_align, inner_w, box_width);
+        let cell_box = Rect {
+            x: cursor_x,
+            y: row_area.y,
+            width: total_w,
+            height: row_area.height,
+        };
+        let mut cell_children = Vec::new();
         if cell.background.is_some() || cell.border.is_some() {
-            nodes.push(RenderNode::Rect {
-                area: Rect {
-                    x: cursor_x,
-                    y: row_area.y,
-                    width: total_w,
-                    height: row_area.height,
-                },
+            cell_children.push(RenderNode::Rect {
+                area: cell_box,
                 background: cell.background,
                 border: cell.border,
                 corner_radius: 0.0,
@@ -155,11 +157,25 @@ fn layout_row_cells(
             height: content_h,
         };
         match cell.element.layout(ctx, cell_area, warnings, page) {
-            LayoutResult::Fit(node) => nodes.push(node),
+            LayoutResult::Fit(node) => cell_children.push(node),
             LayoutResult::Split { current, .. } => {
-                nodes.push(current);
+                cell_children.push(current);
             }
         }
+        // Header cells only (issue #27) — `layout_row_cells` has exactly
+        // one call site, `render_row`, which is itself only ever called
+        // for the header row.
+        nodes.push(RenderNode::tagged(
+            StructRole::TableHeaderCell,
+            RenderNode::Group {
+                area: cell_box,
+                clip: false,
+                background: None,
+                border: None,
+                corner_radius: 0.0,
+                children: cell_children,
+            },
+        ));
         cursor_x += total_w;
         col_idx = end_idx;
     }
@@ -192,14 +208,17 @@ fn render_row(
         height: row.row_height,
     };
     let nodes = layout_row_cells(ctx, table, row.cells, col_widths, row_area, warnings, page);
-    RenderNode::Group {
-        area: row_area,
-        clip: true,
-        background: row.background,
-        border: None,
-        corner_radius: 0.0,
-        children: nodes,
-    }
+    RenderNode::tagged(
+        StructRole::TableRow,
+        RenderNode::Group {
+            area: row_area,
+            clip: true,
+            background: row.background,
+            border: None,
+            corner_radius: 0.0,
+            children: nodes,
+        },
+    )
 }
 
 // ---------------------------------------------------------------------
@@ -395,8 +414,9 @@ fn render_cells_starting_at(
         // (not just the padded content area), and — precedence: cell
         // beats row beats column — over whatever the row's zebra stripe
         // already painted underneath it.
+        let mut cell_children = Vec::new();
         if p.cell.background.is_some() || p.cell.border.is_some() {
-            nodes.push(RenderNode::Rect {
+            cell_children.push(RenderNode::Rect {
                 area: cell_box,
                 background: p.cell.background,
                 border: p.cell.border,
@@ -416,9 +436,22 @@ fn render_cells_starting_at(
             height: content_h,
         };
         match p.cell.element.layout(trc.ctx, cell_area, warnings, trc.page) {
-            LayoutResult::Fit(node) => nodes.push(node),
-            LayoutResult::Split { current, .. } => nodes.push(current),
+            LayoutResult::Fit(node) => cell_children.push(node),
+            LayoutResult::Split { current, .. } => cell_children.push(current),
         }
+        // Body cells only (issue #27) — this function is only ever
+        // called for `self.rows`, never the header (see `render_row`).
+        nodes.push(RenderNode::tagged(
+            StructRole::TableCell,
+            RenderNode::Group {
+                area: cell_box,
+                clip: false,
+                background: None,
+                border: None,
+                corner_radius: 0.0,
+                children: cell_children,
+            },
+        ));
     }
     nodes
 }
@@ -451,14 +484,17 @@ fn render_block(
             height: block_heights[0],
         };
         let nodes = render_cells_starting_at(trc, &row_area, warnings, row_idx, 0, block_heights);
-        return RenderNode::Group {
-            area: row_area,
-            clip: true,
-            background: row_backgrounds[row_idx],
-            border: None,
-            corner_radius: 0.0,
-            children: nodes,
-        };
+        return RenderNode::tagged(
+            StructRole::TableRow,
+            RenderNode::Group {
+                area: row_area,
+                clip: true,
+                background: row_backgrounds[row_idx],
+                border: None,
+                corner_radius: 0.0,
+                children: nodes,
+            },
+        );
     }
 
     let block_area = Rect {
@@ -477,21 +513,37 @@ fn render_block(
             width: inner.width,
             height: row_h,
         };
+        // Each visual row gets its own `TableRow` tag (issue #27) even
+        // though a `rowspan` cell's content lives in an earlier row's
+        // node — this loop already has per-row granularity, so getting
+        // one `/TR` per row here is no extra work.
+        let mut row_children = Vec::new();
         if let Some(bg) = row_backgrounds[row_idx] {
-            children.push(RenderNode::Rect {
+            row_children.push(RenderNode::Rect {
                 area: row_area,
                 background: Some(bg),
                 border: None,
                 corner_radius: 0.0,
             });
         }
-        children.extend(render_cells_starting_at(
+        row_children.extend(render_cells_starting_at(
             trc,
             &row_area,
             warnings,
             row_idx,
             local_idx,
             block_heights,
+        ));
+        children.push(RenderNode::tagged(
+            StructRole::TableRow,
+            RenderNode::Group {
+                area: row_area,
+                clip: false,
+                background: None,
+                border: None,
+                corner_radius: 0.0,
+                children: row_children,
+            },
         ));
         cursor_y += row_h;
     }
@@ -726,15 +778,18 @@ mod tests {
         // once across all pages, in order.
         let mut seen_rows = Vec::new();
         for page in &pages {
-            let RenderNode::Group { children, .. } = page else {
+            let RenderNode::Group { children, .. } = page.untagged() else {
                 panic!("expected a Group");
             };
             assert!(!children.is_empty(), "every page must render at least the header");
             for row_node in children {
-                let RenderNode::Group { children: cells, .. } = row_node else {
+                let RenderNode::Group { children: cells, .. } = row_node.untagged() else {
                     panic!("expected row Group");
                 };
-                let RenderNode::Group { children: text_wrap, .. } = &cells[0] else {
+                let RenderNode::Group { children: cell_inner, .. } = cells[0].untagged() else {
+                    panic!("expected cell Group");
+                };
+                let RenderNode::Group { children: text_wrap, .. } = cell_inner[0].untagged() else {
                     panic!("expected clipped text wrapper");
                 };
                 let RenderNode::TextLines { lines, .. } = &text_wrap[0] else {
@@ -763,13 +818,19 @@ mod tests {
             width: 30.0,
             height: 200.0,
         };
-        let LayoutResult::Fit(RenderNode::Group { children, .. }) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
+        let LayoutResult::Fit(node) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
             panic!("expected Fit");
         };
-        let RenderNode::Group { children: cells, .. } = &children[0] else {
+        let RenderNode::Group { children, .. } = node.untagged() else {
+            panic!("expected Group");
+        };
+        let RenderNode::Group { children: cells, .. } = children[0].untagged() else {
             panic!("expected row group");
         };
-        let RenderNode::Group { children: text_wrap, .. } = &cells[0] else {
+        let RenderNode::Group { children: cell_inner, .. } = cells[0].untagged() else {
+            panic!("expected cell group");
+        };
+        let RenderNode::Group { children: text_wrap, .. } = cell_inner[0].untagged() else {
             panic!("expected clipped text wrapper");
         };
         let RenderNode::TextLines { lines, .. } = &text_wrap[0] else {
@@ -793,13 +854,16 @@ mod tests {
             width: 60.0,
             height: 400.0,
         };
-        let LayoutResult::Fit(RenderNode::Group { children: rows, .. }) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
+        let LayoutResult::Fit(node) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
             panic!("expected Fit");
+        };
+        let RenderNode::Group { children: rows, .. } = node.untagged() else {
+            panic!("expected Group");
         };
         assert_eq!(rows.len(), 3);
         let heights: Vec<f32> = rows
             .iter()
-            .map(|r| match r {
+            .map(|r| match r.untagged() {
                 RenderNode::Group { area, .. } => area.height,
                 _ => panic!("expected Group"),
             })
@@ -811,7 +875,7 @@ mod tests {
         // previous row's y + height.
         let ys: Vec<f32> = rows
             .iter()
-            .map(|r| match r {
+            .map(|r| match r.untagged() {
                 RenderNode::Group { area, .. } => area.y,
                 _ => unreachable!(),
             })
@@ -896,13 +960,19 @@ mod tests {
             width: 100.0,
             height: 50.0,
         };
-        let LayoutResult::Fit(RenderNode::Group { children: rows, .. }) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
+        let LayoutResult::Fit(node) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
             panic!("expected Fit");
         };
-        let RenderNode::Group { children: cells, .. } = &rows[0] else {
+        let RenderNode::Group { children: rows, .. } = node.untagged() else {
+            panic!("expected Group");
+        };
+        let RenderNode::Group { children: cells, .. } = rows[0].untagged() else {
             panic!("expected row group");
         };
-        let RenderNode::Group { area: cell_area, .. } = &cells[0] else {
+        let RenderNode::Group { children: cell_inner, .. } = cells[0].untagged() else {
+            panic!("expected cell group");
+        };
+        let RenderNode::Group { area: cell_area, .. } = cell_inner[0].untagged() else {
             panic!("expected clipped cell wrapper");
         };
         // "42" is much narrower than the 100pt column; End-align must
@@ -933,8 +1003,11 @@ mod tests {
             width: 60.0,
             height: 400.0,
         };
-        let LayoutResult::Fit(RenderNode::Group { children: blocks, .. }) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
+        let LayoutResult::Fit(node) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
             panic!("expected Fit");
+        };
+        let RenderNode::Group { children: blocks, .. } = node.untagged() else {
+            panic!("expected Group");
         };
         assert!(warnings.is_empty(), "unexpected warnings: {warnings:?}");
         // Both rows must merge into one atomic block, not two separate
@@ -947,15 +1020,30 @@ mod tests {
         );
         let RenderNode::Group {
             area: block_area,
-            children: cells,
+            children: block_rows,
             ..
         } = &blocks[0]
         else {
             panic!("expected block group");
         };
+        // The block contains one `TableRow` per visual row (issue #27),
+        // each holding that row's own cells.
+        assert_eq!(
+            block_rows.len(),
+            2,
+            "expected 2 row children in the block, got {}",
+            block_rows.len()
+        );
+        let total_cells: usize = block_rows
+            .iter()
+            .map(|r| match r.untagged() {
+                RenderNode::Group { children, .. } => children.len(),
+                _ => panic!("expected row group"),
+            })
+            .sum();
         // 3 rendered cells total: "Summe" (once, spanning both rows),
         // "Zeile 1", "Zeile 2".
-        assert_eq!(cells.len(), 3, "expected 3 rendered cells, got {}", cells.len());
+        assert_eq!(total_cells, 3, "expected 3 rendered cells, got {total_cells}");
         // The block covers both rows' height (single-row height is
         // 22.4pt, same constant as `striped_alternates_and_survives_a_split`).
         assert!(
@@ -988,7 +1076,7 @@ mod tests {
         let LayoutResult::Split { current, remainder } = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
             panic!("expected a Split");
         };
-        let RenderNode::Group { children, .. } = current else {
+        let RenderNode::Group { children, .. } = current.untagged() else {
             panic!("expected Group");
         };
         assert_eq!(
@@ -1049,14 +1137,17 @@ mod tests {
             width: 60.0,
             height: 400.0,
         };
-        let LayoutResult::Fit(RenderNode::Group { children: blocks, .. }) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
+        let LayoutResult::Fit(node) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
             panic!("expected Fit");
+        };
+        let RenderNode::Group { children: blocks, .. } = node.untagged() else {
+            panic!("expected Group");
         };
         let RenderNode::Group {
             background: row_bg,
             children: cells,
             ..
-        } = &blocks[1]
+        } = blocks[1].untagged()
         else {
             panic!("expected row group");
         };
@@ -1064,9 +1155,17 @@ mod tests {
         assert_eq!(*row_bg, Some(stripe));
         // ...but the styled cell paints its own Rect on top of it, with
         // its own color, not the stripe's.
-        let has_cell_rect = cells
-            .iter()
-            .any(|n| matches!(n, RenderNode::Rect { background: Some(bg), .. } if *bg == cell_bg));
+        let has_cell_rect = cells.iter().any(|cell_node| {
+            let RenderNode::Group {
+                children: cell_children, ..
+            } = cell_node.untagged()
+            else {
+                return false;
+            };
+            cell_children
+                .iter()
+                .any(|n| matches!(n, RenderNode::Rect { background: Some(bg), .. } if *bg == cell_bg))
+        });
         assert!(
             has_cell_rect,
             "expected a cell-level background Rect overriding the stripe, got: {cells:?}"
@@ -1087,12 +1186,15 @@ mod tests {
             width: 60.0,
             height: 400.0,
         };
-        let LayoutResult::Fit(RenderNode::Group { children: blocks, .. }) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
+        let LayoutResult::Fit(node) = Element::Table(table).layout(&c, area, &mut warnings, 1) else {
             panic!("expected Fit");
+        };
+        let RenderNode::Group { children: blocks, .. } = node.untagged() else {
+            panic!("expected Group");
         };
         // Row height must reflect the cell's own (larger) padding, not
         // the table's default 4.0 — content height (14.4pt line) + 2*20pt.
-        let RenderNode::Group { area: row_area, .. } = &blocks[0] else {
+        let RenderNode::Group { area: row_area, .. } = blocks[0].untagged() else {
             panic!("expected row group");
         };
         assert!(

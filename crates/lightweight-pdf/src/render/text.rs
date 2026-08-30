@@ -18,6 +18,7 @@ fn collect_chars_in_node(node: &RenderNode, used: &mut HashMap<FontKey, BTreeSet
                 collect_chars_in_node(child, used);
             }
         }
+        RenderNode::Tagged { inner, .. } => collect_chars_in_node(inner, used),
         RenderNode::TextLines { style, lines, .. } => {
             let set = used.entry(style.font).or_default();
             for line in lines {
@@ -56,6 +57,7 @@ fn collect_anchors_in_node(node: &RenderNode, page_index: usize, page_height: f3
                 collect_anchors_in_node(child, page_index, page_height, anchors);
             }
         }
+        RenderNode::Tagged { inner, .. } => collect_anchors_in_node(inner, page_index, page_height, anchors),
         RenderNode::TextLines {
             anchor: Some(name), area, ..
         } => {
@@ -93,6 +95,7 @@ fn collect_headings_in_node(node: &RenderNode, page_index: usize, page_height: f
                 collect_headings_in_node(child, page_index, page_height, out);
             }
         }
+        RenderNode::Tagged { inner, .. } => collect_headings_in_node(inner, page_index, page_height, out),
         RenderNode::TextLines {
             outline_level: Some(level),
             lines,

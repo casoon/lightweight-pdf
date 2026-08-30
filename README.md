@@ -39,8 +39,8 @@ German DIN-5008-style invoice with a multi-page table) and
 `.../examples/report.rs`. `examples/demo_*.rs` at the repo root are further,
 English-language sample documents (invoice, quote, credentials hand-off,
 concept, API documentation, audit report, a custom-font demo, a PDF/A-3b
-conformance demo, and a ZUGFeRD/Factur-X demo) — run with `cargo run -p
-lightweight-pdf --example demo_invoice` etc.
+conformance demo, a ZUGFeRD/Factur-X demo, and a Tagged PDF/PDF-UA demo)
+— run with `cargo run -p lightweight-pdf --example demo_invoice` etc.
 
 Page 1 of three of those demos, rendered — regenerate with
 `scripts/render-readme-previews.sh` whenever their output changes:
@@ -285,6 +285,20 @@ baseline being updated in the same commit.
   container) and the [Mustang](https://www.mustangproject.org/) reference
   validator (PDF *and* the embedded XML against EN 16931), see
   `examples/demo_zugferd.rs`.
+- `Document::pdf_ua()` (`tagged-pdf` feature, implies `pdf-a` — ADR-019):
+  Tagged PDF/PDF-UA-1 output — a real structure tree (`/StructTreeRoot`,
+  one `/StructElem` per heading/paragraph/table row+cell/list item/
+  figure), marked content (`BDC`/`EMC` with MCIDs) in every content
+  stream, `/Lang`, and the watermark/header/footer marked as artifacts
+  (pagination decoration, excluded from reading order) rather than
+  structure. `Image::alt(text)` sets `/Alt`; without it, `/Alt` is still
+  written (empty, so the structure tree stays well-formed) but
+  `render_with_diagnostics()` reports a warning — and the file genuinely
+  isn't PDF/UA-1-conformant until real alt text is supplied, verified
+  against veraPDF (this crate won't invent placeholder text). Verified
+  against veraPDF's `ua1` profile (and `3b`, since `pdf_ua()` implies
+  `pdf_a3b()`), both locally and in CI (`pdf-a-conformance` job, against
+  `examples/demo_pdf_ua.rs`).
 
 ## Cargo features (crate `lightweight-pdf`)
 
@@ -300,6 +314,7 @@ baseline being updated in the same commit.
 | `wasm-size-probe`   |         | Internal, non-public `extern "C"` function used to measure WASM build size (CI); requires `default-fonts`. |
 | `pdf-a`             |         | `Document::pdf_a3b()`: PDF/A-3b-conformant output (XMP metadata synced with `/Info`, `/OutputIntent` with an embedded sRGB ICC profile, transparency-group colour space) — verified against the official `verapdf` validator, see below. Costs ~4.3 KiB gzip (measured, `wasm-size` config): the embedded profile is the ICC Consortium's own 3 KiB reference `sRGB2014.icc`, not the "several hundred KB" a full CMYK/ICC-v4 profile can run — the fear that motivated gating this behind a feature at all turned out not to apply here. |
 | `zugferd`           |         | `Document::zugferd_xml(bytes)`: embeds a caller-supplied EN 16931 invoice XML as a ZUGFeRD/Factur-X associated file (implies `pdf-a`). Embedding only — this crate never generates or validates the XML itself, see ADR-018 in the local `plan/00-decisions.md`. |
+| `tagged-pdf`        |         | `Document::pdf_ua()`: Tagged PDF/PDF-UA-1 output — structure tree, marked content, `/Lang`, artifact-marked watermark/header/footer (implies `pdf-a`, ADR-019 in the local `plan/00-decisions.md`). |
 
 ## Workspace
 
