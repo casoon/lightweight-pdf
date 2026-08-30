@@ -51,6 +51,11 @@ enum Command {
     },
     /// Lists the font weights available by default (bundled Source Sans 3).
     Fonts,
+    /// Prints the JSON Schema for the document/template format to stdout
+    /// — generated from the Rust types (`schemars`), not hand-maintained;
+    /// the npm package's TypeScript types are generated from this same
+    /// schema (issue #22).
+    Schema,
 }
 
 enum CliError {
@@ -142,6 +147,12 @@ fn run(cli: Cli) -> Result<(), CliError> {
             for (key, _) in fonts.font_entries() {
                 println!("{}", key.0);
             }
+            Ok(())
+        }
+        Command::Schema => {
+            let schema = schemars::schema_for!(DocumentSchema);
+            let json = serde_json::to_string_pretty(&schema).expect("a generated JSON Schema always serializes");
+            println!("{json}");
             Ok(())
         }
     }

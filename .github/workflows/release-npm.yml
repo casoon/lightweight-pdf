@@ -1,0 +1,45 @@
+name: Release npm package
+
+# Tag-triggered only (issue #22) — never part of the PR path. The PR path
+# already proves the wasm-bindgen bindings compile via ci.yml's existing
+# `wasm-size` job (`--features wasm,...` on wasm32-unknown-unknown); this
+# workflow additionally builds the JS/TS glue, runs the Node test, and
+# publishes to npm.
+on:
+  push:
+    tags:
+      - "npm-v*.*.*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install binaryen (wasm-opt)
+        run: sudo apt-get update && sudo apt-get install -y binaryen
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Install JS dependencies
+        working-directory: bindings/js
+        run: npm ci
+      - name: Build (wasm -> JSON Schema -> generated TS types -> tsc)
+        working-directory: bindings/js
+        run: npm run build
+      - name: Test
+        working-directory: bindings/js
+        run: npm test
+      - name: Publish to npm
+        working-directory: bindings/js
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

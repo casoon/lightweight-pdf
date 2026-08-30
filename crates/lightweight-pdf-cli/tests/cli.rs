@@ -18,9 +18,22 @@ fn help_documents_every_subcommand() {
     let output = lwpdf().arg("--help").output().expect("lwpdf --help should run");
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    for name in ["render", "validate", "fonts"] {
+    for name in ["render", "validate", "fonts", "schema"] {
         assert!(stdout.contains(name), "expected --help to document {name:?}, got:\n{stdout}");
     }
+}
+
+#[test]
+fn schema_prints_a_valid_json_schema_for_the_document_format() {
+    let output = lwpdf().arg("schema").output().expect("lwpdf schema should run");
+    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let value: serde_json::Value = serde_json::from_str(&stdout).expect("schema output should be valid JSON");
+    assert_eq!(value["title"], "DocumentSchema");
+    assert!(
+        value["$defs"]["Document"].is_object(),
+        "expected a Document definition, got:\n{stdout}"
+    );
 }
 
 #[test]

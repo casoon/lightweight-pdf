@@ -23,6 +23,7 @@ use crate::element::Element;
 use crate::style::{Color, FontKey, TextStyle};
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "snake_case"))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ThemeRole {
     Body,
@@ -40,6 +41,7 @@ pub enum ThemeRole {
 /// `table_header`/`muted` are new roles with no prior hardcoded
 /// equivalent, so they can't break existing output either way).
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Theme {
     pub body: TextStyle,

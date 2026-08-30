@@ -43,7 +43,22 @@ impl<'de> serde::Deserialize<'de> for FontKey {
     }
 }
 
+/// Hand-written to match the custom `Serialize`/`Deserialize` above
+/// (`#[derive(JsonSchema)]` only works from a real derive, not a custom
+/// serde impl).
+#[cfg(feature = "schemars")]
+impl schemars::JsonSchema for FontKey {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "FontKey".into()
+    }
+
+    fn json_schema(_generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema!({ "type": "string" })
+    }
+}
+
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "snake_case"))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Align {
     #[default]
@@ -61,6 +76,7 @@ pub enum Align {
 /// `plan/05-overflow-and-robustness.md`, Grundprinzip 3. `Visible` is
 /// intentionally not part of V1 (ADR-011).
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "snake_case"))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Overflow {
     /// Default: clip hard at the element's box.
@@ -71,6 +87,7 @@ pub enum Overflow {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Color(pub u8, pub u8, pub u8);
 
@@ -94,6 +111,7 @@ impl Default for Color {
     derive(serde::Serialize, serde::Deserialize),
     serde(deny_unknown_fields, rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub enum BorderStyle {
     #[default]
@@ -105,6 +123,7 @@ pub enum BorderStyle {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Border {
     pub width: f32,
@@ -135,6 +154,7 @@ impl Border {
     derive(serde::Serialize, serde::Deserialize),
     serde(deny_unknown_fields, default)
 )]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct TextStyle {
     pub font: FontKey,
@@ -167,6 +187,7 @@ impl Default for TextStyle {
     derive(serde::Serialize, serde::Deserialize),
     serde(deny_unknown_fields, default)
 )]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Common {
     pub width: Option<f32>,

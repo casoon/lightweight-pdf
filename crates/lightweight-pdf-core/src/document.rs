@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 /// Page formats supported for documents. Dimensions in PDF points (1/72 inch).
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum PageFormat {
     A3,
@@ -28,6 +29,7 @@ impl PageFormat {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "snake_case"))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Orientation {
     #[default]
@@ -40,6 +42,7 @@ pub enum Orientation {
     derive(serde::Serialize, serde::Deserialize),
     serde(deny_unknown_fields, default)
 )]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug, Default)]
 pub struct DocumentMetadata {
     pub title: Option<String>,
@@ -56,6 +59,7 @@ pub struct DocumentMetadata {
 /// has none, and reproducible output (same `Document` -> byte-identical
 /// PDF) is a feature, not an accident.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct PdfDate {
     pub year: u16,
@@ -93,6 +97,7 @@ impl PdfDate {
     derive(serde::Serialize, serde::Deserialize),
     serde(deny_unknown_fields, default)
 )]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Margin {
     pub top: f32,
@@ -165,6 +170,7 @@ impl Footer {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone)]
 pub struct Document {
     pub page_format: PageFormat,
@@ -347,6 +353,7 @@ pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 #[cfg(feature = "serde")]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 pub struct DocumentSchema {
     pub schema_version: u32,
     pub document: Document,

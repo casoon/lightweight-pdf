@@ -15,6 +15,9 @@ lightweight-pdf-layout = { path = "../lightweight-pdf-layout", version = "0.2.1"
 lightweight-pdf-writer = { path = "../lightweight-pdf-writer", version = "0.2.1", default-features = false }
 lightweight-pdf-fonts = { path = "../lightweight-pdf-fonts", version = "0.2.1" }
 png = { version = "0.18.1", optional = true, default-features = false }
+wasm-bindgen = { version = "0.2.127", optional = true }
+serde-wasm-bindgen = { version = "0.6.5", optional = true }
+serde = { version = "1.0.229", features = ["derive"], optional = true }
 
 [dev-dependencies]
 lightweight-pdf-test-support = { path = "../lightweight-pdf-test-support" }
@@ -23,12 +26,22 @@ lightweight-pdf-testing = { path = "../lightweight-pdf-testing" }
 [features]
 default = ["default-fonts", "compress"]
 default-fonts = []
-wasm = []
+wasm = ["dep:wasm-bindgen", "dep:serde-wasm-bindgen", "serde"]
 wasm-size-probe = []
 png = ["dep:png"]
 compress = ["lightweight-pdf-writer/compress"]
 hyphenation = ["lightweight-pdf-layout/hyphenation"]
-serde = ["lightweight-pdf-core/serde"]
+serde = ["dep:serde", "lightweight-pdf-core/serde"]
+schemars = ["lightweight-pdf-core/schemars"]
+
+# `wasm-pack`'s own `wasm-opt` post-processing call doesn't pass
+# `--enable-bulk-memory`, which current rustc's wasm32-unknown-unknown
+# target emits by default — validator failure at optimization time, not
+# a bug in this crate. `bindings/js`'s own build script runs
+# `wasm-opt -Oz --all-features` explicitly instead (the same invocation
+# CI's `wasm-size` job already uses successfully).
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
 
 [[test]]
 name = "serde_json"

@@ -5,6 +5,8 @@
 mod fonts;
 mod images;
 mod render;
+#[cfg(all(target_arch = "wasm32", feature = "wasm"))]
+mod wasm_bindings;
 
 pub use fonts::FontRegistry;
 pub use images::ImageEmbedError;
@@ -12,6 +14,8 @@ pub use lightweight_pdf_core::*;
 pub use lightweight_pdf_fonts::FontError;
 pub use lightweight_pdf_layout::{LayoutWarning, LayoutWarningKind};
 pub use render::{DocumentExt, RenderError};
+#[cfg(all(target_arch = "wasm32", feature = "wasm"))]
+pub use wasm_bindings::{LightweightPdf, RenderResult};
 
 #[cfg(all(feature = "wasm-size-probe", not(feature = "default-fonts")))]
 compile_error!(
@@ -20,8 +24,11 @@ compile_error!(
 
 /// Internal, non-public measurement export (`plan/00a-contracts-and-artifacts.md`
 /// point 1): renders a small but complete document end-to-end so the real
-/// render path isn't dead-code-eliminated from the size measurement. Not a
-/// public runtime API (ADR-009: no JS-facing API in V1).
+/// render path isn't dead-code-eliminated from the size measurement.
+/// Independent of the `wasm` feature's actual `wasm_bindings` module
+/// (ADR-009 v2, issue #22) — this probe exists purely to catch dead-code
+/// elimination regressions in the size measurement itself, not to be a
+/// runtime API.
 #[cfg(feature = "wasm-size-probe")]
 #[no_mangle]
 pub extern "C" fn lightweight_pdf_wasm_size_probe() -> i32 {

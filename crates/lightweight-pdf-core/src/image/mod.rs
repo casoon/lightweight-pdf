@@ -115,6 +115,26 @@ impl<'de> serde::Deserialize<'de> for Image {
     }
 }
 
+/// Hand-written to match the custom `Serialize`/`Deserialize` above.
+#[cfg(feature = "schemars")]
+impl schemars::JsonSchema for Image {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "Image".into()
+    }
+
+    fn json_schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        schemars::json_schema!({
+            "type": "object",
+            "properties": {
+                "bytes_base64": { "type": "string" },
+                "common": generator.subschema_for::<Common>()
+            },
+            "required": ["bytes_base64"],
+            "additionalProperties": false
+        })
+    }
+}
+
 impl Image {
     /// Validates `bytes` as a supported JPEG or PNG and extracts the
     /// metadata layout needs (dimensions, color components). Rejects

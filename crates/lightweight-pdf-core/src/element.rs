@@ -19,6 +19,7 @@ use crate::theme::ThemeRole;
     derive(serde::Serialize, serde::Deserialize),
     serde(tag = "type", rename_all = "snake_case")
 )]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug)]
 pub enum Element {
     Text(Text),
@@ -135,6 +136,7 @@ macro_rules! common_builder_methods {
     derive(serde::Serialize, serde::Deserialize),
     serde(deny_unknown_fields, default)
 )]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug, Default)]
 pub struct Text {
     pub content: String,
@@ -198,6 +200,7 @@ pub struct Text {
 /// (`lightweight-pdf-layout`'s `hyphenation` feature; see that crate's
 /// `hyphenate` module for the dictionaries themselves).
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "snake_case"))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HyphenationLanguage {
     EnglishUs,
@@ -206,6 +209,7 @@ pub enum HyphenationLanguage {
 
 /// One independently-styled run within `Text::rich(..)`.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug)]
 pub struct Span {
     pub text: String,
@@ -411,6 +415,7 @@ impl From<String> for Text {
     derive(serde::Serialize, serde::Deserialize),
     serde(deny_unknown_fields, default)
 )]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug, Default)]
 pub struct Row {
     pub children: Vec<Element>,
@@ -424,6 +429,7 @@ pub struct Row {
     derive(serde::Serialize, serde::Deserialize),
     serde(deny_unknown_fields, default)
 )]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug, Default)]
 pub struct Column {
     pub children: Vec<Element>,
@@ -472,6 +478,7 @@ container_impl!(Column);
 // ---------------------------------------------------------------------
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, Debug)]
 pub struct Spacer {
     pub size: f32,
@@ -492,6 +499,7 @@ impl Spacer {
     derive(serde::Serialize, serde::Deserialize),
     serde(deny_unknown_fields, default)
 )]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug)]
 pub struct Line {
     pub thickness: f32,
@@ -536,6 +544,7 @@ impl Line {
     derive(serde::Serialize, serde::Deserialize),
     serde(deny_unknown_fields, default)
 )]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug, Default)]
 pub struct Rect {
     pub common: Common,
@@ -566,6 +575,7 @@ impl Rect {
     derive(serde::Serialize, serde::Deserialize),
     serde(deny_unknown_fields, default)
 )]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug)]
 pub struct TableOfContents {
     /// Only headings at this `outline_level` or shallower become entries

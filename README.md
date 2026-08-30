@@ -60,6 +60,30 @@ JSON, an unresolved template placeholder). `--allow-missing` on
 `render`/`validate` resolves a missing placeholder to an empty string
 instead of failing (see `MissingPlaceholder` above). Own crate
 (`lightweight-pdf-cli`) so the library itself never depends on `clap`.
+`lwpdf schema` prints the document/template JSON Schema (generated from
+the Rust types, see the npm package below).
+
+## npm package (`@casoon/lightweight-pdf`)
+
+The Rust engine compiled to WASM with `wasm-bindgen` bindings, for
+JS/TS callers with no Rust toolchain — Node.js and edge runtimes
+(Cloudflare Workers, ...), no native dependencies:
+
+```ts
+import { render } from "@casoon/lightweight-pdf";
+
+const bytes = await render({
+  page_format: "A4",
+  children: [{ type: "text", content: "Hello from JS" }],
+});
+```
+
+`Document` (the type above) is generated from the same JSON Schema
+`lwpdf schema` prints — not hand-maintained. See `bindings/js/README.md`
+for the full API (diagnostics, font registration) and how to build the
+package from source. Published from `.github/workflows/release-npm.yml`,
+a tag-triggered release job only — never part of the PR path, which
+already proves the bindings compile via the existing `wasm-size` CI job.
 
 ## Features
 
@@ -185,7 +209,8 @@ instead of failing (see `MissingPlaceholder` above). Own crate
 | `png`               |         | PNG decoding/embedding (`Image::from_png`); without this feature, embedding a PNG fails at runtime with `ImageEmbedError::PngFeatureDisabled`. |
 | `hyphenation`       |         | Automatic Knuth-Liang hyphenation (`Text::hyphenate(HyphenationLanguage)`), English/US and German. Pulls in the `hyphenation` crate with all its bundled language dictionaries (no per-language embedding is available upstream), which roughly quadruples release/WASM binary size — measured and not recommended for tight WASM size budgets; see `plan/progress.md`. Soft-hyphen (U+00AD) breaking itself needs no feature and is always on. |
 | `serde`             |         | `Document::from_json()`/`.to_json()` (`serde`, `serde_json`, `base64` for `Image`). See the Features list above for schema scope/limitations. |
-| `wasm`              |         | Targets `wasm32-unknown-unknown`.                                |
+| `schemars`          |         | Generates a JSON Schema for the document/template format (`schemars`; implies `serde`) — what `lwpdf schema`/the npm package's generated TypeScript types are built from. |
+| `wasm`              |         | Targets `wasm32-unknown-unknown` with `wasm-bindgen` JS bindings (implies `serde`) — see the npm package section above. |
 | `wasm-size-probe`   |         | Internal, non-public `extern "C"` function used to measure WASM build size (CI); requires `default-fonts`. |
 
 ## Workspace
@@ -208,6 +233,9 @@ crates/
   lightweight-pdf-test-support/ Internal (publish = false): shared qpdf/pdftotext
                                  shell-out helpers for lightweight-pdf's integration
                                  tests, a dev-dependency only.
+bindings/
+  js/                            `@casoon/lightweight-pdf` npm package (wasm-bindgen
+                                  + generated TypeScript types), see its own README.
 ```
 
 Dependency direction is strictly one-way: `core ← layout ← facade`;

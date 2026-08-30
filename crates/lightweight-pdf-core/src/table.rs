@@ -11,6 +11,7 @@ use crate::style::{Align, Border, Color, Common};
 /// ADR-004 / `03-builder-api-design.md`) — the same distribution step as
 /// `Row`, not a generic flex implementation.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "snake_case"))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, Debug)]
 pub enum ColumnWidth {
     Fixed(f32),
@@ -18,6 +19,7 @@ pub enum ColumnWidth {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Copy, Debug)]
 pub struct TableColumn {
     pub width: ColumnWidth,
@@ -47,6 +49,7 @@ impl TableColumn {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug)]
 pub struct TableCell {
     pub element: Element,
@@ -139,6 +142,7 @@ pub trait TableRow {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug, Default)]
 pub struct Table {
     #[cfg_attr(feature = "serde", serde(default))]

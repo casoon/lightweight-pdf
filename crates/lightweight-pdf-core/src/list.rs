@@ -8,6 +8,7 @@ use crate::element::Element;
 use crate::style::Common;
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "snake_case"))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug)]
 pub enum Marker {
     Bullet,
@@ -17,6 +18,7 @@ pub enum Marker {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug)]
 pub struct ListItem {
     pub marker: Marker,
@@ -24,6 +26,7 @@ pub struct ListItem {
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
 #[derive(Clone, Debug)]
 pub struct List {
     #[cfg_attr(feature = "serde", serde(default))]

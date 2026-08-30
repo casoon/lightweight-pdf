@@ -1,0 +1,29 @@
+{
+  "name": "@casoon/lightweight-pdf",
+  "version": "0.2.1",
+  "description": "Render PDFs from a JSON document/template in WASM — no native dependencies, runs in Node.js and edge runtimes (Cloudflare Workers, ...).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "pkg"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/casoon/lightweight-pdf"
+  },
+  "scripts": {
+    "build:wasm": "wasm-pack build ../../crates/lightweight-pdf --target web --out-dir ../../bindings/js/pkg -- --no-default-features --features wasm,default-fonts,compress && wasm-opt -Oz --enable-bulk-memory-opt --enable-nontrapping-float-to-int pkg/lightweight_pdf_bg.wasm -o pkg/lightweight_pdf_bg.wasm",
+    "build:schema": "cargo run -p lightweight-pdf-cli -- schema > schema.json && json2ts schema.json --additionalProperties false -o src/document.d.ts",
+    "build:ts": "tsc",
+    "build": "npm run build:wasm && npm run build:schema && npm run build:ts",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "json-schema-to-typescript": "^16.0.0",
+    "typescript": "^5.6.0"
+  }
+}
