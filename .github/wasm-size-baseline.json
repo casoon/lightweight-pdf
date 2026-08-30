@@ -1,0 +1,6 @@
+{
+  "_comment": "Baseline for the wasm-size CI job's regression gate (issue #31). gzip bytes for each config's wasm-opt -Oz output, same rustc/wasm-opt flags as .github/workflows/ci.yml. If a change legitimately grows the module (new font, new default feature), update these numbers in the same commit -- that's the intended way past the gate, not a reason to remove it.",
+  "generator_gzip_bytes": 660560,
+  "standard_gzip_bytes": 706794,
+  "tolerance_percent": 5
+}

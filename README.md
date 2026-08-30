@@ -135,6 +135,25 @@ Pick one of the built-in templates (invoice/offer/report/docs), edit the
 JSON, and share the result via a URL-encoded link. See its own README to
 run it locally.
 
+## Size & performance
+
+Tracked continuously in CI (`wasm-size` job, job summary of every run on
+`master`) rather than a one-off measurement — a regression gate compares
+each run's gzip size against `.github/wasm-size-baseline.json` and fails
+the job if it grows more than the documented tolerance without the
+baseline being updated in the same commit.
+
+- **WASM module (shipped, `@casoon/lightweight-pdf` npm package, `wasm`
+  + `default-fonts` + `compress`):** 1252.95 KiB raw / 590.37 KiB gzip
+  — measured via `wrangler deploy --dry-run`'s own upload-size report,
+  see `examples/worker/README.md`.
+- **Render throughput (native release build, average of 5 runs each):**
+  ~4 ms/document for the invoice/offer/report demos. Native, not wasm —
+  see `examples/worker/README.md` for measured cold-start (~34–47 ms)
+  and warm (~11–25 ms) numbers in an actual `workerd` runtime.
+- **Output PDF size** (same three demos, `compress` on by default):
+  ~24–26 KB each.
+
 ## Features
 
 - Layout primitives: `Text`, `Column`, `Row`, `Table`, `List`, `Image`,

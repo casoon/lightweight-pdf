@@ -90,11 +90,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # Issue #31/#32: on a PR, only pay for this job if it could actually
+      # be affected. Always runs on push to master (that's what keeps the
+      # baseline/history meaningful).
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            relevant:
+              - 'crates/lightweight-pdf/**'
+              - 'crates/lightweight-pdf-core/**'
+              - 'crates/lightweight-pdf-layout/**'
+              - 'crates/lightweight-pdf-writer/**'
+              - 'crates/lightweight-pdf-fonts/**'
+              - 'Cargo.lock'
+              - 'Cargo.toml'
+              - 'examples/demo_invoice.rs'
+              - 'examples/demo_offer.rs'
+              - 'examples/demo_report.rs'
+              - '.github/workflows/ci.yml'
+              - '.github/wasm-size-baseline.json'
+      - if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
+      - if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        uses: Swatinem/rust-cache@v2
       - name: Install binaryen (wasm-opt)
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
         run: sudo apt-get update && sudo apt-get install -y binaryen
       # `--all-features` used to be passed here, but it enables wasm
       # proposals (found while wiring up issue #22's wasm-bindgen
@@ -106,8 +129,10 @@ jobs:
       # trial-and-error subset, so a future rustc enabling one more
       # default feature would need this list updated too.
       - name: Build Generator config
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
         run: cargo build --release --target wasm32-unknown-unknown -p lightweight-pdf --no-default-features --features wasm,wasm-size-probe,default-fonts,compress
       - name: Measure Generator config
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
         run: |
           f=target/wasm32-unknown-unknown/release/lightweight_pdf.wasm
           wasm-opt -Oz --enable-bulk-memory --enable-multivalue --enable-mutable-globals --enable-nontrapping-float-to-int --enable-reference-types --enable-sign-ext "$f" -o /tmp/generator.opt.wasm
@@ -117,8 +142,10 @@ jobs:
           echo "wasm-opt -Oz: $(stat -c%s /tmp/generator.opt.wasm) bytes" >> "$GITHUB_STEP_SUMMARY"
           echo "gzip -9: $(stat -c%s /tmp/generator.opt.wasm.gz) bytes" >> "$GITHUB_STEP_SUMMARY"
       - name: Build Standard config
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
         run: cargo build --release --target wasm32-unknown-unknown -p lightweight-pdf --no-default-features --features wasm,wasm-size-probe,default-fonts,png,compress
       - name: Measure Standard config
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
         run: |
           f=target/wasm32-unknown-unknown/release/lightweight_pdf.wasm
           wasm-opt -Oz --enable-bulk-memory --enable-multivalue --enable-mutable-globals --enable-nontrapping-float-to-int --enable-reference-types --enable-sign-ext "$f" -o /tmp/standard.opt.wasm
@@ -127,9 +154,48 @@ jobs:
           echo "raw: $(stat -c%s "$f") bytes" >> "$GITHUB_STEP_SUMMARY"
           echo "wasm-opt -Oz: $(stat -c%s /tmp/standard.opt.wasm) bytes" >> "$GITHUB_STEP_SUMMARY"
           echo "gzip -9: $(stat -c%s /tmp/standard.opt.wasm.gz) bytes" >> "$GITHUB_STEP_SUMMARY"
-      # NOTE: deliberately no hard-/soft-fail threshold for either config —
-      # measured and written to the job summary for a human to read, never
-      # gated. A solid baseline exists (see ADR-014/ADR-015 in the
-      # local plan/00-decisions.md), but font-data size dominates this
-      # measurement, not generator code, so a threshold would flag normal
-      # font-asset changes as CI failures rather than real regressions.
+      # Regression gate (issue #31): compares each config's gzip size
+      # against .github/wasm-size-baseline.json with a tolerance, since
+      # font-asset size dominates this measurement (see ADR-014/ADR-015 in
+      # the local plan/00-decisions.md) and a zero-tolerance gate would
+      # flag every unrelated code change the moment rounding shifts a few
+      # bytes. Legitimate growth (new font, new default feature) is
+      # expected to update the baseline file in the same commit — that's
+      # the intended way past this, not a reason to widen the tolerance.
+      - name: Check size regression against baseline
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        run: |
+          base="$GITHUB_WORKSPACE/.github/wasm-size-baseline.json"
+          tolerance=$(jq '.tolerance_percent' "$base")
+          fail=0
+          for cfg in generator standard; do
+            actual=$(stat -c%s "/tmp/${cfg}.opt.wasm.gz")
+            baseline=$(jq ".${cfg}_gzip_bytes" "$base")
+            limit=$(( baseline * (100 + tolerance) / 100 ))
+            echo "${cfg}: ${actual} bytes (baseline ${baseline}, limit ${limit})" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$actual" -gt "$limit" ]; then
+              echo "::error::${cfg} config grew to ${actual} gzip bytes, more than ${tolerance}% over the ${baseline}-byte baseline in .github/wasm-size-baseline.json. If this is expected (new font, new default feature), update that file in this commit."
+              fail=1
+            fi
+          done
+          exit $fail
+      # Render throughput + output size (issue #31): a native release
+      # build, not wasm — the demos already exist for this purpose (README
+      # links them), no criterion dependency, just wall-clock over 5 runs.
+      - name: Build native demos (release)
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        run: cargo build --release -p lightweight-pdf --example demo_invoice --example demo_offer --example demo_report
+      - name: Measure render throughput + output size
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        run: |
+          echo "### Render throughput (native release, avg of 5 runs)" >> "$GITHUB_STEP_SUMMARY"
+          for d in demo_invoice demo_offer demo_report; do
+            bin="target/release/examples/${d}"
+            "$bin" >/dev/null
+            t0=$(date +%s%N)
+            for i in 1 2 3 4 5; do "$bin" >/dev/null; done
+            t1=$(date +%s%N)
+            avg_ms=$(( (t1 - t0) / 5 / 1000000 ))
+            size=$(stat -c%s "examples/${d}.pdf")
+            echo "${d}: ${avg_ms}ms avg, ${size} bytes output" >> "$GITHUB_STEP_SUMMARY"
+          done
