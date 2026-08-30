@@ -96,7 +96,7 @@ jobs:
       - name: Measure Generator config
         run: |
           f=target/wasm32-unknown-unknown/release/lightweight_pdf.wasm
-          wasm-opt -Oz --enable-bulk-memory-opt --enable-nontrapping-float-to-int "$f" -o /tmp/generator.opt.wasm
+          wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int "$f" -o /tmp/generator.opt.wasm
           gzip -9 -c /tmp/generator.opt.wasm > /tmp/generator.opt.wasm.gz
           echo "### Generator size" >> "$GITHUB_STEP_SUMMARY"
           echo "raw: $(stat -c%s "$f") bytes" >> "$GITHUB_STEP_SUMMARY"
@@ -107,7 +107,7 @@ jobs:
       - name: Measure Standard config
         run: |
           f=target/wasm32-unknown-unknown/release/lightweight_pdf.wasm
-          wasm-opt -Oz --enable-bulk-memory-opt --enable-nontrapping-float-to-int "$f" -o /tmp/standard.opt.wasm
+          wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int "$f" -o /tmp/standard.opt.wasm
           gzip -9 -c /tmp/standard.opt.wasm > /tmp/standard.opt.wasm.gz
           echo "### Standard size" >> "$GITHUB_STEP_SUMMARY"
           echo "raw: $(stat -c%s "$f") bytes" >> "$GITHUB_STEP_SUMMARY"

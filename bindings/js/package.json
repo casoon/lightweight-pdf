@@ -15,7 +15,7 @@
     "url": "https://github.com/casoon/lightweight-pdf"
   },
   "scripts": {
-    "build:wasm": "wasm-pack build ../../crates/lightweight-pdf --target web --out-dir ../../bindings/js/pkg -- --no-default-features --features wasm,default-fonts,compress && wasm-opt -Oz --enable-bulk-memory-opt --enable-nontrapping-float-to-int pkg/lightweight_pdf_bg.wasm -o pkg/lightweight_pdf_bg.wasm",
+    "build:wasm": "wasm-pack build ../../crates/lightweight-pdf --target web --out-dir ../../bindings/js/pkg -- --no-default-features --features wasm,default-fonts,compress && wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int pkg/lightweight_pdf_bg.wasm -o pkg/lightweight_pdf_bg.wasm",
     "build:schema": "cargo run -p lightweight-pdf-cli -- schema > schema.json && json2ts schema.json --additionalProperties false -o src/document.d.ts",
     "build:ts": "tsc",
     "build": "npm run build:wasm && npm run build:schema && npm run build:ts",
