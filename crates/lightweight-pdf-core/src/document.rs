@@ -2,6 +2,7 @@ use crate::element::Element;
 use std::rc::Rc;
 
 /// Page formats supported for documents. Dimensions in PDF points (1/72 inch).
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum PageFormat {
     A3,
@@ -26,6 +27,7 @@ impl PageFormat {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "snake_case"))]
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Orientation {
     #[default]
@@ -33,6 +35,11 @@ pub enum Orientation {
     Landscape,
 }
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(deny_unknown_fields, default)
+)]
 #[derive(Clone, Debug, Default)]
 pub struct DocumentMetadata {
     pub title: Option<String>,
@@ -48,6 +55,7 @@ pub struct DocumentMetadata {
 /// caller-supplied value, never read from the system clock: `wasm32-unknown-unknown`
 /// has none, and reproducible output (same `Document` -> byte-identical
 /// PDF) is a feature, not an accident.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct PdfDate {
     pub year: u16,
@@ -80,6 +88,11 @@ impl PdfDate {
     }
 }
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(deny_unknown_fields, default)
+)]
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Margin {
     pub top: f32,
@@ -151,22 +164,42 @@ impl Footer {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
 #[derive(Clone)]
 pub struct Document {
     pub page_format: PageFormat,
+    #[cfg_attr(feature = "serde", serde(default))]
     pub orientation: Orientation,
+    #[cfg_attr(feature = "serde", serde(default))]
     pub margin: Margin,
+    /// Not representable in the JSON schema (issue #17 V1 scope): the
+    /// content is a Rust closure, re-evaluated per page. Always `None` on
+    /// a JSON-loaded `Document`; `Document::to_json` refuses to serialize
+    /// a `Document` that has one set rather than silently dropping it.
+    #[cfg_attr(feature = "serde", serde(skip))]
     pub header: Option<Header>,
+    #[cfg_attr(feature = "serde", serde(skip))]
     pub footer: Option<Footer>,
+    #[cfg_attr(feature = "serde", serde(skip, default = "default_visible_from"))]
     pub header_visible_from: usize,
+    #[cfg_attr(feature = "serde", serde(skip, default = "default_visible_from"))]
     pub footer_visible_from: usize,
+    #[cfg_attr(feature = "serde", serde(default))]
     pub watermark: Option<crate::watermark::Watermark>,
+    #[cfg_attr(feature = "serde", serde(default))]
     pub metadata: DocumentMetadata,
     /// `None` (the default) means every element renders exactly as it
     /// always did — `Document::theme(..)` opts in per-document, resolved
     /// once per element as it's `.add()`-ed (see `theme::apply_theme`).
+    #[cfg_attr(feature = "serde", serde(default))]
     pub theme: Option<crate::theme::Theme>,
+    #[cfg_attr(feature = "serde", serde(default))]
     pub children: Vec<Element>,
+}
+
+#[cfg(feature = "serde")]
+fn default_visible_from() -> usize {
+    1
 }
 
 impl Document {
@@ -292,5 +325,160 @@ impl Document {
         }
         self.children.push(element);
         self
+    }
+}
+
+// ---------------------------------------------------------------------
+// JSON (issue #17): `Document` ↔ JSON, behind the `serde` feature.
+// Header/Footer aren't representable (Rust closures) — excluded from the
+// wire format entirely rather than silently dropped; `to_json` refuses
+// outright if either is set.
+// ---------------------------------------------------------------------
+
+#[cfg(feature = "serde")]
+pub const CURRENT_SCHEMA_VERSION: u32 = 1;
+
+/// The versioned envelope every JSON document is wrapped in (ADR-009: an
+/// external entry point needs a schema version from day one to stay
+/// extensible). Deliberately not `#[serde(flatten)]`ed into `Document` —
+/// `flatten` and `deny_unknown_fields` don't compose in serde, and
+/// "unknown fields are a clear error, not silent loss" is an explicit
+/// acceptance criterion.
+#[cfg(feature = "serde")]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DocumentSchema {
+    pub schema_version: u32,
+    pub document: Document,
+}
+
+#[cfg(feature = "serde")]
+#[derive(Debug)]
+pub enum DocumentJsonError {
+    /// `schema_version` isn't one this version of the crate understands.
+    UnsupportedSchemaVersion(u32),
+    /// `Document::to_json` on a `Document` with a `header`/`footer` set —
+    /// neither is representable in JSON, so refusing beats silently
+    /// dropping them.
+    HeaderOrFooterNotSupported,
+    Json(serde_json::Error),
+}
+
+#[cfg(feature = "serde")]
+impl std::fmt::Display for DocumentJsonError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DocumentJsonError::UnsupportedSchemaVersion(v) => {
+                write!(
+                    f,
+                    "unsupported schema_version {v} (this crate understands {CURRENT_SCHEMA_VERSION})"
+                )
+            }
+            DocumentJsonError::HeaderOrFooterNotSupported => {
+                write!(
+                    f,
+                    "Document::to_json: header/footer aren't representable in the JSON schema (issue #17 V1 scope)"
+                )
+            }
+            DocumentJsonError::Json(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl std::error::Error for DocumentJsonError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            DocumentJsonError::Json(e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl Document {
+    /// Parses `{"schema_version": N, "document": { .. }}`. Unknown fields
+    /// anywhere in the tree are a clear error, never silently dropped.
+    pub fn from_json(json: &str) -> Result<Document, DocumentJsonError> {
+        let schema: DocumentSchema = serde_json::from_str(json).map_err(DocumentJsonError::Json)?;
+        if schema.schema_version != CURRENT_SCHEMA_VERSION {
+            return Err(DocumentJsonError::UnsupportedSchemaVersion(schema.schema_version));
+        }
+        Ok(schema.document)
+    }
+
+    /// The inverse of `from_json` — round-trips to a byte-identical
+    /// rendered PDF as long as neither `header` nor `footer` is set.
+    pub fn to_json(&self) -> Result<String, DocumentJsonError> {
+        if self.header.is_some() || self.footer.is_some() {
+            return Err(DocumentJsonError::HeaderOrFooterNotSupported);
+        }
+        let schema = DocumentSchema {
+            schema_version: CURRENT_SCHEMA_VERSION,
+            document: self.clone(),
+        };
+        serde_json::to_string(&schema).map_err(DocumentJsonError::Json)
+    }
+}
+
+#[cfg(all(test, feature = "serde"))]
+mod json_tests {
+    use super::*;
+    use crate::element::Text;
+    use crate::style::{Align, Color};
+
+    fn sample_document() -> Document {
+        let mut doc = Document::new(PageFormat::A4).margin(Margin::all(30.0)).title("Rechnung");
+        doc.add(Text::new("Hello").size(18.0).color(Color::rgb(200, 0, 0)).align(Align::Center));
+        doc
+    }
+
+    #[test]
+    fn round_trip_preserves_page_format_and_children() {
+        let json = sample_document().to_json().expect("to_json should succeed");
+        assert!(
+            json.contains("\"schema_version\":1"),
+            "expected a versioned root field, got: {json}"
+        );
+        let doc = Document::from_json(&json).expect("from_json should succeed");
+        assert_eq!(doc.page_format, PageFormat::A4);
+        assert_eq!(doc.metadata.title.as_deref(), Some("Rechnung"));
+        assert_eq!(doc.children.len(), 1);
+        let Element::Text(t) = &doc.children[0] else {
+            panic!("expected a Text child");
+        };
+        assert_eq!(t.content, "Hello");
+        assert_eq!(t.style.size, 18.0);
+        assert_eq!(t.style.color, Color::rgb(200, 0, 0));
+        assert_eq!(t.style.align, Align::Center);
+    }
+
+    #[test]
+    fn unknown_field_is_a_clear_error_not_silent_loss() {
+        let json = r#"{"schema_version":1,"document":{"page_format":"A4","typo_field":true}}"#;
+        let Err(err) = Document::from_json(json) else {
+            panic!("an unknown field must be rejected");
+        };
+        let message = err.to_string();
+        assert!(
+            message.contains("typo_field") || message.contains("unknown field"),
+            "expected the error to mention the unknown field, got: {message}"
+        );
+    }
+
+    #[test]
+    fn to_json_refuses_a_document_with_a_header() {
+        let mut doc = sample_document();
+        doc = doc.header(Header::new(20.0, |_| Element::Text(Text::new("Header"))));
+        assert!(matches!(doc.to_json(), Err(DocumentJsonError::HeaderOrFooterNotSupported)));
+    }
+
+    #[test]
+    fn unsupported_schema_version_is_rejected() {
+        let json = r#"{"schema_version":99,"document":{"page_format":"A4"}}"#;
+        assert!(matches!(
+            Document::from_json(json),
+            Err(DocumentJsonError::UnsupportedSchemaVersion(99))
+        ));
     }
 }

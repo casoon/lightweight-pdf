@@ -9,6 +9,16 @@ use crate::theme::ThemeRole;
 
 /// One element in the document tree. Enum-based (not `Box<dyn Layoutable>`)
 /// — a closed, small set of primitives.
+///
+/// `serde` (issue #17): internally tagged on a `type` field
+/// (`{"type": "text", "content": "...", ...}`), `snake_case` variant
+/// names. `Image`'s JSON shape is base64 (see its own doc comment), not
+/// the same fields its Rust builder exposes.
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(tag = "type", rename_all = "snake_case")
+)]
 #[derive(Clone, Debug)]
 pub enum Element {
     Text(Text),
@@ -120,9 +130,15 @@ macro_rules! common_builder_methods {
 // Text
 // ---------------------------------------------------------------------
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(deny_unknown_fields, default)
+)]
 #[derive(Clone, Debug, Default)]
 pub struct Text {
     pub content: String,
+    #[cfg_attr(feature = "serde", serde(default))]
     pub style: TextStyle,
     pub url: Option<String>,
     /// Registers this element as an internal jump target other `Text`
@@ -181,6 +197,7 @@ pub struct Text {
 /// A language `.hyphenate(lang)` can insert Knuth-Liang break points for
 /// (`lightweight-pdf-layout`'s `hyphenation` feature; see that crate's
 /// `hyphenate` module for the dictionaries themselves).
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "snake_case"))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HyphenationLanguage {
     EnglishUs,
@@ -188,9 +205,11 @@ pub enum HyphenationLanguage {
 }
 
 /// One independently-styled run within `Text::rich(..)`.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
 #[derive(Clone, Debug)]
 pub struct Span {
     pub text: String,
+    #[cfg_attr(feature = "serde", serde(default))]
     pub style: TextStyle,
 }
 
@@ -387,6 +406,11 @@ impl From<String> for Text {
 // Row / Column
 // ---------------------------------------------------------------------
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(deny_unknown_fields, default)
+)]
 #[derive(Clone, Debug, Default)]
 pub struct Row {
     pub children: Vec<Element>,
@@ -395,6 +419,11 @@ pub struct Row {
     pub common: Common,
 }
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(deny_unknown_fields, default)
+)]
 #[derive(Clone, Debug, Default)]
 pub struct Column {
     pub children: Vec<Element>,
@@ -442,6 +471,7 @@ container_impl!(Column);
 // Spacer
 // ---------------------------------------------------------------------
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
 #[derive(Clone, Copy, Debug)]
 pub struct Spacer {
     pub size: f32,
@@ -457,6 +487,11 @@ impl Spacer {
 // Line
 // ---------------------------------------------------------------------
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(deny_unknown_fields, default)
+)]
 #[derive(Clone, Debug)]
 pub struct Line {
     pub thickness: f32,
@@ -496,6 +531,11 @@ impl Line {
 // Rect
 // ---------------------------------------------------------------------
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(deny_unknown_fields, default)
+)]
 #[derive(Clone, Debug, Default)]
 pub struct Rect {
     pub common: Common,
@@ -521,6 +561,11 @@ impl Rect {
 /// one per line, indented by heading depth, with a leader (`.leader()`)
 /// filling the gap to a right-hand page number; `.style` controls
 /// font/size/color for every entry uniformly.
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(deny_unknown_fields, default)
+)]
 #[derive(Clone, Debug)]
 pub struct TableOfContents {
     /// Only headings at this `outline_level` or shallower become entries
@@ -534,6 +579,7 @@ pub struct TableOfContents {
     /// instance's first entry. Set only by the layout crate when a
     /// `TableOfContents` itself splits across a page boundary — always
     /// `0` on one an author constructs.
+    #[cfg_attr(feature = "serde", serde(skip))]
     pub skip: usize,
     pub common: Common,
 }

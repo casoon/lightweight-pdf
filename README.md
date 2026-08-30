@@ -73,6 +73,18 @@ lightweight-pdf --example demo_invoice` etc.
   sets the fill character between title and page number (default `.`,
   `' '` for none). Splits across pages like any other content if it has
   enough entries.
+- JSON documents (`serde` feature): `Document::from_json(&str)`/`.to_json()`
+  (de)serialize the whole document tree — `serde_json::from_str::<DocumentSchema>`/
+  `to_string` also works directly for other formats via the same
+  `#[derive(Deserialize)]` (YAML/TOML, bring your own crate). The root is
+  versioned (`{"schema_version": 1, "document": {...}}`); unknown fields
+  anywhere in the tree are a parse error, never silently dropped. Every
+  `Element` is tagged by a `"type"` field (`"text"`, `"table"`, ...); see
+  `examples/document.json`. Deliberately no scripting/expressions/loops —
+  a serialization format, not a template language. Not representable in
+  JSON: `Header`/`Footer` (Rust closures) — `to_json()` refuses outright
+  if either is set rather than silently dropping them. `Image` embeds as
+  base64 (`{"bytes_base64": "...", "common": {...}}`).
 - Content streams, embedded font programs, and raw image samples are
   `/FlateDecode`-compressed by default (`compress` feature, on unless
   explicitly disabled) — typically 40-60% smaller output.
@@ -137,6 +149,7 @@ lightweight-pdf --example demo_invoice` etc.
 | `compress`          | ✅      | `/FlateDecode`-compresses content streams, embedded font programs, and raw image samples (`miniz_oxide`, see ADR-016). Disabling it falls back to the previous always-uncompressed output — same PDFs, just bigger. |
 | `png`               |         | PNG decoding/embedding (`Image::from_png`); without this feature, embedding a PNG fails at runtime with `ImageEmbedError::PngFeatureDisabled`. |
 | `hyphenation`       |         | Automatic Knuth-Liang hyphenation (`Text::hyphenate(HyphenationLanguage)`), English/US and German. Pulls in the `hyphenation` crate with all its bundled language dictionaries (no per-language embedding is available upstream), which roughly quadruples release/WASM binary size — measured and not recommended for tight WASM size budgets; see `plan/progress.md`. Soft-hyphen (U+00AD) breaking itself needs no feature and is always on. |
+| `serde`             |         | `Document::from_json()`/`.to_json()` (`serde`, `serde_json`, `base64` for `Image`). See the Features list above for schema scope/limitations. |
 | `wasm`              |         | Targets `wasm32-unknown-unknown`.                                |
 | `wasm-size-probe`   |         | Internal, non-public `extern "C"` function used to measure WASM build size (CI); requires `default-fonts`. |
 

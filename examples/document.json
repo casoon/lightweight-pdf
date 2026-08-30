@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "document": {
+    "page_format": "A4",
+    "margin": { "top": 40.0, "right": 40.0, "bottom": 40.0, "left": 40.0 },
+    "metadata": { "title": "Rechnung RE-2026-0100" },
+    "children": [
+      {
+        "type": "text",
+        "content": "Rechnung RE-2026-0100",
+        "style": { "size": 24.0, "font": "sans-bold" },
+        "outline_level": 1,
+        "common": { "keep_with_next": true }
+      },
+      { "type": "table_of_contents" },
+      {
+        "type": "text",
+        "content": "Positionen",
+        "style": { "size": 14.0, "font": "sans-bold" },
+        "outline_level": 2
+      },
+      {
+        "type": "table",
+        "columns": [
+          { "width": { "flex": 1.0 } },
+          { "width": { "fixed": 80.0 }, "align": "end" }
+        ],
+        "header": [
+          { "element": { "type": "text", "content": "Beschreibung" } },
+          { "element": { "type": "text", "content": "Betrag" } }
+        ],
+        "rows": [
+          [
+            { "element": { "type": "text", "content": "Beratung Softwarearchitektur" } },
+            { "element": { "type": "text", "content": "1.200,00 €" } }
+          ]
+        ]
+      },
+      {
+        "type": "list",
+        "items": [
+          { "marker": "bullet", "content": { "type": "text", "content": "Zahlbar innerhalb 14 Tagen" } }
+        ]
+      }
+    ]
+  }
+}

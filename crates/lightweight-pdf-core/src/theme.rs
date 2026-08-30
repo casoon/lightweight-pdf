@@ -22,6 +22,7 @@
 use crate::element::Element;
 use crate::style::{Color, FontKey, TextStyle};
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "snake_case"))]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ThemeRole {
     Body,
@@ -38,6 +39,7 @@ pub enum ThemeRole {
 /// `.heading3()` already used before `Theme` existed (`caption`/
 /// `table_header`/`muted` are new roles with no prior hardcoded
 /// equivalent, so they can't break existing output either way).
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Theme {
     pub body: TextStyle,

@@ -10,15 +10,18 @@ use crate::style::{Align, Border, Color, Common};
 /// shares the leftover space proportionally (taffy `flex-grow` analogy,
 /// ADR-004 / `03-builder-api-design.md`) — the same distribution step as
 /// `Row`, not a generic flex implementation.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "snake_case"))]
 #[derive(Clone, Copy, Debug)]
 pub enum ColumnWidth {
     Fixed(f32),
     Flex(f32),
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
 #[derive(Clone, Copy, Debug)]
 pub struct TableColumn {
     pub width: ColumnWidth,
+    #[cfg_attr(feature = "serde", serde(default))]
     pub align: Align,
 }
 
@@ -43,23 +46,30 @@ impl TableColumn {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
 #[derive(Clone, Debug)]
 pub struct TableCell {
     pub element: Element,
+    #[cfg_attr(feature = "serde", serde(default = "TableCell::default_span"))]
     pub colspan: usize,
     /// How many rows (including this one) this cell's box extends down
     /// through. A continuation row (one a `rowspan > 1` cell from an
     /// earlier row still covers) simply omits a `TableCell` for that
     /// column — same convention as HTML `<tr>`/`<td>`, not a separate
     /// "placeholder" cell type.
+    #[cfg_attr(feature = "serde", serde(default = "TableCell::default_span"))]
     pub rowspan: usize,
+    #[cfg_attr(feature = "serde", serde(default))]
     pub align: Option<Align>,
     /// Overrides the row's zebra stripe for this cell only (precedence:
     /// cell beats row beats column — the same order `.align()` already
     /// follows against `TableColumn::align`).
+    #[cfg_attr(feature = "serde", serde(default))]
     pub background: Option<Color>,
+    #[cfg_attr(feature = "serde", serde(default))]
     pub border: Option<Border>,
     /// Overrides `Table::cell_padding` for this cell only.
+    #[cfg_attr(feature = "serde", serde(default))]
     pub padding: Option<f32>,
 }
 
@@ -74,6 +84,11 @@ impl TableCell {
             border: None,
             padding: None,
         }
+    }
+
+    #[cfg(feature = "serde")]
+    fn default_span() -> usize {
+        1
     }
 
     pub fn colspan(mut self, colspan: usize) -> Self {
@@ -123,28 +138,41 @@ pub trait TableRow {
     fn cells(&self) -> Vec<TableCell>;
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
 #[derive(Clone, Debug, Default)]
 pub struct Table {
+    #[cfg_attr(feature = "serde", serde(default))]
     pub columns: Vec<TableColumn>,
+    #[cfg_attr(feature = "serde", serde(default))]
     pub header: Option<Vec<TableCell>>,
+    #[cfg_attr(feature = "serde", serde(default))]
     pub rows: Vec<Vec<TableCell>>,
     /// Alternating row background ("Zebra-Streifen"), see
     /// `02-elementcatalog-and-features.md`. Applies to data rows only (a
     /// striped header would be indistinguishable from a striped data row).
+    #[cfg_attr(feature = "serde", serde(default))]
     pub striped: Option<Color>,
     /// Inner spacing on every side of each cell's content, same default
     /// (4pt) header and data rows.
+    #[cfg_attr(feature = "serde", serde(default = "Table::default_cell_padding"))]
     pub cell_padding: f32,
     /// Absolute index of `rows[0]` within the *original*, unsplit table —
     /// 0 unless this `Table` is itself the remainder produced by a
     /// previous page's `LayoutResult::Split`. Not part of the public
     /// builder surface; exists purely so `.striped()` keeps alternating
     /// correctly across a page break instead of resetting per page.
+    #[cfg_attr(feature = "serde", serde(skip))]
     pub row_offset: usize,
+    #[cfg_attr(feature = "serde", serde(default))]
     pub common: Common,
 }
 
 impl Table {
+    #[cfg(feature = "serde")]
+    fn default_cell_padding() -> f32 {
+        Table::new().cell_padding
+    }
+
     pub fn new() -> Self {
         Table {
             cell_padding: 4.0,

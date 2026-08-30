@@ -60,6 +60,12 @@ impl core::fmt::Display for ImageError {
 /// A validated, embeddable JPEG or PNG. `bytes` are the original file
 /// bytes, kept as-is — pixel decoding (only ever needed for PNG, to split
 /// out the alpha channel as a `SMask`) happens later, in the facade.
+///
+/// `serde` (issue #17): serializes as `{"bytes_base64": "...", "common":
+/// {..}}` — `format`/`width_px`/`height_px`/`components` are re-derived
+/// by re-running `Image::new`'s own header validation on deserialize
+/// rather than trusting redundant JSON fields that could disagree with
+/// the actual bytes.
 #[derive(Clone, Debug)]
 pub struct Image {
     pub bytes: Arc<[u8]>,
@@ -69,6 +75,44 @@ pub struct Image {
     /// 1 = Gray, 3 = RGB, 4 = RGBA (JPEG is always 1 or 3, never 4).
     pub components: u8,
     pub common: Common,
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for Image {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use base64::Engine;
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("Image", 2)?;
+        state.serialize_field("bytes_base64", &base64::engine::general_purpose::STANDARD.encode(&self.bytes))?;
+        state.serialize_field("common", &self.common)?;
+        state.end()
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Image {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use base64::Engine;
+
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Raw {
+            bytes_base64: String,
+            #[serde(default)]
+            common: Common,
+        }
+
+        let raw = Raw::deserialize(deserializer)?;
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(raw.bytes_base64.as_bytes())
+            .map_err(serde::de::Error::custom)?;
+        let mut image = Image::new(bytes).map_err(serde::de::Error::custom)?;
+        image.common = raw.common;
+        Ok(image)
+    }
 }
 
 impl Image {

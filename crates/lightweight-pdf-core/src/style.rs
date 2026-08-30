@@ -3,6 +3,14 @@
 
 /// Opaque handle for a font. `lightweight-pdf-core` never sees font bytes, only this
 /// key (see `plan/00a-contracts-and-artifacts.md`, point 3).
+///
+/// `serde` (issue #17): deserializes from a plain JSON string. Since the
+/// wrapped `&'static str` can't borrow from a transient JSON buffer, each
+/// distinct name deserialized is leaked (`Box::leak`) to get a `'static`
+/// reference — one small, permanent allocation per distinct font-key name
+/// ever seen in a document, acceptable for "parse a document, render it,
+/// done" but not for a long-running process parsing unbounded distinct
+/// names in a hot loop.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct FontKey(pub &'static str);
 
@@ -17,6 +25,25 @@ impl FontKey {
     }
 }
 
+#[cfg(feature = "serde")]
+impl serde::Serialize for FontKey {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.0)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for FontKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let name = String::deserialize(deserializer)?;
+        Ok(FontKey(Box::leak(name.into_boxed_str())))
+    }
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "snake_case"))]
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Align {
     #[default]
@@ -33,6 +60,7 @@ pub enum Align {
 /// Overflow policy for explicitly, fixed-size elements. See
 /// `plan/05-overflow-and-robustness.md`, Grundprinzip 3. `Visible` is
 /// intentionally not part of V1 (ADR-011).
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "snake_case"))]
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Overflow {
     /// Default: clip hard at the element's box.
@@ -42,6 +70,7 @@ pub enum Overflow {
     Ellipsis,
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Color(pub u8, pub u8, pub u8);
 
@@ -60,6 +89,11 @@ impl Default for Color {
     }
 }
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(deny_unknown_fields, rename_all = "snake_case")
+)]
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub enum BorderStyle {
     #[default]
@@ -70,6 +104,7 @@ pub enum BorderStyle {
     },
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Border {
     pub width: f32,
@@ -95,6 +130,11 @@ impl Border {
     }
 }
 
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(deny_unknown_fields, default)
+)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct TextStyle {
     pub font: FontKey,
@@ -122,6 +162,11 @@ impl Default for TextStyle {
 /// `flex` (taffy-vocabulary, ADR-004) and `keep_with_next` (ADR-007 /
 /// Grundprinzip 9). Deliberately no `margin` on elements (ADR/03: only
 /// `padding` + `Row`/`Column` `gap`, margin is a `Document`-level property).
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(deny_unknown_fields, default)
+)]
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub struct Common {
     pub width: Option<f32>,

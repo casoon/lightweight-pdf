@@ -27,6 +27,11 @@ wasm-size-probe = []
 png = ["dep:png"]
 compress = ["lightweight-pdf-writer/compress"]
 hyphenation = ["lightweight-pdf-layout/hyphenation"]
+serde = ["lightweight-pdf-core/serde"]
+
+[[test]]
+name = "serde_json"
+required-features = ["serde"]
 
 [[example]]
 name = "demo_invoice"

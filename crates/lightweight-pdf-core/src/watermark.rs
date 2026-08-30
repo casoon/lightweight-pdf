@@ -9,6 +9,7 @@
 
 use crate::style::{Color, FontKey};
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
 #[derive(Clone, Debug)]
 pub struct Watermark {
     pub text: String,
