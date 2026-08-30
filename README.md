@@ -41,6 +41,15 @@ English-language sample documents (invoice, quote, credentials hand-off,
 concept, API documentation, audit report, and a custom-font demo) — run with `cargo run -p
 lightweight-pdf --example demo_invoice` etc.
 
+Page 1 of three of those demos, rendered — regenerate with
+`scripts/render-readme-previews.sh` whenever their output changes:
+
+<p>
+  <img src="assets/demo_invoice.png" alt="Rendered invoice demo, page 1" width="260">
+  <img src="assets/demo_offer.png" alt="Rendered quote/offer demo, page 1" width="260">
+  <img src="assets/demo_report.png" alt="Rendered report demo, page 1" width="260">
+</p>
+
 ## Comparison
 
 Checked directly against each project's own README/crates.io page in
