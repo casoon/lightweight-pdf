@@ -38,8 +38,8 @@ More complete examples: `crates/lightweight-pdf/examples/invoice.rs` (a
 German DIN-5008-style invoice with a multi-page table) and
 `.../examples/report.rs`. `examples/demo_*.rs` at the repo root are further,
 English-language sample documents (invoice, quote, credentials hand-off,
-concept, API documentation, audit report, a custom-font demo, and a
-PDF/A-3b conformance demo) — run with `cargo run -p
+concept, API documentation, audit report, a custom-font demo, a PDF/A-3b
+conformance demo, and a ZUGFeRD/Factur-X demo) — run with `cargo run -p
 lightweight-pdf --example demo_invoice` etc.
 
 Page 1 of three of those demos, rendered — regenerate with
@@ -277,6 +277,14 @@ baseline being updated in the same commit.
   `examples/demo_pdf_a3b.rs`); without the feature, calling it makes
   `render()` return `RenderError::PdfAFeatureDisabled` instead of
   silently producing non-conformant output.
+- `Document::zugferd_xml(bytes)` (`zugferd` feature, implies `pdf-a`):
+  embeds a caller-supplied EN 16931 ZUGFeRD/Factur-X invoice XML as an
+  associated file (`/AF`, `/Names/EmbeddedFiles`, the Factur-X XMP
+  extension schema) — this crate embeds only, it never generates or
+  validates that XML (ADR-018). Verified against both veraPDF (PDF/A-3b
+  container) and the [Mustang](https://www.mustangproject.org/) reference
+  validator (PDF *and* the embedded XML against EN 16931), see
+  `examples/demo_zugferd.rs`.
 
 ## Cargo features (crate `lightweight-pdf`)
 
@@ -291,6 +299,7 @@ baseline being updated in the same commit.
 | `wasm`              |         | Targets `wasm32-unknown-unknown` with `wasm-bindgen` JS bindings (implies `serde`) — see the npm package section above. |
 | `wasm-size-probe`   |         | Internal, non-public `extern "C"` function used to measure WASM build size (CI); requires `default-fonts`. |
 | `pdf-a`             |         | `Document::pdf_a3b()`: PDF/A-3b-conformant output (XMP metadata synced with `/Info`, `/OutputIntent` with an embedded sRGB ICC profile, transparency-group colour space) — verified against the official `verapdf` validator, see below. Costs ~4.3 KiB gzip (measured, `wasm-size` config): the embedded profile is the ICC Consortium's own 3 KiB reference `sRGB2014.icc`, not the "several hundred KB" a full CMYK/ICC-v4 profile can run — the fear that motivated gating this behind a feature at all turned out not to apply here. |
+| `zugferd`           |         | `Document::zugferd_xml(bytes)`: embeds a caller-supplied EN 16931 invoice XML as a ZUGFeRD/Factur-X associated file (implies `pdf-a`). Embedding only — this crate never generates or validates the XML itself, see ADR-018 in the local `plan/00-decisions.md`. |
 
 ## Workspace
 

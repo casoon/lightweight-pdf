@@ -50,6 +50,10 @@ pub enum RenderError {
     /// the `pdf-a` feature — a clear error instead of silently rendering
     /// a non-conformant PDF the caller believes is PDF/A-3b (issue #25).
     PdfAFeatureDisabled,
+    /// `Document::zugferd_xml()` was set but this crate wasn't compiled
+    /// with the `zugferd` feature (issue #26) — same reasoning as
+    /// `PdfAFeatureDisabled`.
+    ZugferdFeatureDisabled,
 }
 
 impl core::fmt::Display for RenderError {
@@ -62,6 +66,12 @@ impl core::fmt::Display for RenderError {
                 write!(
                     f,
                     "Document::pdf_a3b() was set but this crate wasn't built with the `pdf-a` feature"
+                )
+            }
+            RenderError::ZugferdFeatureDisabled => {
+                write!(
+                    f,
+                    "Document::zugferd_xml() was set but this crate wasn't built with the `zugferd` feature"
                 )
             }
         }
@@ -165,6 +175,10 @@ fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec
     if doc.pdf_a3b {
         return Err(RenderError::PdfAFeatureDisabled);
     }
+    #[cfg(not(feature = "zugferd"))]
+    if doc.zugferd_xml.is_some() {
+        return Err(RenderError::ZugferdFeatureDisabled);
+    }
 
     let ctx = LayoutCtx::new(fonts);
     let paginated = paginate(doc, &ctx);
@@ -200,6 +214,10 @@ fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec
         pdf.metadata.xmp_creation_date = doc.metadata.creation_date.map(|d| d.to_xmp_string());
         pdf.metadata.xmp_mod_date = doc.metadata.mod_date.map(|d| d.to_xmp_string());
         pdf.pdf_a3b = doc.pdf_a3b;
+    }
+    #[cfg(feature = "zugferd")]
+    {
+        pdf.zugferd_xml = doc.zugferd_xml.clone();
     }
 
     let embedded = text::embed_fonts(&mut pdf, fonts, &used_chars)?;

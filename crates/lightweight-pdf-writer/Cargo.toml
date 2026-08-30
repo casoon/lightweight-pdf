@@ -17,3 +17,8 @@ compress = ["dep:miniz_oxide"]
 # redistributable reference profile, 3 KiB — small enough that gating it
 # is about explicitness, not size), transparency-group colour space.
 pdf-a = []
+# ZUGFeRD/Factur-X (issue #26): embeds a caller-supplied EN 16931 invoice
+# XML as an associated file, with the required Factur-X XMP extension
+# schema on top of `pdf-a`'s XMP packet (ZUGFeRD *is* PDF/A-3 plus this,
+# not an independent format).
+zugferd = ["pdf-a"]

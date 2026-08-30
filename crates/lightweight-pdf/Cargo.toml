@@ -32,6 +32,7 @@ png = ["dep:png"]
 compress = ["lightweight-pdf-writer/compress"]
 hyphenation = ["lightweight-pdf-layout/hyphenation"]
 pdf-a = ["lightweight-pdf-writer/pdf-a"]
+zugferd = ["pdf-a", "lightweight-pdf-writer/zugferd"]
 serde = ["dep:serde", "lightweight-pdf-core/serde"]
 schemars = ["lightweight-pdf-core/schemars"]
 
@@ -84,3 +85,8 @@ path = "../../examples/demo_custom_font.rs"
 name = "demo_pdf_a3b"
 path = "../../examples/demo_pdf_a3b.rs"
 required-features = ["pdf-a", "png"]
+
+[[example]]
+name = "demo_zugferd"
+path = "../../examples/demo_zugferd.rs"
+required-features = ["zugferd"]

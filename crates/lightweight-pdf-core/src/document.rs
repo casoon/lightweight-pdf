@@ -219,6 +219,15 @@ pub struct Document {
     /// silently rendering a non-conformant PDF.
     #[cfg_attr(feature = "serde", serde(default))]
     pub pdf_a3b: bool,
+    /// Set by `.zugferd_xml(bytes)` (issue #26): the raw bytes of a
+    /// caller-supplied ZUGFeRD/Factur-X invoice XML (EN 16931/Comfort
+    /// profile) to embed as an associated file. This crate embeds only —
+    /// it never generates or validates that XML itself (see ADR-018 in
+    /// the local `plan/00-decisions.md`). Not representable in the JSON
+    /// schema (same reasoning as `Header`/`Footer`: `to_json()` refuses
+    /// outright rather than silently dropping it).
+    #[cfg_attr(feature = "serde", serde(skip))]
+    pub zugferd_xml: Option<Vec<u8>>,
     #[cfg_attr(feature = "serde", serde(default))]
     pub children: Vec<Element>,
 }
@@ -242,6 +251,7 @@ impl Document {
             metadata: DocumentMetadata::default(),
             theme: None,
             pdf_a3b: false,
+            zugferd_xml: None,
             children: Vec::new(),
         }
     }
@@ -258,6 +268,19 @@ impl Document {
     /// this.
     pub fn pdf_a3b(mut self) -> Self {
         self.pdf_a3b = true;
+        self
+    }
+
+    /// Embeds `xml` as the document's ZUGFeRD/Factur-X invoice data
+    /// (EN 16931/Comfort profile, issue #26) — implies `.pdf_a3b()`
+    /// (ZUGFeRD/Factur-X *is* a PDF/A-3 file with an embedded invoice,
+    /// not an independent opt-in). `xml` must already be a valid EN
+    /// 16931 CrossIndustryInvoice document; this crate embeds it
+    /// byte-for-byte and never generates or validates the XML itself
+    /// (ADR-018).
+    pub fn zugferd_xml(mut self, xml: impl Into<Vec<u8>>) -> Self {
+        self.pdf_a3b = true;
+        self.zugferd_xml = Some(xml.into());
         self
     }
 
@@ -399,6 +422,9 @@ pub enum DocumentJsonError {
     /// neither is representable in JSON, so refusing beats silently
     /// dropping them.
     HeaderOrFooterNotSupported,
+    /// `Document::to_json` on a `Document` with `zugferd_xml` set (issue
+    /// #26) — not representable in JSON either, same reasoning.
+    ZugferdXmlNotSupported,
     Json(serde_json::Error),
     /// From `Document::from_template` (issue #18): placeholder/`$each`
     /// resolution against the data tree failed before JSON parsing of
@@ -420,6 +446,12 @@ impl std::fmt::Display for DocumentJsonError {
                 write!(
                     f,
                     "Document::to_json: header/footer aren't representable in the JSON schema (issue #17 V1 scope)"
+                )
+            }
+            DocumentJsonError::ZugferdXmlNotSupported => {
+                write!(
+                    f,
+                    "Document::to_json: zugferd_xml isn't representable in the JSON schema (issue #26)"
                 )
             }
             DocumentJsonError::Json(e) => write!(f, "{e}"),
@@ -469,6 +501,9 @@ impl Document {
     pub fn to_json(&self) -> Result<String, DocumentJsonError> {
         if self.header.is_some() || self.footer.is_some() {
             return Err(DocumentJsonError::HeaderOrFooterNotSupported);
+        }
+        if self.zugferd_xml.is_some() {
+            return Err(DocumentJsonError::ZugferdXmlNotSupported);
         }
         let schema = DocumentSchema {
             schema_version: CURRENT_SCHEMA_VERSION,

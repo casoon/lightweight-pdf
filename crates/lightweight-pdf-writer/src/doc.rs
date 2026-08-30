@@ -146,6 +146,10 @@ pub struct PdfDocument {
     /// profile) and a transparency-group colour space per page.
     #[cfg(feature = "pdf-a")]
     pub pdf_a3b: bool,
+    /// Set by the facade when `Document::zugferd_xml()` was called
+    /// (issue #26) — the raw ZUGFeRD/Factur-X invoice XML to embed.
+    #[cfg(feature = "zugferd")]
+    pub zugferd_xml: Option<Vec<u8>>,
 }
 
 impl PdfDocument {
@@ -264,11 +268,73 @@ impl PdfDocument {
     /// for XMP packets: some tooling scans for `<?xpacket` directly
     /// without going through `/FlateDecode`).
     #[cfg(feature = "pdf-a")]
-    fn write_xmp_metadata(w: &mut PdfWriter, metadata: &PdfMetadata) -> Ref {
-        let xmp = build_xmp_packet(metadata);
+    fn write_xmp_metadata(w: &mut PdfWriter, metadata: &PdfMetadata, zugferd: bool) -> Ref {
+        let xmp = build_xmp_packet(metadata, zugferd);
         let id = w.alloc();
         w.stream(id, "/Type /Metadata /Subtype /XML", xmp.as_bytes());
         id
+    }
+
+    /// `self.zugferd_xml.is_some()` when the `zugferd` feature is
+    /// compiled in, `false` otherwise (issue #26) — mirrors
+    /// [`Self::is_pdf_a3b`].
+    #[cfg(feature = "zugferd")]
+    fn is_zugferd(&self) -> bool {
+        self.zugferd_xml.is_some()
+    }
+
+    #[cfg(all(feature = "pdf-a", not(feature = "zugferd")))]
+    fn is_zugferd(&self) -> bool {
+        false
+    }
+
+    /// Writes the embedded-file stream + file specification for the
+    /// ZUGFeRD/Factur-X XML (issue #26, ISO 19005-3 6.8) and returns the
+    /// file specification's ref — what `/AF` and `/Names/EmbeddedFiles`
+    /// in the Catalog both point at (the same object, two different
+    /// discovery mechanisms: `/AF` is PDF/A-3's own "this is associated
+    /// with the document" marker, `/Names/EmbeddedFiles` is the older,
+    /// universal attachments name tree most PDF viewers use for their
+    /// attachments panel).
+    #[cfg(feature = "zugferd")]
+    fn write_zugferd_attachment(w: &mut PdfWriter, xml: &[u8]) -> Ref {
+        const FILENAME: &str = "factur-x.xml";
+        let file_ref = w.alloc();
+        w.compressed_stream(file_ref, "/Type /EmbeddedFile /Subtype /text#2Fxml", xml);
+        let filespec_ref = w.alloc();
+        let name = format_pdf_string(FILENAME);
+        w.object(
+            filespec_ref,
+            &format!(
+                "<< /Type /Filespec /F {name} /UF {name} /AFRelationship /Alternative /EF << /F {file} /UF {file} >> >>",
+                file = file_ref.write(),
+            ),
+        );
+        filespec_ref
+    }
+
+    /// The Catalog-level `/AF`/`/Names/EmbeddedFiles` entries for the
+    /// ZUGFeRD attachment, or an empty string if none is set — mirrors
+    /// [`Self::is_pdf_a3b`]/[`Self::is_zugferd`]'s always-present-dispatch
+    /// shape so the `pdf-a`-only build (no `zugferd`) needs no `#[cfg]`
+    /// at the call site.
+    #[cfg(feature = "zugferd")]
+    fn write_zugferd_catalog_entry(&self, w: &mut PdfWriter) -> String {
+        match self.zugferd_xml.as_deref() {
+            Some(xml) => {
+                let filespec_ref = Self::write_zugferd_attachment(w, xml);
+                format!(
+                    " /AF [{fs}] /Names << /EmbeddedFiles << /Names [(factur-x.xml) {fs}] >> >>",
+                    fs = filespec_ref.write()
+                )
+            }
+            None => String::new(),
+        }
+    }
+
+    #[cfg(all(feature = "pdf-a", not(feature = "zugferd")))]
+    fn write_zugferd_catalog_entry(&self, _w: &mut PdfWriter) -> String {
+        String::new()
     }
 
     /// Writes one image XObject (recursing once for `smask`, PNG alpha)
@@ -523,8 +589,13 @@ impl PdfDocument {
         #[cfg(feature = "pdf-a")]
         let pdf_a_entry = if pdf_a3b {
             let output_intent_ref = Self::write_output_intent(&mut w);
-            let metadata_ref = Self::write_xmp_metadata(&mut w, &self.metadata);
-            format!(" /OutputIntents [{}] /Metadata {}", output_intent_ref.write(), metadata_ref.write())
+            let metadata_ref = Self::write_xmp_metadata(&mut w, &self.metadata, self.is_zugferd());
+            let zugferd_entry = self.write_zugferd_catalog_entry(&mut w);
+            format!(
+                " /OutputIntents [{}] /Metadata {}{zugferd_entry}",
+                output_intent_ref.write(),
+                metadata_ref.write()
+            )
         } else {
             String::new()
         };
@@ -658,7 +729,7 @@ fn xml_escape(s: &str) -> String {
 /// from, never a separately-tracked copy), plus the `pdfaid:part`/
 /// `pdfaid:conformance` conformance markers every PDF/A file needs.
 #[cfg(feature = "pdf-a")]
-fn build_xmp_packet(metadata: &PdfMetadata) -> String {
+fn build_xmp_packet(metadata: &PdfMetadata, zugferd: bool) -> String {
     let mut props = String::new();
     if let Some(ref title) = metadata.title {
         props.push_str(&format!(
@@ -692,6 +763,8 @@ fn build_xmp_packet(metadata: &PdfMetadata) -> String {
     }
     props.push_str("<pdfaid:part>3</pdfaid:part><pdfaid:conformance>B</pdfaid:conformance>");
 
+    let zugferd_block = if zugferd { ZUGFERD_XMP_EXTENSION } else { "" };
+
     format!(
         "<?xpacket begin=\"\u{feff}\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>\
 <x:xmpmeta xmlns:x=\"adobe:ns:meta/\">\
@@ -703,11 +776,49 @@ xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\" \
 xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\">\
 {props}\
 </rdf:Description>\
+{zugferd_block}\
 </rdf:RDF>\
 </x:xmpmeta>\
 <?xpacket end=\"w\"?>"
     )
 }
+
+/// The Factur-X/ZUGFeRD 2.x XMP extension (issue #26): the `fx:*`
+/// property values (fixed for this crate's EN 16931/Comfort-only scope —
+/// `factur-x.xml`, `INVOICE`, version `1.0`) plus the mandatory
+/// `pdfaExtension`/`pdfaSchema`/`pdfaProperty` schema description PDF/A-3
+/// requires for any custom XMP namespace. Structure taken from PDFlib's
+/// own reference Factur-X sample
+/// (<https://github.com/atgp/factur-x/blob/master/xmp/Factur-X_extension_schema.xmp>),
+/// not reconstructed from the spec text — this block is exactly the kind
+/// of thing worth getting from a working reference rather than guessing.
+#[cfg(all(feature = "pdf-a", not(feature = "zugferd")))]
+const ZUGFERD_XMP_EXTENSION: &str = "";
+
+#[cfg(feature = "zugferd")]
+const ZUGFERD_XMP_EXTENSION: &str = "\
+<rdf:Description rdf:about=\"\" xmlns:fx=\"urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#\">\
+<fx:DocumentType>INVOICE</fx:DocumentType>\
+<fx:DocumentFileName>factur-x.xml</fx:DocumentFileName>\
+<fx:Version>1.0</fx:Version>\
+<fx:ConformanceLevel>EN 16931</fx:ConformanceLevel>\
+</rdf:Description>\
+<rdf:Description rdf:about=\"\" \
+xmlns:pdfaExtension=\"http://www.aiim.org/pdfa/ns/extension/\" \
+xmlns:pdfaSchema=\"http://www.aiim.org/pdfa/ns/schema#\" \
+xmlns:pdfaProperty=\"http://www.aiim.org/pdfa/ns/property#\">\
+<pdfaExtension:schemas><rdf:Bag><rdf:li rdf:parseType=\"Resource\">\
+<pdfaSchema:schema>Factur-X PDFA Extension Schema</pdfaSchema:schema>\
+<pdfaSchema:namespaceURI>urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#</pdfaSchema:namespaceURI>\
+<pdfaSchema:prefix>fx</pdfaSchema:prefix>\
+<pdfaSchema:property><rdf:Seq>\
+<rdf:li rdf:parseType=\"Resource\"><pdfaProperty:name>DocumentFileName</pdfaProperty:name><pdfaProperty:valueType>Text</pdfaProperty:valueType><pdfaProperty:category>external</pdfaProperty:category><pdfaProperty:description>name of the embedded XML invoice file</pdfaProperty:description></rdf:li>\
+<rdf:li rdf:parseType=\"Resource\"><pdfaProperty:name>DocumentType</pdfaProperty:name><pdfaProperty:valueType>Text</pdfaProperty:valueType><pdfaProperty:category>external</pdfaProperty:category><pdfaProperty:description>INVOICE</pdfaProperty:description></rdf:li>\
+<rdf:li rdf:parseType=\"Resource\"><pdfaProperty:name>Version</pdfaProperty:name><pdfaProperty:valueType>Text</pdfaProperty:valueType><pdfaProperty:category>external</pdfaProperty:category><pdfaProperty:description>The actual version of the Factur-X XML schema</pdfaProperty:description></rdf:li>\
+<rdf:li rdf:parseType=\"Resource\"><pdfaProperty:name>ConformanceLevel</pdfaProperty:name><pdfaProperty:valueType>Text</pdfaProperty:valueType><pdfaProperty:category>external</pdfaProperty:category><pdfaProperty:description>The conformance level of the embedded Factur-X data</pdfaProperty:description></rdf:li>\
+</rdf:Seq></pdfaSchema:property>\
+</rdf:li></rdf:Bag></pdfaExtension:schemas>\
+</rdf:Description>";
 
 #[cfg(test)]
 mod tests {
@@ -927,5 +1038,48 @@ mod tests {
         assert!(!text.contains("/OutputIntents"));
         assert!(!text.contains("/Type /Metadata"));
         assert!(!text.contains("/Group"));
+    }
+
+    #[cfg(feature = "zugferd")]
+    #[test]
+    fn embeds_zugferd_xml_with_af_and_xmp_extension() {
+        let mut doc = PdfDocument::new();
+        doc.pdf_a3b = true;
+        doc.zugferd_xml = Some(b"<CrossIndustryInvoice/>".to_vec());
+        doc.add_page(PdfPage {
+            width: 200.0,
+            height: 200.0,
+            content: Vec::new(),
+            annotations: Vec::new(),
+        });
+        let bytes = doc.write();
+        let text = String::from_utf8_lossy(&bytes);
+        assert!(text.contains("/Type /Filespec"));
+        assert!(text.contains("/AFRelationship /Alternative"));
+        assert!(text.contains("/Type /EmbeddedFile /Subtype /text#2Fxml"));
+        assert!(text.contains("/AF ["));
+        assert!(text.contains("/Names << /EmbeddedFiles"));
+        assert!(text.contains("factur-x.xml"));
+        assert!(text.contains("xmlns:fx=\"urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#\""));
+        assert!(text.contains("<fx:ConformanceLevel>EN 16931</fx:ConformanceLevel>"));
+        assert!(text.contains("pdfaSchema:namespaceURI"));
+    }
+
+    #[cfg(feature = "zugferd")]
+    #[test]
+    fn omits_zugferd_entries_when_zugferd_xml_is_not_set() {
+        let mut doc = PdfDocument::new();
+        doc.pdf_a3b = true;
+        doc.add_page(PdfPage {
+            width: 200.0,
+            height: 200.0,
+            content: Vec::new(),
+            annotations: Vec::new(),
+        });
+        let bytes = doc.write();
+        let text = String::from_utf8_lossy(&bytes);
+        assert!(!text.contains("/Type /Filespec"));
+        assert!(!text.contains("/AF ["));
+        assert!(!text.contains("xmlns:fx="));
     }
 }
