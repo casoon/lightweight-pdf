@@ -162,7 +162,27 @@ pub struct Text {
     /// majority, where this field is always `None`) the full 24 bytes;
     /// `Option<Box<Vec<Span>>>` costs 8.
     pub spans: Option<Box<Vec<Span>>>,
+    /// Set by `.hyphenate(lang)` (issue #13, Stage 2): before wrapping,
+    /// each word gets Knuth-Liang break points inserted as soft hyphens
+    /// (U+00AD) for `lang`, on top of Stage 1's always-on soft-hyphen
+    /// support (an author-inserted U+00AD works with or without this).
+    /// `None` (the default) means "only break where the author put a
+    /// soft hyphen, if anywhere." Only consulted for plain `Text`; a
+    /// `Text::rich(..)` ignores it, same as `Align::Justify`.
+    /// Requires the `hyphenation` cargo feature — with it disabled this
+    /// silently has no effect, since skipping automatic hyphenation only
+    /// changes where a line wraps, not what the text says.
+    pub hyphenate: Option<HyphenationLanguage>,
     pub common: Common,
+}
+
+/// A language `.hyphenate(lang)` can insert Knuth-Liang break points for
+/// (`lightweight-pdf-layout`'s `hyphenation` feature; see that crate's
+/// `hyphenate` module for the dictionaries themselves).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HyphenationLanguage {
+    EnglishUs,
+    German,
 }
 
 /// One independently-styled run within `Text::rich(..)`.
@@ -189,6 +209,7 @@ impl Text {
             outline_level: None,
             role: Some(ThemeRole::Body),
             spans: None,
+            hyphenate: None,
             common: Common::default(),
         }
     }
@@ -211,6 +232,7 @@ impl Text {
             outline_level: None,
             role: None,
             spans: Some(Box::new(spans)),
+            hyphenate: None,
             common: Common::default(),
         }
     }
@@ -232,6 +254,14 @@ impl Text {
 
     pub fn outline_level(mut self, level: u8) -> Self {
         self.outline_level = Some(level);
+        self
+    }
+
+    /// Opts this `Text` into automatic (Knuth-Liang) hyphenation for
+    /// `lang` — see the `hyphenate` field's doc comment for scope and the
+    /// `hyphenation` cargo feature it requires.
+    pub fn hyphenate(mut self, lang: HyphenationLanguage) -> Self {
+        self.hyphenate = Some(lang);
         self
     }
 

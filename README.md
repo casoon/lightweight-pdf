@@ -76,6 +76,14 @@ lightweight-pdf --example demo_invoice` etc.
   Table header cells built from plain strings (`Table::header(["A", ...])`)
   pick up `table_header` automatically. No `.theme(..)` call means
   unchanged output.
+- Hyphenation: a soft hyphen (U+00AD) anywhere in `Text::new(..)`'s content
+  marks an optional break point — used (as a visible `-`) only if the line
+  actually needs it there, invisible and absent from extracted text
+  otherwise; a hyphenated prefix is preferred over leaving a ragged gap
+  and moving the whole word down. `Text::hyphenate(HyphenationLanguage)`
+  additionally inserts these break points automatically from Knuth-Liang
+  patterns (English/US, German) — requires the `hyphenation` feature (see
+  below; substantially increases binary/WASM size, off by default).
 - `Text::rich([Span::new("...", style), ...])`: multiple styles (font/size/
   color) inside one text element, wrapped and paginated as a single
   paragraph — mixed sizes on one line share that line's baseline (from the
@@ -119,6 +127,7 @@ lightweight-pdf --example demo_invoice` etc.
 | `default-fonts`     | ✅      | Bundles Source Sans 3 as the default font set for `Document::render()`/`render_with_diagnostics()`. Not needed for `render_with_fonts()` (custom fonts) — `--no-default-features` still compiles the `lib` target and the `demo_custom_font` example, just not the other examples/tests, which call `render()` directly. |
 | `compress`          | ✅      | `/FlateDecode`-compresses content streams, embedded font programs, and raw image samples (`miniz_oxide`, see ADR-016). Disabling it falls back to the previous always-uncompressed output — same PDFs, just bigger. |
 | `png`               |         | PNG decoding/embedding (`Image::from_png`); without this feature, embedding a PNG fails at runtime with `ImageEmbedError::PngFeatureDisabled`. |
+| `hyphenation`       |         | Automatic Knuth-Liang hyphenation (`Text::hyphenate(HyphenationLanguage)`), English/US and German. Pulls in the `hyphenation` crate with all its bundled language dictionaries (no per-language embedding is available upstream), which roughly quadruples release/WASM binary size — measured and not recommended for tight WASM size budgets; see `plan/progress.md`. Soft-hyphen (U+00AD) breaking itself needs no feature and is always on. |
 | `wasm`              |         | Targets `wasm32-unknown-unknown`.                                |
 | `wasm-size-probe`   |         | Internal, non-public `extern "C"` function used to measure WASM build size (CI); requires `default-fonts`. |
 

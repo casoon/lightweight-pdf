@@ -4,6 +4,8 @@
 
 mod font_resolver;
 mod geometry;
+#[cfg(feature = "hyphenation")]
+mod hyphenate;
 mod image;
 mod layoutable;
 mod list;

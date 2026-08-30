@@ -26,6 +26,7 @@ wasm = []
 wasm-size-probe = []
 png = ["dep:png"]
 compress = ["lightweight-pdf-writer/compress"]
+hyphenation = ["lightweight-pdf-layout/hyphenation"]
 
 [[example]]
 name = "demo_invoice"

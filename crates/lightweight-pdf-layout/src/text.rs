@@ -1,9 +1,34 @@
 //! Greedy word-boundary wrapping with a hard-break fallback for tokens
 //! wider than the available width (`plan/05-overflow-and-robustness.md`
-//! Grundprinzip 2). No hyphenation.
+//! Grundprinzip 2), plus soft-hyphen-aware breaking (issue #13, Stage 1):
+//! a word may carry U+00AD marks for where it's allowed to break — used
+//! if wrapping needs it, stripped invisibly if not. Stage 2 (automatic,
+//! dictionary-driven hyphenation) lives in the feature-gated `hyphenate`
+//! module and works by inserting these same U+00AD marks before a word
+//! ever reaches this file.
 
 use crate::font_resolver::FontResolver;
-use lightweight_pdf_core::{FontKey, Span, TextStyle};
+use lightweight_pdf_core::{FontKey, Span, Text, TextStyle};
+use std::borrow::Cow;
+use std::collections::VecDeque;
+
+/// Marks an optional break point within a word: rendered as a visible
+/// `-` if a line actually breaks there, invisible (stripped) otherwise.
+const SOFT_HYPHEN: char = '\u{00AD}';
+
+/// `text.hyphenate` (issue #13, Stage 2), applied if set and the
+/// `hyphenation` feature is compiled in. Without the feature, a `Text`
+/// with `.hyphenate(..)` set falls back to Stage 1 only (whatever soft
+/// hyphens the author placed by hand) — documented on `Text::hyphenate`
+/// itself, since skipping automatic hyphenation only changes where a
+/// line wraps, never what the text says.
+pub fn hyphenated_content(text: &Text) -> Cow<'_, str> {
+    #[cfg(feature = "hyphenation")]
+    if let Some(lang) = text.hyphenate {
+        return Cow::Owned(crate::hyphenate::auto_hyphenate(&text.content, lang));
+    }
+    Cow::Borrowed(&text.content)
+}
 
 pub fn text_width_pt(resolver: &dyn FontResolver, font: FontKey, size: f32, text: &str) -> f32 {
     let m = resolver.metrics(font);
@@ -37,18 +62,62 @@ fn hard_break_word(resolver: &dyn FontResolver, style: &TextStyle, word: &str, m
     pieces
 }
 
-/// Starts a fresh line with `word`: if it fits `max_width` whole, it
-/// becomes the line's only content so far; otherwise it's hard-broken,
-/// with all but the last piece pushed straight into `lines` and the last
-/// piece returned as the new line-in-progress. Shared by both places
-/// `wrap_text` begins a line (the very first word of a paragraph, and the
-/// word right after a line-full break).
-fn start_line(resolver: &dyn FontResolver, style: &TextStyle, word: &str, max_width: f32, lines: &mut Vec<String>) -> String {
-    let w = styled_width_pt(resolver, style, word);
-    if w <= max_width {
-        return word.to_string();
+/// `word`, with every soft hyphen (U+00AD) removed — used whenever a word
+/// is placed without breaking at one of them, since an unused soft hyphen
+/// must never show up in the rendered/extracted text.
+fn strip_soft_hyphens(word: &str) -> String {
+    word.chars().filter(|&c| c != SOFT_HYPHEN).collect()
+}
+
+/// Finds the soft hyphen in `word` that lets the largest possible prefix
+/// (rendered with a trailing visible `-`) fit within `max_width`, and
+/// returns `(prefix_with_hyphen, rest_of_word)` — `rest_of_word` keeps
+/// its own remaining soft hyphens, in case it needs breaking again.
+/// `None` if `word` has no soft hyphen, or not even its first segment
+/// plus a hyphen fits.
+fn break_at_soft_hyphen(resolver: &dyn FontResolver, style: &TextStyle, word: &str, max_width: f32) -> Option<(String, String)> {
+    if !word.contains(SOFT_HYPHEN) {
+        return None;
     }
-    let mut pieces = hard_break_word(resolver, style, word, max_width);
+    let segments: Vec<&str> = word.split(SOFT_HYPHEN).collect();
+    for split_at in (1..segments.len()).rev() {
+        let candidate = format!("{}-", segments[..split_at].concat());
+        if styled_width_pt(resolver, style, &candidate) <= max_width {
+            let rest = segments[split_at..].join("\u{00AD}");
+            return Some((candidate, rest));
+        }
+    }
+    None
+}
+
+/// Starts a fresh line with `word` (which may still carry soft hyphens):
+/// if it fits `max_width` whole, it becomes the line's only content so
+/// far (soft hyphens stripped, unused); otherwise it's broken — at a
+/// soft hyphen if one lets a prefix fit, falling back to a character-level
+/// hard break otherwise — with all but the last piece pushed straight
+/// into `lines` and the last piece (or, for a soft-hyphen break, the
+/// requeued remainder) becoming the new line-in-progress. Shared by both
+/// places `wrap_text` begins a line (the very first word of a paragraph,
+/// and the word right after a line-full break).
+fn start_line(
+    resolver: &dyn FontResolver,
+    style: &TextStyle,
+    word: &str,
+    max_width: f32,
+    lines: &mut Vec<String>,
+    queue: &mut VecDeque<String>,
+) -> String {
+    let stripped = strip_soft_hyphens(word);
+    let w = styled_width_pt(resolver, style, &stripped);
+    if w <= max_width {
+        return stripped;
+    }
+    if let Some((prefix, rest)) = break_at_soft_hyphen(resolver, style, word, max_width) {
+        lines.push(prefix);
+        queue.push_front(rest);
+        return String::new();
+    }
+    let mut pieces = hard_break_word(resolver, style, &stripped, max_width);
     // `hard_break_word` always returns at least one piece (it pushes
     // `current` unconditionally when `pieces` would otherwise be empty),
     // so popping the last one off can never actually hit the default.
@@ -78,23 +147,35 @@ pub fn wrap_text_marking_paragraph_ends(
     let mut lines = Vec::new();
     let mut paragraph_end = Vec::new();
     for paragraph in text.split('\n') {
-        let words: Vec<&str> = paragraph.split(' ').filter(|w| !w.is_empty()).collect();
-        if words.is_empty() {
+        let mut queue: VecDeque<String> = paragraph.split(' ').filter(|w| !w.is_empty()).map(str::to_string).collect();
+        if queue.is_empty() {
             lines.push(String::new());
         } else {
             let mut current = String::new();
-            for word in words {
+            while let Some(word) = queue.pop_front() {
                 if current.is_empty() {
-                    current = start_line(resolver, style, word, max_width, &mut lines);
+                    current = start_line(resolver, style, &word, max_width, &mut lines, &mut queue);
                     continue;
                 }
-                let candidate = format!("{current} {word}");
-                let w = styled_width_pt(resolver, style, &candidate);
-                if w <= max_width {
+                let stripped = strip_soft_hyphens(&word);
+                let candidate = format!("{current} {stripped}");
+                if styled_width_pt(resolver, style, &candidate) <= max_width {
                     current = candidate;
+                    continue;
+                }
+                // Doesn't fit appended whole — try breaking `word` at a
+                // soft hyphen to fill the current line's remaining space
+                // instead of deferring it whole to the next line (the
+                // narrow-column "große Löcher" case issue #13 is about).
+                let space_w = styled_width_pt(resolver, style, " ");
+                let remaining = (max_width - styled_width_pt(resolver, style, &current) - space_w).max(0.0);
+                if let Some((prefix, rest)) = break_at_soft_hyphen(resolver, style, &word, remaining) {
+                    lines.push(format!("{current} {prefix}"));
+                    current = String::new();
+                    queue.push_front(rest);
                 } else {
                     lines.push(std::mem::take(&mut current));
-                    current = start_line(resolver, style, word, max_width, &mut lines);
+                    queue.push_front(word);
                 }
             }
             lines.push(current);
@@ -302,6 +383,39 @@ mod tests {
         let style = TextStyle::default();
         let lines = wrap_text(&FixedResolver, &style, "a\nb", 1000.0);
         assert_eq!(lines, vec!["a".to_string(), "b".to_string()]);
+    }
+
+    #[test]
+    fn soft_hyphen_breaks_a_word_and_renders_a_visible_hyphen() {
+        let style = TextStyle {
+            size: 10.0,
+            ..Default::default()
+        };
+        // "AAAABBBB" is 48pt whole; "AAAA-" is exactly 30pt, fits max_width.
+        let lines = wrap_text(&FixedResolver, &style, "AAAA\u{AD}BBBB", 30.0);
+        assert_eq!(lines, vec!["AAAA-".to_string(), "BBBB".to_string()]);
+    }
+
+    #[test]
+    fn unused_soft_hyphen_disappears_from_the_output() {
+        let style = TextStyle::default();
+        // Plenty of width: the word never needs to break, so its soft
+        // hyphen must not survive into the wrapped line.
+        let lines = wrap_text(&FixedResolver, &style, "AB\u{AD}CD", 1000.0);
+        assert_eq!(lines, vec!["ABCD".to_string()]);
+    }
+
+    #[test]
+    fn soft_hyphen_fills_the_current_line_instead_of_moving_the_whole_word_down() {
+        let style = TextStyle {
+            size: 10.0,
+            ..Default::default()
+        };
+        // "X" (6pt) + " " (3pt) + "AAAABBBB" (48pt) = 57pt, over max_width
+        // 39; but "X AAAA-" is exactly 39pt, so the hyphenated prefix
+        // stays on the first line instead of a ragged gap.
+        let lines = wrap_text(&FixedResolver, &style, "X AAAA\u{AD}BBBB", 39.0);
+        assert_eq!(lines, vec!["X AAAA-".to_string(), "BBBB".to_string()]);
     }
 
     #[test]

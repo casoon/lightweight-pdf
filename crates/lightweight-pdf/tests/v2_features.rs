@@ -516,3 +516,64 @@ fn rich_text_renders_mixed_styles_on_one_paragraph() {
         "expected one text-showing run per span (3 spans), got {tj_count} Tj ops"
     );
 }
+
+#[test]
+fn soft_hyphen_breaks_at_a_narrow_width_and_never_leaks_into_extracted_text() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::all(40.0));
+    doc.add(Text::new("Silben\u{AD}trennung").width(50.0));
+
+    let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+    assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf check failed: {log}");
+
+    let extracted = support::pdftotext(&bytes).unwrap();
+    assert!(
+        !extracted.contains('\u{AD}'),
+        "soft hyphen must never appear in extracted text:\n{extracted}"
+    );
+    assert!(
+        extracted.contains('-'),
+        "expected a visible hyphen where the line broke:\n{extracted}"
+    );
+}
+
+#[test]
+fn unused_soft_hyphen_is_invisible_when_the_word_fits() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::all(40.0));
+    doc.add(Text::new("Silben\u{AD}trennung").width(300.0));
+
+    let bytes = doc.render().expect("render should succeed");
+    let extracted = support::pdftotext(&bytes).unwrap();
+    assert!(
+        !extracted.contains('\u{AD}'),
+        "soft hyphen must never appear in extracted text:\n{extracted}"
+    );
+    assert!(
+        !extracted.contains('-'),
+        "no break occurred, so no hyphen should have been drawn:\n{extracted}"
+    );
+    assert!(extracted.replace(['\n', ' '], "").contains("Silbentrennung"));
+}
+
+#[cfg(feature = "hyphenation")]
+#[test]
+fn automatic_hyphenation_breaks_a_long_compound_word_with_no_authored_soft_hyphen() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::all(40.0));
+    doc.add(Text::new("Silbentrennung").width(50.0).hyphenate(HyphenationLanguage::German));
+
+    let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+    assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf check failed: {log}");
+
+    let extracted = support::pdftotext(&bytes).unwrap();
+    assert!(
+        !extracted.contains('\u{AD}'),
+        "soft hyphen must never appear in extracted text:\n{extracted}"
+    );
+    assert!(
+        extracted.contains('-'),
+        "expected automatic hyphenation to break the word with a visible hyphen:\n{extracted}"
+    );
+}

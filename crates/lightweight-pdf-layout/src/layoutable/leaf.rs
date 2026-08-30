@@ -5,7 +5,7 @@ use super::shared::{line_height_pt, push_warning, size_with_defaults, EPS};
 use super::{LayoutCtx, LayoutResult, Layoutable};
 use crate::geometry::{Constraints, Rect, Size};
 use crate::render_node::RenderNode;
-use crate::text::{text_width_pt, wrap_spans, wrap_text, wrap_text_marking_paragraph_ends, RichLine};
+use crate::text::{hyphenated_content, text_width_pt, wrap_spans, wrap_text, wrap_text_marking_paragraph_ends, RichLine};
 use crate::warnings::{LayoutWarning, LayoutWarningKind};
 use lightweight_pdf_core::{Align, Element, Line, Overflow, Rect as RectElement, Spacer, Span, Text, TextStyle};
 
@@ -86,7 +86,8 @@ impl Layoutable for Text {
                 height: self.common.height.unwrap_or(total_height),
             };
         }
-        let lines = wrap_text(ctx.resolver, &self.style, &self.content, width);
+        let content = hyphenated_content(self);
+        let lines = wrap_text(ctx.resolver, &self.style, &content, width);
         let lh = line_height_pt(&self.style);
         let actual_width = lines
             .iter()
@@ -103,7 +104,8 @@ impl Layoutable for Text {
             return layout_rich_text(self, spans, ctx, area, warnings, page);
         }
         push_missing_glyph_warnings(ctx, &self.style, &self.content, warnings, page);
-        let (lines, paragraph_end) = wrap_text_marking_paragraph_ends(ctx.resolver, &self.style, &self.content, area.width);
+        let content = hyphenated_content(self);
+        let (lines, paragraph_end) = wrap_text_marking_paragraph_ends(ctx.resolver, &self.style, &content, area.width);
         let wrapped = WrappedLines { lines, paragraph_end };
         let lh = line_height_pt(&self.style);
         let total_height = wrapped.len() as f32 * lh;
