@@ -243,6 +243,7 @@ dependencies = [
  "lightweight-pdf-fonts",
  "lightweight-pdf-layout",
  "lightweight-pdf-test-support",
+ "lightweight-pdf-testing",
  "lightweight-pdf-writer",
  "png",
 ]
@@ -282,6 +283,13 @@ dependencies = [
 [[package]]
 name = "lightweight-pdf-test-support"
 version = "0.2.1"
+
+[[package]]
+name = "lightweight-pdf-testing"
+version = "0.2.1"
+dependencies = [
+ "png",
+]
 
 [[package]]
 name = "lightweight-pdf-writer"

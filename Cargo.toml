@@ -8,6 +8,7 @@ members = [
     "crates/lightweight-pdf",
     "crates/lightweight-pdf-test-support",
     "crates/lightweight-pdf-cli",
+    "crates/lightweight-pdf-testing",
 ]
 
 [workspace.package]

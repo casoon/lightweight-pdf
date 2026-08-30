@@ -7,3 +7,6 @@
 # root, never meant to be committed. examples/demo_*.pdf are tracked on
 # purpose (checked-in sample output).
 /*.pdf
+# lightweight-pdf-testing writes these next to a reference snapshot only
+# on a failed comparison — transient, never meant to be committed.
+test-fixtures/snapshots/*.diff.png

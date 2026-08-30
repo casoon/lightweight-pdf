@@ -197,6 +197,14 @@ crates/
   lightweight-pdf-writer/       PDF writer core (objects, xref, streams, fonts)
   lightweight-pdf-fonts/        Font metrics/parsing (skrifa), subsetting
   lightweight-pdf/              Facade crate, public API + wasm feature
+  lightweight-pdf-cli/          `lwpdf` binary: render/validate JSON documents
+                                 and templates from the command line, no Rust
+                                 code needed. Its own crate so `clap` never
+                                 becomes part of the library's dependency tree.
+  lightweight-pdf-testing/      Pixel-diff PDF snapshot testing (render →
+                                 pdftoppm → compare against a reference PNG) —
+                                 usable standalone for your own PDF templates,
+                                 not just this library's.
   lightweight-pdf-test-support/ Internal (publish = false): shared qpdf/pdftotext
                                  shell-out helpers for lightweight-pdf's integration
                                  tests, a dev-dependency only.
@@ -217,6 +225,20 @@ cargo test -p lightweight-pdf --features png     # incl. PNG path
 cargo clippy --workspace --all-targets -- -D warnings
 cargo build --workspace --target wasm32-unknown-unknown --release
 ```
+
+`crates/lightweight-pdf/tests/snapshots.rs` pixel-diffs a handful of
+representative documents (table+theme, image+watermark, multi-page
+list/TOC) against low-DPI grayscale reference PNGs in
+`test-fixtures/snapshots/` via `lightweight-pdf-testing`
+(`pdftoppm`-based, no extra system dependency). After an intentional
+visual change, regenerate the references:
+
+```sh
+UPDATE_SNAPSHOTS=1 cargo test -p lightweight-pdf --test snapshots
+```
+
+`lightweight-pdf-testing` itself works standalone on any PDF, not just
+ones built with this library — see its own doc comment.
 
 ## Publishing
 
