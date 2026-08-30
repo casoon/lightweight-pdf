@@ -1,0 +1,138 @@
+{
+  "page_format": "A4",
+  "margin": {
+    "top": 40,
+    "right": 40,
+    "bottom": 40,
+    "left": 40
+  },
+  "metadata": {
+    "title": "lightweight-pdf – Getting Started"
+  },
+  "children": [
+    {
+      "type": "text",
+      "content": "lightweight-pdf – Getting Started",
+      "style": {
+        "size": 24,
+        "font": "sans-bold"
+      },
+      "outline_level": 1,
+      "common": {
+        "keep_with_next": true
+      }
+    },
+    {
+      "type": "table_of_contents"
+    },
+    {
+      "type": "text",
+      "content": "Installation",
+      "style": {
+        "size": 16,
+        "font": "sans-bold"
+      },
+      "outline_level": 2
+    },
+    {
+      "type": "text",
+      "content": "Als Rust-Crate über cargo, oder als npm-Paket @casoon/lightweight-pdf für Node.js, Browser und Edge-Runtimes."
+    },
+    {
+      "type": "text",
+      "content": "API-Überblick",
+      "style": {
+        "size": 16,
+        "font": "sans-bold"
+      },
+      "outline_level": 2
+    },
+    {
+      "type": "table",
+      "columns": [
+        {
+          "width": {
+            "flex": 1
+          }
+        },
+        {
+          "width": {
+            "flex": 2
+          }
+        }
+      ],
+      "header": [
+        {
+          "element": {
+            "type": "text",
+            "content": "Funktion"
+          }
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Beschreibung"
+          }
+        }
+      ],
+      "rows": [
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "render()"
+            }
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "Rendert ein Document/Template-JSON zu PDF-Bytes"
+            }
+          }
+        ],
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "registerFont()"
+            }
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "Registriert eine zusätzliche Schriftart"
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "type": "text",
+      "content": "Weiterführend",
+      "style": {
+        "size": 16,
+        "font": "sans-bold"
+      },
+      "outline_level": 2
+    },
+    {
+      "type": "list",
+      "items": [
+        {
+          "marker": "bullet",
+          "content": {
+            "type": "text",
+            "content": "CLI: lwpdf render/validate/fonts/schema"
+          }
+        },
+        {
+          "marker": "bullet",
+          "content": {
+            "type": "text",
+            "content": "Cloudflare Worker Starter unter examples/worker"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -92,6 +92,15 @@ document, get a PDF back. Measured module size and cold-start/render
 timings (via `wrangler dev`/`deploy --dry-run`) are in its own README —
 that's exactly the numbers this crate's target audience decides on.
 
+## Browser playground
+
+`examples/playground/` is a static Astro site — JSON editor on the left,
+PDF preview on the right (the browser's own PDF viewer, via a `blob:`
+URL), rendered entirely client-side through the wasm build, no backend.
+Pick one of the built-in templates (invoice/offer/report/docs), edit the
+JSON, and share the result via a URL-encoded link. See its own README to
+run it locally.
+
 ## Features
 
 - Layout primitives: `Text`, `Column`, `Row`, `Table`, `List`, `Image`,

@@ -1,0 +1,227 @@
+---
+const title = "lightweight-pdf Playground";
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+	</head>
+	<body>
+		<header>
+			<h1>{title}</h1>
+			<p>
+				Edit the JSON document on the left, see the rendered PDF on the
+				right — entirely client-side via the
+				<a href="https://github.com/casoon/lightweight-pdf" target="_blank" rel="noopener">lightweight-pdf</a>
+				WASM build, no server involved.
+			</p>
+		</header>
+		<main>
+			<section class="editor-pane">
+				<div class="toolbar">
+					<label for="template-select">Template</label>
+					<select id="template-select">
+						<option value="invoice">Invoice</option>
+						<option value="offer">Offer</option>
+						<option value="report">Report</option>
+						<option value="docs">Documentation</option>
+					</select>
+					<button id="render-btn" type="button">Render</button>
+					<button id="download-btn" type="button" disabled>Download PDF</button>
+					<button id="share-btn" type="button">Copy shareable link</button>
+				</div>
+				<textarea id="editor" spellcheck="false"></textarea>
+				<p id="status" role="status"></p>
+			</section>
+			<section class="preview-pane">
+				<iframe id="preview" title="PDF preview"></iframe>
+			</section>
+		</main>
+		<script>
+			import { render } from "@casoon/lightweight-pdf";
+			import invoiceTemplate from "../templates/invoice.json";
+			import offerTemplate from "../templates/offer.json";
+			import reportTemplate from "../templates/report.json";
+			import docsTemplate from "../templates/docs.json";
+
+			const templates: Record<string, unknown> = {
+				invoice: invoiceTemplate,
+				offer: offerTemplate,
+				report: reportTemplate,
+				docs: docsTemplate,
+			};
+
+			const editor = document.getElementById("editor") as HTMLTextAreaElement;
+			const templateSelect = document.getElementById("template-select") as HTMLSelectElement;
+			const renderBtn = document.getElementById("render-btn") as HTMLButtonElement;
+			const downloadBtn = document.getElementById("download-btn") as HTMLButtonElement;
+			const shareBtn = document.getElementById("share-btn") as HTMLButtonElement;
+			const preview = document.getElementById("preview") as HTMLIFrameElement;
+			const status = document.getElementById("status") as HTMLParagraphElement;
+
+			let currentBlobUrl: string | null = null;
+			let currentBytes: Uint8Array | null = null;
+			let debounceHandle: ReturnType<typeof setTimeout> | undefined;
+
+			function encodeState(json: string): string {
+				const bytes = new TextEncoder().encode(json);
+				let binary = "";
+				for (const byte of bytes) binary += String.fromCharCode(byte);
+				return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+			}
+
+			function decodeState(encoded: string): string {
+				const padded = encoded.replace(/-/g, "+").replace(/_/g, "/");
+				const binary = atob(padded);
+				const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+				return new TextDecoder().decode(bytes);
+			}
+
+			async function renderCurrent() {
+				status.textContent = "Rendering…";
+				let doc: unknown;
+				try {
+					doc = JSON.parse(editor.value);
+				} catch (err) {
+					status.textContent = `Invalid JSON: ${(err as Error).message}`;
+					return;
+				}
+				try {
+					const bytes = await render(doc as never);
+					currentBytes = bytes;
+					if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+					const blob = new Blob([bytes.slice()], { type: "application/pdf" });
+					currentBlobUrl = URL.createObjectURL(blob);
+					preview.src = currentBlobUrl;
+					downloadBtn.disabled = false;
+					status.textContent = `Rendered ${bytes.length.toLocaleString()} bytes.`;
+				} catch (err) {
+					status.textContent = `Render failed: ${(err as Error).message}`;
+				}
+			}
+
+			function scheduleRender() {
+				clearTimeout(debounceHandle);
+				debounceHandle = setTimeout(renderCurrent, 400);
+			}
+
+			function loadTemplate(name: string) {
+				const template = templates[name];
+				if (!template) return;
+				editor.value = JSON.stringify(template, null, 2);
+			}
+
+			templateSelect.addEventListener("change", () => {
+				loadTemplate(templateSelect.value);
+				renderCurrent();
+			});
+
+			renderBtn.addEventListener("click", renderCurrent);
+			editor.addEventListener("input", scheduleRender);
+
+			downloadBtn.addEventListener("click", () => {
+				if (!currentBytes) return;
+				const blob = new Blob([currentBytes.slice()], { type: "application/pdf" });
+				const url = URL.createObjectURL(blob);
+				const a = document.createElement("a");
+				a.href = url;
+				a.download = "document.pdf";
+				a.click();
+				URL.revokeObjectURL(url);
+			});
+
+			shareBtn.addEventListener("click", async () => {
+				const encoded = encodeState(editor.value);
+				const url = `${location.origin}${location.pathname}#doc=${encoded}`;
+				history.replaceState(null, "", url);
+				try {
+					await navigator.clipboard.writeText(url);
+					status.textContent = "Shareable link copied to clipboard.";
+				} catch {
+					status.textContent = "Shareable link updated in the address bar.";
+				}
+			});
+
+			const hash = location.hash;
+			if (hash.startsWith("#doc=")) {
+				try {
+					editor.value = decodeState(hash.slice("#doc=".length));
+				} catch {
+					loadTemplate("invoice");
+				}
+			} else {
+				loadTemplate("invoice");
+			}
+			renderCurrent();
+		</script>
+		<style>
+			:root {
+				color-scheme: light dark;
+				font-family: system-ui, sans-serif;
+			}
+
+			body {
+				margin: 0;
+				padding: 1.5rem;
+				display: flex;
+				flex-direction: column;
+				gap: 1rem;
+				height: 100vh;
+				box-sizing: border-box;
+			}
+
+			header p {
+				max-width: 60ch;
+				opacity: 0.8;
+			}
+
+			main {
+				flex: 1;
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 1rem;
+				min-height: 0;
+			}
+
+			.editor-pane,
+			.preview-pane {
+				display: flex;
+				flex-direction: column;
+				min-height: 0;
+			}
+
+			.toolbar {
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+				margin-bottom: 0.5rem;
+				flex-wrap: wrap;
+			}
+
+			#editor {
+				flex: 1;
+				font-family: ui-monospace, monospace;
+				font-size: 0.85rem;
+				resize: none;
+				min-height: 0;
+			}
+
+			#preview {
+				flex: 1;
+				border: 1px solid CanvasText;
+				min-height: 0;
+			}
+
+			#status {
+				min-height: 1.2em;
+				font-size: 0.85rem;
+				opacity: 0.8;
+			}
+		</style>
+	</body>
+</html>

@@ -1,0 +1,139 @@
+{
+  "page_format": "A4",
+  "margin": {
+    "top": 40,
+    "right": 40,
+    "bottom": 40,
+    "left": 40
+  },
+  "metadata": {
+    "title": "Quartalsbericht Q2 2026"
+  },
+  "children": [
+    {
+      "type": "text",
+      "content": "Quartalsbericht Q2 2026",
+      "style": {
+        "size": 24,
+        "font": "sans-bold"
+      },
+      "outline_level": 1,
+      "common": {
+        "keep_with_next": true
+      }
+    },
+    {
+      "type": "table_of_contents"
+    },
+    {
+      "type": "text",
+      "content": "Zusammenfassung",
+      "style": {
+        "size": 16,
+        "font": "sans-bold"
+      },
+      "outline_level": 2
+    },
+    {
+      "type": "text",
+      "content": "Der Umsatz im zweiten Quartal lag über Plan, getragen durch zwei neue Großkunden im PDF-Tooling-Segment."
+    },
+    {
+      "type": "text",
+      "content": "Kennzahlen",
+      "style": {
+        "size": 16,
+        "font": "sans-bold"
+      },
+      "outline_level": 2
+    },
+    {
+      "type": "table",
+      "columns": [
+        {
+          "width": {
+            "flex": 1
+          }
+        },
+        {
+          "width": {
+            "fixed": 80
+          },
+          "align": "end"
+        }
+      ],
+      "header": [
+        {
+          "element": {
+            "type": "text",
+            "content": "Kennzahl"
+          }
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Wert"
+          }
+        }
+      ],
+      "rows": [
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "Umsatz"
+            }
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "128.400 €"
+            }
+          }
+        ],
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "Neukunden"
+            }
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "7"
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "type": "text",
+      "content": "Ausblick",
+      "style": {
+        "size": 16,
+        "font": "sans-bold"
+      },
+      "outline_level": 2
+    },
+    {
+      "type": "list",
+      "items": [
+        {
+          "marker": "bullet",
+          "content": {
+            "type": "text",
+            "content": "Ausbau des WASM-Bindings"
+          }
+        },
+        {
+          "marker": "bullet",
+          "content": {
+            "type": "text",
+            "content": "PDF/A-3b Konformität"
+          }
+        }
+      ]
+    }
+  ]
+}

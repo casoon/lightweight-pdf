@@ -1,0 +1,150 @@
+{
+  "page_format": "A4",
+  "margin": {
+    "top": 40,
+    "right": 40,
+    "bottom": 40,
+    "left": 40
+  },
+  "metadata": {
+    "title": "Rechnung RE-2026-0100"
+  },
+  "children": [
+    {
+      "type": "text",
+      "content": "Rechnung RE-2026-0100",
+      "style": {
+        "size": 24,
+        "font": "sans-bold"
+      },
+      "outline_level": 1,
+      "common": {
+        "keep_with_next": true
+      }
+    },
+    {
+      "type": "text",
+      "content": "Casoon GmbH • Musterstraße 1 • 12345 Musterstadt"
+    },
+    {
+      "type": "text",
+      "content": "Positionen",
+      "style": {
+        "size": 14,
+        "font": "sans-bold"
+      },
+      "outline_level": 2
+    },
+    {
+      "type": "table",
+      "columns": [
+        {
+          "width": {
+            "flex": 1
+          }
+        },
+        {
+          "width": {
+            "fixed": 60
+          },
+          "align": "end"
+        },
+        {
+          "width": {
+            "fixed": 90
+          },
+          "align": "end"
+        }
+      ],
+      "header": [
+        {
+          "element": {
+            "type": "text",
+            "content": "Beschreibung"
+          }
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Menge"
+          }
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Betrag"
+          }
+        }
+      ],
+      "rows": [
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "Beratung Softwarearchitektur"
+            }
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "8h"
+            }
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "1.200,00 €"
+            }
+          }
+        ],
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "Implementierung PDF-Export"
+            }
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "12h"
+            }
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "1.800,00 €"
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "type": "text",
+      "content": "Gesamtbetrag: 3.000,00 €",
+      "style": {
+        "size": 12,
+        "font": "sans-bold"
+      }
+    },
+    {
+      "type": "list",
+      "items": [
+        {
+          "marker": "bullet",
+          "content": {
+            "type": "text",
+            "content": "Zahlbar innerhalb 14 Tagen ohne Abzug"
+          }
+        },
+        {
+          "marker": "bullet",
+          "content": {
+            "type": "text",
+            "content": "USt-IdNr. DE123456789"
+          }
+        }
+      ]
+    }
+  ]
+}

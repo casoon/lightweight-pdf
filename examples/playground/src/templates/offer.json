@@ -1,0 +1,142 @@
+{
+  "page_format": "A4",
+  "margin": {
+    "top": 40,
+    "right": 40,
+    "bottom": 40,
+    "left": 40
+  },
+  "metadata": {
+    "title": "Angebot AN-2026-0042"
+  },
+  "children": [
+    {
+      "type": "text",
+      "content": "Angebot AN-2026-0042",
+      "style": {
+        "size": 24,
+        "font": "sans-bold"
+      },
+      "outline_level": 1,
+      "common": {
+        "keep_with_next": true
+      }
+    },
+    {
+      "type": "text",
+      "content": "Gültig bis 30.09.2026"
+    },
+    {
+      "type": "text",
+      "content": "Leistungsumfang",
+      "style": {
+        "size": 14,
+        "font": "sans-bold"
+      },
+      "outline_level": 2
+    },
+    {
+      "type": "list",
+      "items": [
+        {
+          "marker": "bullet",
+          "content": {
+            "type": "text",
+            "content": "Konzeption und Architektur"
+          }
+        },
+        {
+          "marker": "bullet",
+          "content": {
+            "type": "text",
+            "content": "Umsetzung inkl. Tests"
+          }
+        },
+        {
+          "marker": "bullet",
+          "content": {
+            "type": "text",
+            "content": "Abnahme und Dokumentation"
+          }
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "content": "Kalkulation",
+      "style": {
+        "size": 14,
+        "font": "sans-bold"
+      },
+      "outline_level": 2
+    },
+    {
+      "type": "table",
+      "columns": [
+        {
+          "width": {
+            "flex": 1
+          }
+        },
+        {
+          "width": {
+            "fixed": 90
+          },
+          "align": "end"
+        }
+      ],
+      "header": [
+        {
+          "element": {
+            "type": "text",
+            "content": "Position"
+          }
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Betrag"
+          }
+        }
+      ],
+      "rows": [
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "Konzeption"
+            }
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "900,00 €"
+            }
+          }
+        ],
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "Umsetzung"
+            }
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "2.400,00 €"
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "type": "text",
+      "content": "Gesamt (netto): 3.300,00 €",
+      "style": {
+        "size": 12,
+        "font": "sans-bold"
+      }
+    }
+  ]
+}
