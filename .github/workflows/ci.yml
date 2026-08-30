@@ -1,3 +1,14 @@
+# Guardrail (issue #32) before adding a step here: the real cost driver is
+# the number of distinct *feature combinations* the `test` job builds, not
+# the step count — each new combination invalidates Cargo's build cache and
+# forces a full rebuild of the dependency graph. Before adding one, answer:
+#   1. Does it prove something no existing step already proves?
+#   2. Does it need a new feature combination? If so, can it merge into an
+#      existing one instead (e.g. onto the `--all-features` run)?
+#   3. Does it need a new system dependency? Can it reuse what's already
+#      installed (qpdf, poppler-utils, binaryen)?
+#   4. Does it need to run on every PR — or does default-branch-only, a
+#      `paths` filter, or `workflow_dispatch` cover it?
 name: CI
 
 on:
@@ -17,18 +28,21 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
       - name: Install qpdf + poppler-utils (pdftotext)
         run: sudo apt-get update && sudo apt-get install -y qpdf poppler-utils
       - name: cargo fmt --check
         run: cargo fmt --all --check
-      - name: cargo clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
-      - name: cargo clippy (png feature)
-        run: cargo clippy -p lightweight-pdf --all-targets --features png -- -D warnings
+      # One clippy pass at --all-features (superset of the old separate
+      # default-features and +png runs — see issue #32: distinct feature
+      # *combinations*, not step count, drive CI cost by invalidating
+      # Cargo's build cache).
+      - name: cargo clippy (all features)
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - name: cargo test
         run: cargo test --workspace
-      - name: cargo test (png feature)
-        run: cargo test -p lightweight-pdf --features png
+      # Covers the old separate "png feature" run too: `--all-features` on
+      # the workspace already includes it.
       - name: cargo test (all features)
         run: cargo test --workspace --all-features
       - name: cargo build (lib, no default features)
@@ -40,16 +54,12 @@ jobs:
         run: cargo clippy -p lightweight-pdf --no-default-features --lib -- -D warnings
       - name: cargo run --example demo_custom_font (no default features)
         run: cargo run -p lightweight-pdf --example demo_custom_font --no-default-features
-      - name: cargo build (native)
-        run: cargo build --workspace
       - name: cargo build (wasm32)
         run: cargo build --workspace --target wasm32-unknown-unknown --release
       - name: cargo run --example invoice
         run: cargo run -p lightweight-pdf --example invoice
       - name: cargo run --example report
         run: cargo run -p lightweight-pdf --example report
-      - name: cargo run --example demo_custom_font
-        run: cargo run -p lightweight-pdf --example demo_custom_font
       - name: Crate boundary check (lightweight-pdf-writer must not depend on core/layout)
         run: |
           ! cargo tree -p lightweight-pdf-writer | grep -E "lightweight-pdf-core|lightweight-pdf-layout"
@@ -83,6 +93,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
       - name: Install binaryen (wasm-opt)
         run: sudo apt-get update && sudo apt-get install -y binaryen
       # `--all-features` used to be passed here, but it enables wasm
