@@ -151,7 +151,7 @@ fn render_page(
 }
 
 fn render_document(doc: &Document, fonts: &FontRegistry) -> Result<(Vec<u8>, Vec<LayoutWarning>), RenderError> {
-    let ctx = LayoutCtx { resolver: fonts };
+    let ctx = LayoutCtx::new(fonts);
     let paginated = paginate(doc, &ctx);
 
     let mut used_chars: HashMap<FontKey, BTreeSet<char>> = HashMap::new();

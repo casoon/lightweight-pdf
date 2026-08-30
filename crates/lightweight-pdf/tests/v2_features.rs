@@ -577,3 +577,79 @@ fn automatic_hyphenation_breaks_a_long_compound_word_with_no_authored_soft_hyphe
         "expected automatic hyphenation to break the word with a visible hyphen:\n{extracted}"
     );
 }
+
+#[test]
+fn table_of_contents_page_numbers_match_actual_heading_pages() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::all(40.0));
+    doc.add(TableOfContents::new());
+    doc.add(Element::PageBreak);
+    doc.add(Text::new("Chapter One").heading1());
+    doc.add(Element::PageBreak);
+    doc.add(Text::new("Chapter Two").heading1());
+    doc.add(Element::PageBreak);
+    doc.add(Text::new("Chapter Three").heading1());
+
+    let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+    assert!(warnings.is_empty(), "unexpected warnings: {warnings:?}");
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf check failed: {log}");
+    assert_eq!(support::page_count(&bytes).unwrap(), 4);
+
+    // TOC itself is page 1; "Chapter One" starts page 2, "Chapter Two"
+    // page 3, "Chapter Three" page 4 (one `PageBreak` between each).
+    let toc_page = support::pdftotext_page(&bytes, 1).unwrap();
+    for (title, expected_page) in [("Chapter One", "2"), ("Chapter Two", "3"), ("Chapter Three", "4")] {
+        let line = toc_page
+            .lines()
+            .find(|l| l.contains(title))
+            .unwrap_or_else(|| panic!("expected a TOC entry for {title:?}, got:\n{toc_page}"));
+        assert!(
+            line.trim_end().ends_with(expected_page),
+            "expected {title:?}'s TOC entry to end with page {expected_page}, got: {line:?}"
+        );
+    }
+
+    assert!(support::pdftotext_page(&bytes, 2).unwrap().contains("Chapter One"));
+    assert!(support::pdftotext_page(&bytes, 3).unwrap().contains("Chapter Two"));
+    assert!(support::pdftotext_page(&bytes, 4).unwrap().contains("Chapter Three"));
+}
+
+#[test]
+fn table_of_contents_itself_splits_across_pages_when_it_has_many_entries() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::all(40.0));
+    doc.add(TableOfContents::new());
+    for i in 0..80 {
+        doc.add(Text::new(format!("Section {i}")).outline_level(1));
+    }
+
+    let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+    assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf check failed: {log}");
+
+    let page_count = support::page_count(&bytes).unwrap();
+    assert!(
+        page_count >= 2,
+        "expected 80 entries to overflow a single page's table of contents, got {page_count} pages total"
+    );
+
+    let page1 = support::pdftotext_page(&bytes, 1).unwrap();
+    assert!(page1.contains("Section 0"), "expected the first entries on page 1:\n{page1}");
+    assert!(
+        !page1.contains("Section 79"),
+        "expected the table of contents to have overflowed onto a later page by entry 79:\n{page1}"
+    );
+}
+
+#[test]
+fn table_of_contents_with_no_matching_headings_renders_without_looping_or_warnings() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::all(40.0));
+    doc.add(TableOfContents::new());
+    doc.add(Text::new("No headings anywhere in this document, just body text."));
+
+    let (bytes, warnings) = doc.render_with_diagnostics().expect("render should succeed");
+    assert!(warnings.is_empty(), "unexpected layout warnings: {warnings:?}");
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf check failed: {log}");
+    assert_eq!(support::page_count(&bytes).unwrap(), 1);
+}

@@ -666,7 +666,7 @@ mod tests {
         }
     }
     fn ctx() -> LayoutCtx<'static> {
-        LayoutCtx { resolver: &FixedResolver }
+        LayoutCtx::new(&FixedResolver)
     }
 
     fn row(cells: &[&str]) -> Vec<Element> {

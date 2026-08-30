@@ -20,6 +20,7 @@ pub enum Element {
     Table(Table),
     Image(Image),
     List(List),
+    TableOfContents(TableOfContents),
     /// Forces a page break at this point in the enclosing flow, regardless
     /// of whether the remaining content would still fit (Phase 2).
     PageBreak,
@@ -40,6 +41,7 @@ macro_rules! common_accessor {
             Element::Table(t) => Some($($ref)* t.common),
             Element::Image(i) => Some($($ref)* i.common),
             Element::List(l) => Some($($ref)* l.common),
+            Element::TableOfContents(t) => Some($($ref)* t.common),
             Element::Spacer(_) | Element::PageBreak => None,
         }
     };
@@ -508,6 +510,70 @@ impl Rect {
 }
 
 // ---------------------------------------------------------------------
+// TableOfContents (issue #10)
+// ---------------------------------------------------------------------
+
+/// Self-populating from every `Text::outline_level`/`.heading1()`-etc.
+/// heading in the document (the same source the PDF bookmark sidebar is
+/// built from), with correct page numbers — the two-pass layout already
+/// determines those in pass 1, this element just renders them in pass 2
+/// (see `lightweight-pdf-layout::toc`). Entries are always left-aligned,
+/// one per line, indented by heading depth, with a leader (`.leader()`)
+/// filling the gap to a right-hand page number; `.style` controls
+/// font/size/color for every entry uniformly.
+#[derive(Clone, Debug)]
+pub struct TableOfContents {
+    /// Only headings at this `outline_level` or shallower become entries
+    /// (default `3`).
+    pub max_depth: u8,
+    pub style: TextStyle,
+    /// Character repeated between an entry's title and its page number
+    /// (default `.`); set to `' '` for no visible leader.
+    pub leader: char,
+    /// Internal: how many matching headings to skip before this
+    /// instance's first entry. Set only by the layout crate when a
+    /// `TableOfContents` itself splits across a page boundary — always
+    /// `0` on one an author constructs.
+    pub skip: usize,
+    pub common: Common,
+}
+
+impl Default for TableOfContents {
+    fn default() -> Self {
+        TableOfContents {
+            max_depth: 3,
+            style: TextStyle::default(),
+            leader: '.',
+            skip: 0,
+            common: Common::default(),
+        }
+    }
+}
+
+impl TableOfContents {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn max_depth(mut self, depth: u8) -> Self {
+        self.max_depth = depth;
+        self
+    }
+
+    pub fn leader(mut self, leader: char) -> Self {
+        self.leader = leader;
+        self
+    }
+
+    pub fn style(mut self, style: TextStyle) -> Self {
+        self.style = style;
+        self
+    }
+
+    common_builder_methods!();
+}
+
+// ---------------------------------------------------------------------
 // Element From-impls (ADR/03-builder-api-design.md point 3)
 // ---------------------------------------------------------------------
 
@@ -530,6 +596,7 @@ element_from!(Rect);
 element_from!(Table);
 element_from!(Image);
 element_from!(List);
+element_from!(TableOfContents);
 
 impl From<&str> for Element {
     fn from(value: &str) -> Self {

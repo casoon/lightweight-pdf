@@ -13,6 +13,7 @@ mod pagination;
 mod render_node;
 mod table;
 mod text;
+mod toc;
 mod warnings;
 
 pub use font_resolver::*;
@@ -21,4 +22,5 @@ pub use layoutable::*;
 pub use pagination::*;
 pub use render_node::*;
 pub use text::{text_width_pt, wrap_text, RichLine, StyledWord};
+pub use toc::TocHeading;
 pub use warnings::*;

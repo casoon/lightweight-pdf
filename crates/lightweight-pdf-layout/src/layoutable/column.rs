@@ -106,10 +106,14 @@ impl Layoutable for Column {
             }
 
             // Does not fit fully on this page (or keep_with_next failed).
-            let splittable = matches!(child, Element::Text(_) | Element::Column(_) | Element::Table(_));
+            let splittable = matches!(
+                child,
+                Element::Text(_) | Element::Column(_) | Element::Table(_) | Element::TableOfContents(_)
+            );
             let min_unit = match child {
                 Element::Text(t) => line_height_pt(&t.style),
                 Element::Table(t) => crate::table::table_min_unit(ctx, t, child_width),
+                Element::TableOfContents(t) => line_height_pt(&t.style),
                 _ => natural.height,
             };
 

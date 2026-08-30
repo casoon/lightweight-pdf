@@ -15,18 +15,43 @@ mod row;
 mod shared;
 
 pub(crate) use shared::{
-    clip_to_fixed_height, coerce_to_fit, coerce_to_fit_and_warn, finish_fit, measure_at_width, push_warning, resolve_auto_size,
-    resolve_bound, shrink_and_bound_height, wrap_children,
+    clip_to_fixed_height, coerce_to_fit, coerce_to_fit_and_warn, finish_fit, line_height_pt, measure_at_width, push_warning,
+    resolve_auto_size, resolve_bound, shrink_and_bound_height, wrap_children,
 };
 
 use crate::font_resolver::FontResolver;
 use crate::geometry::{Constraints, Rect, Size};
 use crate::render_node::RenderNode;
+use crate::toc::TocHeading;
 use crate::warnings::LayoutWarning;
 use lightweight_pdf_core::Element;
+use std::collections::HashMap;
 
 pub struct LayoutCtx<'a> {
     pub resolver: &'a dyn FontResolver,
+    /// Every heading (`Text::outline_level`) in the whole document, in
+    /// document order — independent of pagination (issue #10's
+    /// `TableOfContents`), so identical in both layout passes.
+    pub toc_headings: &'a [TocHeading],
+    /// `None` during pass 1 (page numbers aren't known yet — a
+    /// `TableOfContents` renders its entries without one). `Some` during
+    /// pass 2, keyed by each heading's `TocHeading::anchor`, filled in
+    /// from pass 1's own result — the same "pass 1 informs pass 2"
+    /// mechanism `PageContext.total_pages` uses for Header/Footer.
+    pub toc_heading_pages: Option<&'a HashMap<String, usize>>,
+}
+
+impl<'a> LayoutCtx<'a> {
+    /// A `LayoutCtx` with no `TableOfContents` data — what every caller
+    /// outside `pagination::paginate` wants (it fills in the real
+    /// per-pass values itself).
+    pub fn new(resolver: &'a dyn FontResolver) -> Self {
+        LayoutCtx {
+            resolver,
+            toc_headings: &[],
+            toc_heading_pages: None,
+        }
+    }
 }
 
 /// Result of laying an element out into a bounded area: either it fully
@@ -61,6 +86,7 @@ impl Layoutable for Element {
             Element::Table(t) => t.measure(ctx, constraints),
             Element::Image(i) => i.measure(ctx, constraints),
             Element::List(l) => l.measure(ctx, constraints),
+            Element::TableOfContents(t) => t.measure(ctx, constraints),
             Element::PageBreak => Size::default(),
         }
     }
@@ -76,6 +102,7 @@ impl Layoutable for Element {
             Element::Table(t) => t.layout(ctx, area, warnings, page),
             Element::Image(i) => i.layout(ctx, area, warnings, page),
             Element::List(l) => l.layout(ctx, area, warnings, page),
+            Element::TableOfContents(t) => t.layout(ctx, area, warnings, page),
             Element::PageBreak => LayoutResult::Fit(RenderNode::Empty),
         }
     }
@@ -113,7 +140,7 @@ mod tests {
     }
 
     fn ctx() -> LayoutCtx<'static> {
-        LayoutCtx { resolver: &FixedResolver }
+        LayoutCtx::new(&FixedResolver)
     }
 
     // --- Grundprinzip 1: auto-size is the default -----------------------

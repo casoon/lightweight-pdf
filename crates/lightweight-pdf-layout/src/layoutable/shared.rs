@@ -11,7 +11,7 @@ use lightweight_pdf_core::{Common, Element, TextStyle};
 
 pub(crate) const EPS: f32 = 0.01;
 
-pub(super) fn line_height_pt(style: &TextStyle) -> f32 {
+pub(crate) fn line_height_pt(style: &TextStyle) -> f32 {
     style.size * style.line_height
 }
 

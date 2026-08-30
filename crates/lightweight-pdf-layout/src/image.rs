@@ -96,7 +96,7 @@ mod tests {
         }
     }
     fn ctx() -> LayoutCtx<'static> {
-        LayoutCtx { resolver: &NoopResolver }
+        LayoutCtx::new(&NoopResolver)
     }
 
     fn image(width_px: u32, height_px: u32) -> Image {

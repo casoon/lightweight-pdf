@@ -94,18 +94,37 @@ pub fn paginate(doc: &Document, ctx: &LayoutCtx) -> PaginatedDocument {
         height: body_h,
     };
 
+    // `TableOfContents` (issue #10): collected once, identical in both
+    // passes (see `toc.rs`'s module doc for why that's what keeps the
+    // page count stable), headings get an anchor if they don't already
+    // have one so an entry can always `link_to` them.
+    let (prepared_children, toc_headings) = crate::toc::prepare_toc(&doc.children);
+
     // Pass 1: layout without `total_pages` — only used to determine the
-    // page count.
+    // page count (and, for `TableOfContents`, which page every heading
+    // landed on).
     let mut pass1_warnings = Vec::new();
-    let pass1_pages = paginate_body(&doc.children, body_area, ctx, &mut pass1_warnings);
+    let ctx1 = LayoutCtx {
+        resolver: ctx.resolver,
+        toc_headings: &toc_headings,
+        toc_heading_pages: None,
+    };
+    let pass1_pages = paginate_body(&prepared_children, body_area, &ctx1, &mut pass1_warnings);
     let total_pages = pass1_pages.len().max(1);
+    let toc_heading_pages = crate::toc::collect_anchor_pages(&pass1_pages);
 
     // Pass 2: independent re-run, now with `total_pages` available to
-    // Header/Footer closures. Same measure/layout code path as pass 1; the
+    // Header/Footer closures (and `toc_heading_pages` to
+    // `TableOfContents`). Same measure/layout code path as pass 1; the
     // body box is identical, so this reproduces the exact same split
     // points (verified by a dedicated test).
     let mut warnings = Vec::new();
-    let pass2_pages = paginate_body(&doc.children, body_area, ctx, &mut warnings);
+    let ctx = &LayoutCtx {
+        resolver: ctx.resolver,
+        toc_headings: &toc_headings,
+        toc_heading_pages: Some(&toc_heading_pages),
+    };
+    let pass2_pages = paginate_body(&prepared_children, body_area, ctx, &mut warnings);
 
     let mut pages = Vec::with_capacity(total_pages);
     for (i, body_node) in pass2_pages.into_iter().enumerate() {
@@ -187,7 +206,7 @@ mod tests {
 
     #[test]
     fn pass1_and_pass2_page_counts_match() {
-        let ctx = LayoutCtx { resolver: &FixedResolver };
+        let ctx = LayoutCtx::new(&FixedResolver);
         let children: Vec<Element> = (0..40)
             .map(|i| Element::Text(lightweight_pdf_core::Text::new(format!("Zeile {i} mit etwas Text drumherum."))))
             .collect();

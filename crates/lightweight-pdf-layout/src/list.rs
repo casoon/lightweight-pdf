@@ -88,7 +88,7 @@ mod tests {
         }
     }
     fn ctx() -> LayoutCtx<'static> {
-        LayoutCtx { resolver: &FixedResolver }
+        LayoutCtx::new(&FixedResolver)
     }
 
     #[test]

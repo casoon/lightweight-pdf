@@ -153,7 +153,8 @@ pub(crate) fn apply_theme(element: &mut Element, theme: &Theme) {
                 apply_theme(&mut item.content, theme);
             }
         }
-        Element::Spacer(_) | Element::Line(_) | Element::Rect(_) | Element::Image(_) | Element::PageBreak => {}
+        Element::Spacer(_) | Element::Line(_) | Element::Rect(_) | Element::Image(_) | Element::TableOfContents(_) | Element::PageBreak => {
+        }
     }
 }
 

@@ -64,6 +64,15 @@ lightweight-pdf --example demo_invoice` etc.
   build the sidebar tree automatically (`.outline_level(n)` for anything
   else that should show up in it); a document with no headings emits no
   `/Outlines` object at all.
+- `TableOfContents::new()`: self-populates from every heading
+  (`.heading1()`/`2`/`3`/`.outline_level(n)`) in the document, in order,
+  with correct page numbers and a clickable entry per heading — the
+  two-pass layout already runs (for `{page}/{total}` in Header/Footer)
+  determines those before this element ever renders. `.max_depth(n)`
+  limits which heading levels become entries (default `3`), `.leader(c)`
+  sets the fill character between title and page number (default `.`,
+  `' '` for none). Splits across pages like any other content if it has
+  enough entries.
 - Content streams, embedded font programs, and raw image samples are
   `/FlateDecode`-compressed by default (`compress` feature, on unless
   explicitly disabled) — typically 40-60% smaller output.
