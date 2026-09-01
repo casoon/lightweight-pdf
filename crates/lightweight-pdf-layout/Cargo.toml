@@ -8,7 +8,7 @@ description = "Layoutable trait, pagination and text wrapping for lightweight-pd
 
 [dependencies]
 hyphenation = { version = "0.8.4", features = ["embed_all"], optional = true }
-lightweight-pdf-core = { path = "../lightweight-pdf-core", version = "0.2.1" }
+lightweight-pdf-core = { path = "../lightweight-pdf-core", version = "0.3.0" }
 
 [features]
 hyphenation = ["dep:hyphenation"]
