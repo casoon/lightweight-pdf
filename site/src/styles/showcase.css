@@ -1,0 +1,25 @@
+/* Rendered PDFs in the showcase output panels (built by src/showcase.ts). */
+.pdf-output {
+  display: grid;
+  gap: 14px;
+}
+
+.pdf-meta {
+  margin: 0;
+  font-size: 14px;
+}
+
+.pdf-page {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #fff;
+}
+
+/* The demo sources run to a few hundred lines: scroll them next to the page previews. */
+.example:has(.pdf-output) .input pre {
+  max-height: 52rem;
+  overflow: auto;
+}

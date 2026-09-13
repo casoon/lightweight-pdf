@@ -1,0 +1,152 @@
+---
+import {
+  Badge,
+  Badges,
+  BuildOutput,
+  CodeBlock,
+  Facts,
+  Features,
+  Hero,
+  Install,
+  Quickstart,
+  Terminal,
+} from '@casoon/pages-theme/components';
+import Base from '@casoon/pages-theme/layouts/Base.astro';
+import { cliLog, pdfFile } from '../showcase';
+
+const invoice = pdfFile('demo_invoice');
+const firstPage = invoice.pages[0];
+
+const mainRs = `use lightweight_pdf::*;
+
+let mut doc = Document::new(PageFormat::A4)
+    .margin(Margin::all(20.0))
+    .footer(Footer::new(20.0, |ctx| {
+        Text::new(format!("Page {} of {}", ctx.page, ctx.total_pages)).into()
+    }));
+
+doc.add(Text::new("Invoice").heading1());
+doc.add(
+    Table::new()
+        .columns([TableColumn::flex(1.0), TableColumn::fixed(60.0).align(Align::End)])
+        .header(["Item", "Amount"])
+        .rows(vec![vec![Element::from("Consulting"), Element::from("1,200.00 USD")]]),
+);
+
+let bytes = doc.render().expect("render should succeed");
+std::fs::write("invoice.pdf", bytes).unwrap();`;
+
+const cli = `lwpdf render examples/invoice-template.json \\
+  --data examples/invoice-data.json -o invoice.pdf`;
+---
+
+<Base>
+  <Hero
+    title="Business PDFs from pure Rust."
+    lead="lightweight-pdf builds invoices, quotes, reports and certificates from a fixed set of layout primitives – with its own PDF writer and TrueType subsetter, natively or as wasm32 inside a Cloudflare Worker."
+  >
+    <Install
+      label="Install"
+      commands={[
+        { label: 'crate', command: 'cargo add lightweight-pdf' },
+        { label: 'CLI', command: 'cargo install lightweight-pdf-cli' },
+      ]}
+    />
+    <Badges>
+      <Badge>MIT</Badge>
+      <Badge>crates.io 0.3.0</Badge>
+      <Badge>wasm32-unknown-unknown</Badge>
+      <Badge>PDF/A-3b · PDF/UA-1</Badge>
+    </Badges>
+    <figure slot="output" class="preview">
+      <img
+        src={firstPage.src}
+        width={firstPage.width}
+        height={firstPage.height}
+        alt="Top of page 1 of the demo invoice: logo, address block, invoice details and the start of the position table."
+      />
+      <figcaption>
+        <code>examples/demo_invoice.rs</code>, rendered during this site's build ·
+        <a href={invoice.href}>open the PDF<span class="visually-hidden"> ({invoice.kib} KiB)</span></a>
+      </figcaption>
+    </figure>
+  </Hero>
+
+  <Facts
+    items={[
+      { value: '1', label: 'required third-party dependency (skrifa, for font parsing)' },
+      { value: `${invoice.kib} KiB`, label: 'demo invoice PDF from this build, fonts subset and embedded' },
+      { value: '590 KiB', label: 'gzipped WASM module with fonts, measured with wrangler' },
+      { value: '~4 ms', label: 'per invoice, quote or report, native release build' },
+    ]}
+  />
+
+  <Features
+    items={[
+      {
+        title: 'Pagination handled for you',
+        body: 'Two-pass layout keeps “Page X of Y” stable, splits tables across pages with a repeating header, honours widow/orphan rules and keep-with-next, and fills a table of contents with real page numbers.',
+      },
+      {
+        title: 'Own writer, own subsetter',
+        body: 'PDF objects, xref and streams are written by this repository, and only the glyphs a document uses are embedded. Streams are Flate-compressed by default; output is deterministic.',
+      },
+      {
+        title: 'Built for the edge',
+        body: 'The wasm32 build is part of CI and its gzip size is gated against a baseline. A Cloudflare Worker starter and a browser playground live in examples/.',
+      },
+      {
+        title: 'JSON in, PDF out',
+        body: 'Documents serialise to a versioned JSON format. Templates resolve {{placeholders}} and $each rows against a data file, and the lwpdf CLI renders both without Rust code.',
+      },
+      {
+        title: 'Standards on request',
+        body: 'PDF/A-3b, ZUGFeRD/Factur-X invoice embedding and Tagged PDF/PDF-UA-1, each behind a Cargo feature and checked with veraPDF.',
+      },
+    ]}
+  />
+
+  <BuildOutput
+    caption="Captured while this site was built: the lwpdf CLI validating and rendering the template from examples/. The PDF it wrote is in the showcase."
+    file="scripts/render-site-showcase.sh"
+  >
+    <Terminal ansi={cliLog} />
+  </BuildOutput>
+
+  <Quickstart
+    lead="Three steps from install to a first PDF. The full walkthrough lives in the documentation."
+    steps={[
+      'Add the crate: <code>cargo add lightweight-pdf</code>.',
+      'Build a <code>Document</code> from text, tables, rows, lists and images.',
+      'Call <code>render()</code> and write the bytes wherever you need them – or skip Rust and render JSON with <code>lwpdf</code>.',
+    ]}
+  >
+    <CodeBlock code={mainRs} lang="rust" title="main.rs" label="Rust" />
+    <CodeBlock code={cli} lang="sh" title="terminal" label="CLI" />
+  </Quickstart>
+</Base>
+
+<style>
+  .preview {
+    margin: 0;
+  }
+  .preview img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 0.85;
+    object-fit: cover;
+    object-position: top;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: var(--shadow);
+  }
+  .preview figcaption {
+    margin-top: 12px;
+    font-size: 13.5px;
+  }
+  .preview figcaption a {
+    text-decoration: underline;
+  }
+</style>
