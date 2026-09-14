@@ -33,6 +33,8 @@ use lightweight_pdf_layout::{FontMetrics, FontResolver};
 const SANS_REGULAR_BYTES: &[u8] = include_bytes!("../assets/fonts/SourceSans3-Regular.ttf");
 #[cfg(feature = "default-fonts")]
 const SANS_BOLD_BYTES: &[u8] = include_bytes!("../assets/fonts/SourceSans3-Bold.ttf");
+#[cfg(feature = "default-fonts-medium")]
+const SANS_MEDIUM_BYTES: &[u8] = include_bytes!("../assets/fonts/SourceSans3-Medium.ttf");
 
 /// Local newtype so `lightweight-pdf-layout`'s `FontMetrics` trait (foreign to this
 /// crate) can be implemented for `lightweight-pdf-fonts`' metrics type (also
@@ -105,6 +107,8 @@ impl FontRegistry {
         let mut reg = Self::empty();
         reg.register_named(FontKey::SANS_REGULAR, "SourceSans3-Subset", SANS_REGULAR_BYTES)?;
         reg.register_named(FontKey::SANS_BOLD, "SourceSans3-Bold-Subset", SANS_BOLD_BYTES)?;
+        #[cfg(feature = "default-fonts-medium")]
+        reg.register_named(FontKey::SANS_MEDIUM, "SourceSans3-Medium-Subset", SANS_MEDIUM_BYTES)?;
         Ok(reg)
     }
 

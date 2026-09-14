@@ -7,6 +7,7 @@ order: 1
 | Feature | Default | Purpose |
 | --- | :---: | --- |
 | `default-fonts` | yes | Bundles Source Sans 3 (regular, bold) for `Document::render()` and `render_with_diagnostics()`. Not needed for `render_with_fonts()`. |
+| `default-fonts-medium` | | Also bundles Source Sans 3 Medium under the `sans-medium` font key (implies `default-fonts`). Adds about 390 KiB raw / 200 KiB gzip to the WASM build (after `wasm-opt -Oz`). Not part of the npm package build; register the font there with `registerFont("sans-medium", bytes)`. |
 | `compress` | yes | Flate-compresses content streams, embedded font programs and raw image samples (`miniz_oxide`), typically 40–60% smaller output. Without it, the same PDFs uncompressed. |
 | `png` | | PNG decoding and embedding. Without it, embedding a PNG fails with `ImageEmbedError::PngFeatureDisabled`. |
 | `hyphenation` | | Automatic Knuth-Liang hyphenation for US English and German via `Text::hyphenate(..)`. Pulls in all bundled dictionaries of the `hyphenation` crate and roughly quadruples release and WASM binary size. Soft-hyphen breaking needs no feature. |

@@ -16,6 +16,9 @@ sans-regular
 sans-bold
 ```
 
+The optional `default-fonts-medium` feature also bundles Source Sans 3 Medium under the
+`sans-medium` key, at the size cost listed in [Cargo features](../../reference/features/).
+
 ## Subsetting
 
 Text is embedded as real Unicode via Type 0 / CIDFontType2 fonts. The subsetter in this repository

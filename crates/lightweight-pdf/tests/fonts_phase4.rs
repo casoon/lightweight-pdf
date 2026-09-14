@@ -87,3 +87,15 @@ fn only_referenced_weights_are_embedded() {
         "expected exactly one embedded font (Regular only)"
     );
 }
+
+#[cfg(feature = "default-fonts-medium")]
+#[test]
+fn medium_weight_embeds_and_renders_when_feature_enabled() {
+    let mut doc = Document::new(PageFormat::A4).margin(Margin::symmetric(56.0, 56.0));
+    doc.add(Text::new("Medium text").font(FontKey::SANS_MEDIUM).size(14.0));
+    let bytes = doc.render().expect("render should succeed with medium font");
+    let (ok, log) = support::qpdf_check(&bytes).unwrap();
+    assert!(ok, "qpdf --check failed:\n{log}");
+    let text = support::pdftotext(&bytes).unwrap();
+    assert!(text.contains("Medium text"));
+}

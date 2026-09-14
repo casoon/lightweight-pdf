@@ -26,6 +26,7 @@ lightweight-pdf-testing = { path = "../lightweight-pdf-testing" }
 [features]
 default = ["default-fonts", "compress"]
 default-fonts = []
+default-fonts-medium = ["default-fonts"]
 wasm = ["dep:wasm-bindgen", "dep:serde-wasm-bindgen", "serde"]
 wasm-size-probe = []
 png = ["dep:png"]

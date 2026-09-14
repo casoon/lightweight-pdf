@@ -17,6 +17,7 @@ pub struct FontKey(pub &'static str);
 impl FontKey {
     pub const SANS_REGULAR: FontKey = FontKey("sans-regular");
     pub const SANS_BOLD: FontKey = FontKey("sans-bold");
+    pub const SANS_MEDIUM: FontKey = FontKey("sans-medium");
     pub const SANS_ITALIC: FontKey = FontKey("sans-italic");
     pub const SANS_BOLD_ITALIC: FontKey = FontKey("sans-bold-italic");
 

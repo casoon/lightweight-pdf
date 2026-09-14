@@ -38,6 +38,8 @@ import { LightweightPdf } from "@casoon/lightweight-pdf";
 
 const renderer = LightweightPdf.withDefaultFonts(); // bundled Source Sans 3
 // or: const renderer = new LightweightPdf(); renderer.registerFont("sans-regular", fontBytes);
+// Source Sans 3 Medium is not bundled in this package; register it yourself if needed:
+// renderer.registerFont("sans-medium", mediumFontBytes);
 
 const result = renderer.renderWithDiagnostics(JSON.stringify({ schema_version: 1, document }));
 result.bytes; // Uint8Array
