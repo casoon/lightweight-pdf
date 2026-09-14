@@ -88,3 +88,50 @@ fn multi_page_report_with_list_and_toc() {
     assert!(warnings.is_empty(), "unexpected warnings: {warnings:?}");
     lightweight_pdf_testing::assert_snapshot(&snapshot_dir(), "multi_page_report_with_list_and_toc", &bytes);
 }
+
+#[test]
+fn letter_grid_with_centered_square_cells() {
+    // Issue #35: a word-search grid — square cells of a fixed size, one
+    // letter each, centred both ways; solution cells highlighted.
+    let letters = ["WORTX", "ÄQRÜS", "LÖSUN", "GRIDß", "ZEILE"];
+    let solution = [(0, 0), (0, 1), (0, 2), (0, 3)];
+    let size = 24.0;
+    let rows: Vec<Vec<TableCell>> = letters
+        .iter()
+        .enumerate()
+        .map(|(r, line)| {
+            line.chars()
+                .enumerate()
+                .map(|(c, ch)| {
+                    let is_solution = solution.contains(&(r, c));
+                    let text = Text::new(ch.to_string()).size(14.0);
+                    let text = if is_solution {
+                        text.bold().color(Color::rgb(0, 70, 140))
+                    } else {
+                        text
+                    };
+                    let cell = TableCell::new(text)
+                        .align(Align::Center)
+                        .border(Border::solid(0.5, Color::rgb(180, 180, 180)));
+                    if is_solution {
+                        cell.background(Color::rgb(220, 235, 250))
+                    } else {
+                        cell
+                    }
+                })
+                .collect()
+        })
+        .collect();
+    let mut doc = Document::new(PageFormat::A5).margin(Margin::all(40.0));
+    doc.add(
+        Table::new()
+            .width(5.0 * size)
+            .cell_padding(0.0)
+            .min_row_height(size)
+            .vertical_align(VerticalAlign::Middle)
+            .columns((0..5).map(|_| TableColumn::fixed(size)))
+            .rows(rows),
+    );
+    let bytes = doc.render().expect("render should succeed");
+    lightweight_pdf_testing::assert_snapshot(&snapshot_dir(), "letter_grid_with_centered_square_cells", &bytes);
+}

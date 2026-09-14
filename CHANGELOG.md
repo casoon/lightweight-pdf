@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file. The format foll
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions are the ones published on
 crates.io; all workspace crates share one version.
 
+## [Unreleased]
+
+### Added
+
+- Table cell vertical alignment (`VerticalAlign::Top`, `Middle`, `Bottom`) on `TableCell`, `TableColumn`, and `Table`, plus `Table::min_row_height` so fixed-size grids can centre their content (#35).
+
 ## [0.3.0] - 2026-09-01
 
 ### Added

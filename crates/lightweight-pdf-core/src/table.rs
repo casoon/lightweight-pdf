@@ -4,7 +4,7 @@
 //! no separate cell-content model.
 
 use crate::element::Element;
-use crate::style::{Align, Border, Color, Common};
+use crate::style::{Align, Border, Color, Common, VerticalAlign};
 
 /// A column's width: `fixed(w)` reserves an exact width, `flex(weight)`
 /// shares the leftover space proportionally (taffy `flex-grow` analogy,
@@ -25,6 +25,8 @@ pub struct TableColumn {
     pub width: ColumnWidth,
     #[cfg_attr(feature = "serde", serde(default))]
     pub align: Align,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub vertical_align: Option<VerticalAlign>,
 }
 
 impl TableColumn {
@@ -32,6 +34,7 @@ impl TableColumn {
         TableColumn {
             width: ColumnWidth::Fixed(width),
             align: Align::Start,
+            vertical_align: None,
         }
     }
 
@@ -39,11 +42,17 @@ impl TableColumn {
         TableColumn {
             width: ColumnWidth::Flex(weight),
             align: Align::Start,
+            vertical_align: None,
         }
     }
 
     pub fn align(mut self, align: Align) -> Self {
         self.align = align;
+        self
+    }
+
+    pub fn vertical_align(mut self, align: VerticalAlign) -> Self {
+        self.vertical_align = Some(align);
         self
     }
 }
@@ -64,6 +73,8 @@ pub struct TableCell {
     pub rowspan: usize,
     #[cfg_attr(feature = "serde", serde(default))]
     pub align: Option<Align>,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub vertical_align: Option<VerticalAlign>,
     /// Overrides the row's zebra stripe for this cell only (precedence:
     /// cell beats row beats column — the same order `.align()` already
     /// follows against `TableColumn::align`).
@@ -83,6 +94,7 @@ impl TableCell {
             colspan: 1,
             rowspan: 1,
             align: None,
+            vertical_align: None,
             background: None,
             border: None,
             padding: None,
@@ -106,6 +118,11 @@ impl TableCell {
 
     pub fn align(mut self, align: Align) -> Self {
         self.align = Some(align);
+        self
+    }
+
+    pub fn vertical_align(mut self, align: VerticalAlign) -> Self {
+        self.vertical_align = Some(align);
         self
     }
 
@@ -167,6 +184,14 @@ pub struct Table {
     /// correctly across a page break instead of resetting per page.
     #[cfg_attr(feature = "serde", serde(skip))]
     pub row_offset: usize,
+    /// Minimum height of every row, header included. Rows whose content
+    /// needs more still grow (never clipped), so this is a floor, not a
+    /// fixed height — enough for square-cell grids whose content is
+    /// centred with `vertical_align`.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub min_row_height: Option<f32>,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub vertical_align: Option<VerticalAlign>,
     #[cfg_attr(feature = "serde", serde(default))]
     pub common: Common,
 }
@@ -213,6 +238,16 @@ impl Table {
 
     pub fn cell_padding(mut self, padding: f32) -> Self {
         self.cell_padding = padding;
+        self
+    }
+
+    pub fn min_row_height(mut self, height: f32) -> Self {
+        self.min_row_height = Some(height);
+        self
+    }
+
+    pub fn vertical_align(mut self, align: VerticalAlign) -> Self {
+        self.vertical_align = Some(align);
         self
     }
 

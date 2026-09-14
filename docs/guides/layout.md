@@ -71,6 +71,9 @@ Table::new()
   span moves to the next page.
 - `TableCell` overrides background, border, padding and alignment per cell: cell beats row beats
   column.
+- `vertical_align` (`top`, `middle`, `bottom`) positions content inside a taller row; set it on the
+  table, a column or a cell (cell beats column beats table). `min_row_height` gives every row a
+  minimum height, so one-letter cells can form a square grid; taller content still grows its row.
 - Header cells built from plain strings pick up the theme's `table_header` style.
 - `Table::from_rows(&items)` builds rows from anything that implements `TableRow`.
 

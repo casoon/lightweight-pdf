@@ -11,7 +11,7 @@ use crate::layoutable::{
 };
 use crate::render_node::{align_offset, RenderNode, StructRole};
 use crate::warnings::{LayoutWarning, LayoutWarningKind};
-use lightweight_pdf_core::{Color, ColumnWidth, Common, Element, Table, TableCell, TableColumn};
+use lightweight_pdf_core::{Color, ColumnWidth, Common, Element, Table, TableCell, TableColumn, VerticalAlign};
 
 const EPS: f32 = 0.01;
 
@@ -54,8 +54,8 @@ fn resolve_column_widths(columns: &[TableColumn], available_width: f32) -> Vec<f
     widths
 }
 
-fn measure_row_height(ctx: &LayoutCtx, cells: &[TableCell], col_widths: &[f32], cell_padding: f32) -> f32 {
-    let mut max_h = 0.0f32;
+fn measure_row_height(ctx: &LayoutCtx, cells: &[TableCell], col_widths: &[f32], cell_padding: f32, min_height: f32) -> f32 {
+    let mut max_h = min_height;
     let mut col_idx = 0;
     for cell in cells {
         if col_idx >= col_widths.len() {
@@ -79,7 +79,7 @@ fn header_row_height(ctx: &LayoutCtx, table: &Table, col_widths: &[f32]) -> f32 
     table
         .header
         .as_ref()
-        .map(|h| measure_row_height(ctx, h, col_widths, table.cell_padding))
+        .map(|h| measure_row_height(ctx, h, col_widths, table.cell_padding, table.min_row_height.unwrap_or(0.0)))
         .unwrap_or(0.0)
 }
 
@@ -92,9 +92,28 @@ pub fn table_min_unit(ctx: &LayoutCtx, table: &Table, width: f32) -> f32 {
     let first_row_h = table
         .rows
         .first()
-        .map(|r| measure_row_height(ctx, r, &col_widths, table.cell_padding))
+        .map(|r| measure_row_height(ctx, r, &col_widths, table.cell_padding, table.min_row_height.unwrap_or(0.0)))
         .unwrap_or(0.0);
     header_row_height(ctx, table, &col_widths) + first_row_h
+}
+
+/// A cell's vertical alignment: cell beats column beats table (the same
+/// precedence `align` follows), `Top` if none of them sets one.
+fn resolve_vertical_align(table: &Table, col_idx: usize, cell: &TableCell) -> VerticalAlign {
+    cell.vertical_align
+        .or(table.columns[col_idx].vertical_align)
+        .or(table.vertical_align)
+        .unwrap_or_default()
+}
+
+/// Distance from the top of `available` at which `content` starts.
+fn vertical_offset(align: VerticalAlign, available: f32, content: f32) -> f32 {
+    let free = (available - content).max(0.0);
+    match align {
+        VerticalAlign::Top => 0.0,
+        VerticalAlign::Middle => free / 2.0,
+        VerticalAlign::Bottom => free,
+    }
 }
 
 fn layout_row_cells(
@@ -128,13 +147,16 @@ fn layout_row_cells(
         let end_idx = (col_idx + span).min(table.columns.len());
         let total_w: f32 = col_widths[col_idx..end_idx].iter().sum();
         let col_align = cell.align.unwrap_or(table.columns[col_idx].align);
+        let col_vert_align = resolve_vertical_align(table, col_idx, cell);
         let padding = cell.padding.unwrap_or(cell_padding);
 
         let inner_w = (total_w - 2.0 * padding).max(0.0);
         let content_h = (row_area.height - 2.0 * padding).max(0.0);
         let cell_size = measure_at_width(ctx, &cell.element, inner_w);
         let box_width = cell_size.width.min(inner_w).max(0.0);
+        let box_height = cell_size.height.min(content_h).max(0.0);
         let x_offset = align_offset(col_align, inner_w, box_width);
+        let y_offset = vertical_offset(col_vert_align, content_h, box_height);
         let cell_box = Rect {
             x: cursor_x,
             y: row_area.y,
@@ -152,9 +174,9 @@ fn layout_row_cells(
         }
         let cell_area = Rect {
             x: cursor_x + padding + x_offset,
-            y: row_area.y + padding,
+            y: row_area.y + padding + y_offset,
             width: box_width,
-            height: content_h,
+            height: box_height,
         };
         match cell.element.layout(ctx, cell_area, warnings, page) {
             LayoutResult::Fit(node) => cell_children.push(node),
@@ -299,8 +321,15 @@ fn plan_grid<'a>(
 /// Each row's natural height from its own (non-`rowspan`-owning) cells —
 /// `rowspan` cells are handled separately by [`apply_rowspan_deficits`],
 /// since their content can spread across several rows.
-fn natural_row_heights(ctx: &LayoutCtx, placements: &[CellPlacement], num_rows: usize, col_widths: &[f32], cell_padding: f32) -> Vec<f32> {
-    let mut heights = vec![0.0f32; num_rows];
+fn natural_row_heights(
+    ctx: &LayoutCtx,
+    placements: &[CellPlacement],
+    num_rows: usize,
+    col_widths: &[f32],
+    cell_padding: f32,
+    min_height: f32,
+) -> Vec<f32> {
+    let mut heights = vec![min_height; num_rows];
     for p in placements {
         if p.cell.rowspan.max(1) > 1 {
             continue;
@@ -401,6 +430,7 @@ fn render_cells_starting_at(
         let cell_h: f32 = block_heights[local_row_idx..local_end].iter().sum();
         let total_w: f32 = trc.col_widths[p.col_start..p.col_end].iter().sum();
         let col_align = p.cell.align.unwrap_or(trc.table.columns[p.col_start].align);
+        let col_vert_align = resolve_vertical_align(trc.table, p.col_start, p.cell);
         let cursor_x = row_area.x + trc.col_widths[..p.col_start].iter().sum::<f32>();
         let padding = p.cell.padding.unwrap_or(cell_padding);
 
@@ -428,12 +458,14 @@ fn render_cells_starting_at(
         let content_h = (cell_h - 2.0 * padding).max(0.0);
         let cell_size = measure_at_width(trc.ctx, &p.cell.element, inner_w);
         let box_width = cell_size.width.min(inner_w).max(0.0);
+        let box_height = cell_size.height.min(content_h).max(0.0);
         let x_offset = align_offset(col_align, inner_w, box_width);
+        let y_offset = vertical_offset(col_vert_align, content_h, box_height);
         let cell_area = Rect {
             x: cursor_x + padding + x_offset,
-            y: row_area.y + padding,
+            y: row_area.y + padding + y_offset,
             width: box_width,
-            height: content_h,
+            height: box_height,
         };
         match p.cell.element.layout(trc.ctx, cell_area, warnings, trc.page) {
             LayoutResult::Fit(node) => cell_children.push(node),
@@ -563,7 +595,7 @@ impl Layoutable for Table {
         let col_widths = resolve_column_widths(&self.columns, inner_width);
         let mut total = header_row_height(ctx, self, &col_widths);
         for row in &self.rows {
-            total += measure_row_height(ctx, row, &col_widths, self.cell_padding);
+            total += measure_row_height(ctx, row, &col_widths, self.cell_padding, self.min_row_height.unwrap_or(0.0));
         }
         Size {
             width,
@@ -598,7 +630,14 @@ impl Layoutable for Table {
         }
 
         let (placements, is_continuation) = plan_grid(&self.rows, self.columns.len(), warnings, page);
-        let mut row_heights = natural_row_heights(ctx, &placements, self.rows.len(), &col_widths, self.cell_padding);
+        let mut row_heights = natural_row_heights(
+            ctx,
+            &placements,
+            self.rows.len(),
+            &col_widths,
+            self.cell_padding,
+            self.min_row_height.unwrap_or(0.0),
+        );
         apply_rowspan_deficits(ctx, &placements, &mut row_heights, &col_widths, self.cell_padding);
         let row_backgrounds: Vec<Option<Color>> = (0..self.rows.len())
             .map(|i| self.striped.filter(|_| (self.row_offset + i) % 2 == 1))
@@ -673,6 +712,8 @@ impl Layoutable for Table {
                 striped: self.striped,
                 cell_padding: self.cell_padding,
                 row_offset: self.row_offset + block.start,
+                min_row_height: self.min_row_height,
+                vertical_align: self.vertical_align,
                 common: Common {
                     height: None,
                     ..self.common
@@ -1203,6 +1244,143 @@ mod tests {
             row_area.height > 14.4 + 2.0 * 20.0 - EPS,
             "expected the cell's own padding to grow the row, got height {}",
             row_area.height
+        );
+    }
+
+    fn layout_table(table: Table, width: f32) -> RenderNode {
+        let mut warnings = Vec::new();
+        let area = Rect {
+            x: 0.0,
+            y: 0.0,
+            width,
+            height: 400.0,
+        };
+        let LayoutResult::Fit(node) = Element::Table(table).layout(&ctx(), area, &mut warnings, 1) else {
+            panic!("expected Fit");
+        };
+        node
+    }
+
+    fn rows_of(node: &RenderNode) -> &[RenderNode] {
+        let RenderNode::Group { children, .. } = node.untagged() else {
+            panic!("expected table group");
+        };
+        children
+    }
+
+    fn row_height(row: &RenderNode) -> f32 {
+        let RenderNode::Group { area, .. } = row.untagged() else {
+            panic!("expected row group");
+        };
+        area.height
+    }
+
+    /// Top of the first text line in cell `col` of `row`, relative to the row's top.
+    fn cell_text_offset(row: &RenderNode, col: usize) -> f32 {
+        let RenderNode::Group {
+            area: row_area,
+            children: cells,
+            ..
+        } = row.untagged()
+        else {
+            panic!("expected row group");
+        };
+        let RenderNode::Group {
+            children: cell_children, ..
+        } = cells[col].untagged()
+        else {
+            panic!("expected cell group");
+        };
+        let text_y = match cell_children[0].untagged() {
+            RenderNode::Group { children: inner, .. } => match inner[0].untagged() {
+                RenderNode::TextLines { area, .. } => area.y,
+                other => panic!("expected TextLines, got {other:?}"),
+            },
+            RenderNode::TextLines { area, .. } => area.y,
+            other => panic!("expected TextLines or Group, got {other:?}"),
+        };
+        text_y - row_area.y
+    }
+
+    /// Free space above/below a one-line cell in a three-line row:
+    /// two lines of 12pt at 1.2 line height.
+    const TWO_LINES: f32 = 2.0 * 14.4;
+
+    #[test]
+    fn table_cell_vertical_align_offsets_content() {
+        // Column 0 sets each row's height (three lines); column 1 holds one
+        // line aligned Top, Middle, Bottom in rows 0, 1, 2.
+        let multiline = "Line1\nLine2\nLine3";
+        let table = Table::new()
+            .cell_padding(0.0)
+            .columns([TableColumn::fixed(50.0), TableColumn::fixed(50.0)])
+            .rows(vec![
+                vec![TableCell::new(multiline), TableCell::new("Top").vertical_align(VerticalAlign::Top)],
+                vec![
+                    TableCell::new(multiline),
+                    TableCell::new("Middle").vertical_align(VerticalAlign::Middle),
+                ],
+                vec![
+                    TableCell::new(multiline),
+                    TableCell::new("Bottom").vertical_align(VerticalAlign::Bottom),
+                ],
+            ]);
+        let node = layout_table(table, 100.0);
+        let rows = rows_of(&node);
+        assert_eq!(cell_text_offset(&rows[0], 1), 0.0, "Top");
+        assert!((cell_text_offset(&rows[1], 1) - TWO_LINES / 2.0).abs() < EPS, "Middle");
+        assert!((cell_text_offset(&rows[2], 1) - TWO_LINES).abs() < EPS, "Bottom");
+    }
+
+    #[test]
+    fn vertical_align_precedence_is_cell_then_column_then_table() {
+        // Column 0 sets the row height (three lines). The table says Bottom,
+        // columns 2 and 3 say Middle, the cell in column 3 says Top.
+        let table = Table::new()
+            .cell_padding(0.0)
+            .vertical_align(VerticalAlign::Bottom)
+            .columns([
+                TableColumn::fixed(30.0),
+                TableColumn::fixed(30.0),
+                TableColumn::fixed(30.0).vertical_align(VerticalAlign::Middle),
+                TableColumn::fixed(30.0).vertical_align(VerticalAlign::Middle),
+            ])
+            .rows(vec![vec![
+                TableCell::new("L1\nL2\nL3"),
+                TableCell::new("B"),
+                TableCell::new("M"),
+                TableCell::new("T").vertical_align(VerticalAlign::Top),
+            ]]);
+        let node = layout_table(table, 120.0);
+        let row = &rows_of(&node)[0];
+        assert!((cell_text_offset(row, 1) - TWO_LINES).abs() < EPS, "table default applies");
+        assert!((cell_text_offset(row, 2) - TWO_LINES / 2.0).abs() < EPS, "column beats table");
+        assert_eq!(cell_text_offset(row, 3), 0.0, "cell beats column");
+    }
+
+    #[test]
+    fn min_row_height_is_a_floor_that_content_can_exceed() {
+        let table = Table::new()
+            .cell_padding(0.0)
+            .min_row_height(20.0)
+            .vertical_align(VerticalAlign::Middle)
+            .columns([TableColumn::fixed(20.0), TableColumn::fixed(20.0)])
+            .header(["H", "H"])
+            .rows(vec![
+                vec![TableCell::new("A"), TableCell::new("B")],
+                vec![TableCell::new("C"), TableCell::new("L1\nL2")],
+            ]);
+        let node = layout_table(table, 40.0);
+        let rows = rows_of(&node);
+        assert!((row_height(&rows[0]) - 20.0).abs() < EPS, "header grows to the minimum");
+        assert!((row_height(&rows[1]) - 20.0).abs() < EPS, "short row grows to the minimum");
+        assert!(
+            (cell_text_offset(&rows[1], 0) - (20.0 - 14.4) / 2.0).abs() < EPS,
+            "one line is centred within the minimum height"
+        );
+        assert!(
+            (row_height(&rows[2]) - 2.0 * 14.4).abs() < EPS,
+            "taller content still grows the row"
         );
     }
 }

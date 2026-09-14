@@ -72,6 +72,16 @@ pub enum Align {
     Justify,
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(rename_all = "snake_case"))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum VerticalAlign {
+    #[default]
+    Top,
+    Middle,
+    Bottom,
+}
+
 /// Overflow policy for explicitly, fixed-size elements. See
 /// `plan/05-overflow-and-robustness.md`, Grundprinzip 3. `Visible` is
 /// intentionally not part of V1 (ADR-011).
