@@ -85,6 +85,8 @@ its sources are in [`docs/`](docs/).
   [comparison](https://casoon.github.io/lightweight-pdf/docs/reference/comparison/) with
   printpdf/genpdf/Typst/krilla/headless Chrome,
   [development and releasing](https://casoon.github.io/lightweight-pdf/docs/reference/development/)
+- [Architecture decisions (ADRs)](https://casoon.github.io/lightweight-pdf/docs/adr/overview/) —
+  design choices, trade-offs, and constraints
 - API reference on [docs.rs](https://docs.rs/lightweight-pdf); changes in [CHANGELOG.md](CHANGELOG.md)
 
 ## Workspace
@@ -108,8 +110,8 @@ Dependency direction is strictly one-way: `core ← layout ← facade`;
 `writer` and `fonts` are leaves with no path dependency on `core`/`layout`
 (enforced in CI via `cargo tree`).
 
-Architecture, decisions (ADRs) and the work plan live locally in `plan/`
-(not part of this repo/its history).
+Architecture decisions (ADRs) are published under [`docs/adr/`](docs/adr/overview.md)
+and on the website; the day-to-day work journal lives locally in `plan/`.
 
 ## Building & testing
 

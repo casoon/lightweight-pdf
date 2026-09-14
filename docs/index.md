@@ -41,3 +41,4 @@ tools.
 - **Reference**: [Cargo features](reference/features/), [workspace crates](reference/crates/),
   [comparison](reference/comparison/) and [development](reference/development/). Item-level API
   documentation lives on [docs.rs](https://docs.rs/lightweight-pdf).
+- **Architecture decisions**: [ADRs](adr/overview/) — full record of design choices, trade-offs, and constraints.

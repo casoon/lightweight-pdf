@@ -23,6 +23,7 @@ export default defineConfig({
         'getting-started': 'Getting started',
         guides: 'Guides',
         reference: 'Reference',
+        adr: 'Architecture Decisions (ADRs)',
       },
     }),
   ],
