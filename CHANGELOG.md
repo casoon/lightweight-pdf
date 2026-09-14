@@ -11,6 +11,7 @@ crates.io; all workspace crates share one version.
 - Table cell vertical alignment (`VerticalAlign::Top`, `Middle`, `Bottom`) on `TableCell`, `TableColumn`, and `Table`, plus `Table::min_row_height` so fixed-size grids can centre their content (#35).
 - Source Sans 3 Medium font weight behind optional `default-fonts-medium` feature (#36).
 - Measurement API: `measure_text` and `measure_element` in Rust and JavaScript WASM bindings (#37).
+- Prepared `@casoon/lightweight-pdf` npm package version 0.3.0 (#38).
 
 ## [0.3.0] - 2026-09-01
 
