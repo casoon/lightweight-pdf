@@ -1,0 +1,89 @@
+---
+title: Installation
+description: lightweight-pdf ships as a Rust crate on crates.io and as the lwpdf command-line tool. The JavaScript/WASM package is built from the repository.
+order: 1
+---
+
+<Tabs
+  label="Package"
+  tabs={[
+    { id: 'rust', label: 'Rust crate' },
+    { id: 'cli', label: 'CLI' },
+    { id: 'js', label: 'JavaScript (WASM)' },
+  ]}
+>
+<div slot="rust">
+
+```sh
+cargo add lightweight-pdf
+
+# or, in Cargo.toml
+[dependencies]
+lightweight-pdf = "0.3"
+```
+
+</div>
+<div slot="cli">
+
+```sh
+cargo install lightweight-pdf-cli   # installs the `lwpdf` binary
+
+# or from a clone of the repository
+cargo install --path crates/lightweight-pdf-cli
+```
+
+</div>
+<div slot="js">
+
+```sh
+# from a clone of the repository
+cd bindings/js
+npm install
+npm run build
+```
+
+</div>
+</Tabs>
+
+## Rust crate
+
+`lightweight-pdf` is the crate to depend on; it re-exports the builder API and adds `render()`.
+The other workspace crates are its building blocks (see [workspace crates](../../reference/crates/)).
+
+Two features are on by default:
+
+- `default-fonts` bundles Source Sans 3 (regular and bold), so `Document::render()` works without
+  any font setup.
+- `compress` Flate-compresses content streams, font programs and image samples.
+
+Everything else is opt-in, for example PNG support or the JSON format:
+
+```sh
+cargo add lightweight-pdf --features png,serde
+```
+
+The full list is in [Cargo features](../../reference/features/).
+
+<Callout type="note">
+The library itself needs no system dependencies. `qpdf` and `pdftoppm`/`pdftotext` (poppler-utils)
+are only used by the repository's own test suite and by
+[snapshot testing](../../guides/testing/).
+</Callout>
+
+## CLI
+
+`lwpdf` renders the [JSON document and template format](../../guides/json-and-templates/)
+without writing Rust. It lives in its own crate, `lightweight-pdf-cli`, so the library never
+depends on `clap`. See [the CLI guide](../../guides/cli/) for commands and exit codes.
+
+## JavaScript and WASM
+
+`bindings/js` contains the `@casoon/lightweight-pdf` package: the Rust engine compiled to WASM with
+`wasm-bindgen`, plus TypeScript types generated from the document JSON Schema. The build needs
+the Rust toolchain with the `wasm32-unknown-unknown` target, `wasm-pack` and `wasm-opt`
+(binaryen).
+
+<Callout type="caution">
+The package is not on the npm registry at the time of writing. Build it from the repository as
+shown above; details are in [WASM and JavaScript](../../guides/wasm/).
+</Callout>
