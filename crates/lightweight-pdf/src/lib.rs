@@ -12,10 +12,28 @@ pub use fonts::FontRegistry;
 pub use images::ImageEmbedError;
 pub use lightweight_pdf_core::*;
 pub use lightweight_pdf_fonts::FontError;
-pub use lightweight_pdf_layout::{LayoutWarning, LayoutWarningKind};
+pub use lightweight_pdf_layout::{measure_element, measure_text, LayoutWarning, LayoutWarningKind};
 pub use render::{DocumentExt, RenderError};
 #[cfg(all(target_arch = "wasm32", feature = "wasm"))]
 pub use wasm_bindings::{LightweightPdf, RenderResult};
+
+/// Measures `text` with the bundled default fonts. Builds a fresh
+/// `FontRegistry` (parses the font files) on every call — for repeated
+/// measurements create one with `FontRegistry::with_defaults()` and call
+/// its `measure_text` instead.
+#[cfg(feature = "default-fonts")]
+pub fn measure_text_default(text: &str, style: &TextStyle, max_width: f32) -> Result<TextMeasurement, FontError> {
+    let registry = FontRegistry::with_defaults()?;
+    Ok(registry.measure_text(text, style, max_width))
+}
+
+/// Measures `element` with the bundled default fonts. Same per-call cost
+/// as [`measure_text_default`]; reuse a `FontRegistry` for repeated calls.
+#[cfg(feature = "default-fonts")]
+pub fn measure_element_default(element: &Element, max_width: f32) -> Result<ElementMeasurement, FontError> {
+    let registry = FontRegistry::with_defaults()?;
+    Ok(registry.measure_element(element, max_width))
+}
 
 #[cfg(all(feature = "wasm-size-probe", not(feature = "default-fonts")))]
 compile_error!(

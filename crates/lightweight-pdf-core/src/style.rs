@@ -83,6 +83,23 @@ pub enum VerticalAlign {
     Bottom,
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TextMeasurement {
+    pub width: f32,
+    pub height: f32,
+    pub lines: usize,
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ElementMeasurement {
+    pub width: f32,
+    pub height: f32,
+}
+
 /// Overflow policy for explicitly, fixed-size elements. See
 /// `plan/05-overflow-and-robustness.md`, Grundprinzip 3. `Visible` is
 /// intentionally not part of V1 (ADR-011).
@@ -174,6 +191,37 @@ pub struct TextStyle {
     pub align: Align,
     /// Multiple of `size`, e.g. 1.2 for 20% leading.
     pub line_height: f32,
+}
+
+impl TextStyle {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn font(mut self, font: FontKey) -> Self {
+        self.font = font;
+        self
+    }
+
+    pub fn size(mut self, size: f32) -> Self {
+        self.size = size;
+        self
+    }
+
+    pub fn color(mut self, color: Color) -> Self {
+        self.color = color;
+        self
+    }
+
+    pub fn align(mut self, align: Align) -> Self {
+        self.align = align;
+        self
+    }
+
+    pub fn line_height(mut self, line_height: f32) -> Self {
+        self.line_height = line_height;
+        self
+    }
 }
 
 impl Default for TextStyle {

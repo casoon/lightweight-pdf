@@ -6,10 +6,21 @@
 
 import init, { LightweightPdf, RenderResult } from "../pkg/lightweight_pdf.js";
 import type { InitInput } from "../pkg/lightweight_pdf.js";
-import type { Document } from "./document.js";
+import type { Document, Element, TextStyle } from "./document.js";
 
-export type { Document } from "./document.js";
+export type { Document, Element, TextStyle } from "./document.js";
 export { LightweightPdf, RenderResult };
+
+export interface TextMeasurement {
+  width: number;
+  height: number;
+  lines: number;
+}
+
+export interface ElementMeasurement {
+  width: number;
+  height: number;
+}
 
 let ready: Promise<unknown> | null = null;
 let defaultRenderer: LightweightPdf | null = null;
@@ -47,4 +58,31 @@ export async function getDefaultRenderer(wasmInput?: InitInput): Promise<Lightwe
 export async function render(document: Document, wasmInput?: InitInput): Promise<Uint8Array> {
   const renderer = await getDefaultRenderer(wasmInput);
   return renderer.render(JSON.stringify({ schema_version: 1, document }));
+}
+
+/**
+ * Measures `text` with an optional `style` when wrapped against `maxWidth`.
+ * If `maxWidth` is omitted, unbounded width is used.
+ */
+export async function measureText(
+  text: string,
+  style?: TextStyle,
+  maxWidth: number = Infinity,
+  wasmInput?: InitInput
+): Promise<TextMeasurement> {
+  const renderer = await getDefaultRenderer(wasmInput);
+  return renderer.measureText(text, style ? JSON.stringify(style) : "", maxWidth);
+}
+
+/**
+ * Measures an `element` (or subtree) against `maxWidth`.
+ * If `maxWidth` is omitted, unbounded width is used.
+ */
+export async function measure(
+  element: Element,
+  maxWidth: number = Infinity,
+  wasmInput?: InitInput
+): Promise<ElementMeasurement> {
+  const renderer = await getDefaultRenderer(wasmInput);
+  return renderer.measureElement(JSON.stringify(element), maxWidth);
 }

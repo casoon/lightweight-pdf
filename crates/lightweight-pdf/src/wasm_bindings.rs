@@ -15,7 +15,7 @@
 //! `JSON.stringify` before crossing into wasm is cheap compared to the
 //! render itself and keeps this Rust-side surface tiny.
 
-use crate::{Document, DocumentExt, FontKey, FontRegistry};
+use crate::{Document, DocumentExt, Element, FontKey, FontRegistry, TextStyle};
 use lightweight_pdf_layout::{LayoutWarning, LayoutWarningKind};
 use wasm_bindgen::prelude::*;
 
@@ -150,5 +150,27 @@ impl LightweightPdf {
         };
         let doc = Document::from_template(template_json, data_json, on_missing).map_err(to_js_error)?;
         doc.render_with_fonts(&self.fonts).map_err(to_js_error)
+    }
+
+    /// Measures `text` styled with `style_json` (or default style if empty), wrapped to `max_width`.
+    /// Returns `{ width, height, lines }`.
+    #[wasm_bindgen(js_name = measureText)]
+    pub fn measure_text(&self, text: &str, style_json: &str, max_width: f32) -> Result<JsValue, JsError> {
+        let style: TextStyle = if style_json.is_empty() {
+            TextStyle::default()
+        } else {
+            serde_json::from_str(style_json).map_err(to_js_error)?
+        };
+        let m = self.fonts.measure_text(text, &style, max_width);
+        serde_wasm_bindgen::to_value(&m).map_err(to_js_error)
+    }
+
+    /// Measures an `element_json` against `max_width`.
+    /// Returns `{ width, height }`.
+    #[wasm_bindgen(js_name = measureElement)]
+    pub fn measure_element(&self, element_json: &str, max_width: f32) -> Result<JsValue, JsError> {
+        let element: Element = serde_json::from_str(element_json).map_err(to_js_error)?;
+        let m = self.fonts.measure_element(&element, max_width);
+        serde_wasm_bindgen::to_value(&m).map_err(to_js_error)
     }
 }

@@ -16,7 +16,7 @@
 //! *not* fall back: a key nothing was ever registered under there turns
 //! into `RenderError::MissingFont`, not a silently wrong embedded font.
 
-use lightweight_pdf_core::FontKey;
+use lightweight_pdf_core::{Element, ElementMeasurement, FontKey, TextMeasurement, TextStyle};
 use lightweight_pdf_fonts::{EmbeddedFontMetrics, FontData, FontError};
 use lightweight_pdf_layout::{FontMetrics, FontResolver};
 
@@ -168,6 +168,16 @@ impl FontRegistry {
     /// `entry()`'s fallback resolved to under the requested key's name.
     pub fn get(&self, key: FontKey) -> Option<&RegisteredFont> {
         self.fonts.get(&key)
+    }
+
+    /// Measures `text` styled with `style`, wrapped against `max_width`.
+    pub fn measure_text(&self, text: &str, style: &TextStyle, max_width: f32) -> TextMeasurement {
+        lightweight_pdf_layout::measure_text(self, text, style, max_width)
+    }
+
+    /// Measures `element` (or subtree) against `max_width`.
+    pub fn measure_element(&self, element: &Element, max_width: f32) -> ElementMeasurement {
+        lightweight_pdf_layout::measure_element(self, element, max_width)
     }
 }
 

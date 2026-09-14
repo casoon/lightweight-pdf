@@ -18,6 +18,7 @@ png = { version = "0.18.1", optional = true, default-features = false }
 wasm-bindgen = { version = "0.2.127", optional = true }
 serde-wasm-bindgen = { version = "0.6.5", optional = true }
 serde = { version = "1.0.229", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
 
 [dev-dependencies]
 lightweight-pdf-test-support = { path = "../lightweight-pdf-test-support" }
@@ -35,7 +36,7 @@ hyphenation = ["lightweight-pdf-layout/hyphenation"]
 pdf-a = ["lightweight-pdf-writer/pdf-a"]
 zugferd = ["pdf-a", "lightweight-pdf-writer/zugferd"]
 tagged-pdf = ["pdf-a", "lightweight-pdf-writer/tagged-pdf"]
-serde = ["dep:serde", "lightweight-pdf-core/serde"]
+serde = ["dep:serde", "dep:serde_json", "lightweight-pdf-core/serde"]
 schemars = ["lightweight-pdf-core/schemars"]
 
 # `wasm-pack`'s own `wasm-opt` post-processing call doesn't pass
