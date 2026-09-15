@@ -14,6 +14,12 @@ crates.io; all workspace crates share one version.
 - Published Architecture Decision Records (ADR-001 through ADR-019) under `docs/adr/` (#30).
 - Prepared `@casoon/lightweight-pdf` npm package version 0.3.0 (#38).
 
+### Fixed
+
+- Rich text: the space of every font used in a `Text::rich` span is embedded. Before, a font used
+  only in rich text (e.g. an italic span) lacked it, so the gaps before its words came out too
+  wide and lines ran past their box.
+
 ## [0.3.0] - 2026-09-01
 
 ### Added

@@ -28,7 +28,12 @@ fn collect_chars_in_node(node: &RenderNode, used: &mut HashMap<FontKey, BTreeSet
         RenderNode::RichTextLines { lines, .. } => {
             for line in lines {
                 for word in &line.words {
-                    used.entry(word.style.font).or_default().extend(word.text.chars());
+                    let set = used.entry(word.style.font).or_default();
+                    set.extend(word.text.chars());
+                    // `render_rich_text_lines` advances by this font's space
+                    // before every word but the first; words never contain
+                    // one, so it has to be embedded explicitly.
+                    set.insert(' ');
                 }
             }
         }
@@ -512,4 +517,36 @@ pub(super) fn embed_fonts(
         );
     }
     Ok(embedded)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lightweight_pdf_layout::StyledWord;
+
+    #[test]
+    fn rich_text_embeds_the_space_of_every_span_font() {
+        let word = |text: &str, font| StyledWord {
+            text: text.to_string(),
+            style: TextStyle::new().font(font),
+        };
+        let node = RenderNode::RichTextLines {
+            area: Rect {
+                x: 0.0,
+                y: 0.0,
+                width: 100.0,
+                height: 20.0,
+            },
+            align: Align::Start,
+            lines: vec![RichLine {
+                words: vec![word("plain", FontKey::SANS_REGULAR), word("bold", FontKey::SANS_BOLD)],
+                height: 12.0,
+                ascent_pt: 9.0,
+            }],
+        };
+        let mut used = HashMap::new();
+        collect_chars_in_node(&node, &mut used);
+        assert!(used[&FontKey::SANS_REGULAR].contains(&' '));
+        assert!(used[&FontKey::SANS_BOLD].contains(&' '));
+    }
 }
