@@ -14,7 +14,6 @@ export default defineConfig({
       tagline: 'PDF generation in pure Rust',
       website: 'https://pdf.casoon.de',
       repo: 'casoon/lightweight-pdf',
-      version: '0.3.0',
       license: 'MIT',
       branch: 'master',
       packages: [
