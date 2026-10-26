@@ -64,10 +64,10 @@ const cli = `lwpdf render examples/invoice-template.json \\
         src={firstPage.src}
         width={firstPage.width}
         height={firstPage.height}
-        alt="Top of page 1 of the demo invoice: logo, address block, invoice details and the start of the position table."
+        alt="Page 1 of the demo invoice down to the totals: logo, address block, invoice details, two positions and subtotal, VAT and total of EUR 535.50."
       />
       <figcaption>
-        <code>examples/demo_invoice.rs</code>, rendered during this site's build ·
+        <code>examples/demo_invoice.rs</code>, rendered during this site's build ·{' '}
         <a href={invoice.href}>open the PDF<span class="visually-hidden"> ({invoice.kib} KiB)</span></a>
       </figcaption>
     </figure>
@@ -135,7 +135,9 @@ const cli = `lwpdf render examples/invoice-template.json \\
     display: block;
     width: 100%;
     height: auto;
-    aspect-ratio: 1 / 0.85;
+    /* Down to just below the totals block of the demo invoice (y ≈ 820 of 1286 px at 110 dpi),
+       so the edge falls between two blocks instead of through a table row. */
+    aspect-ratio: 909 / 850;
     object-fit: cover;
     object-position: top;
     border: 1px solid var(--border);

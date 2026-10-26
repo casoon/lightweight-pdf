@@ -14,6 +14,11 @@ crates.io; all workspace crates share one version.
 - Published Architecture Decision Records (ADR-001 through ADR-019) under `docs/adr/` (#30).
 - Prepared `@casoon/lightweight-pdf` npm package version 0.3.0 (#38).
 
+### Changed
+
+- **Project site:** the start page shows the demo invoice down to its totals, and the demo PDFs in
+  `examples/` are regenerated with the current renderer; theme 0.8.3.
+
 ### Fixed
 
 - Rich text: the space of every font used in a `Text::rich` span is embedded. Before, a font used
