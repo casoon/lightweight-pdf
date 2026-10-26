@@ -17,7 +17,7 @@ crates.io; all workspace crates share one version.
 ### Changed
 
 - **Project site:** the start page shows the demo invoice down to its totals, and the demo PDFs in
-  `examples/` are regenerated with the current renderer; theme 0.8.1.
+  `examples/` are regenerated with the current renderer; theme 0.8.3.
 
 ### Fixed
 
