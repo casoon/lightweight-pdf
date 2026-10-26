@@ -12,7 +12,6 @@ export default defineConfig({
       description:
         'Document-oriented PDF generation in pure Rust for invoices, quotes and reports – natively or as wasm32 in a Cloudflare Worker.',
       tagline: 'PDF generation in pure Rust',
-      website: 'https://pdf.casoon.de',
       repo: 'casoon/lightweight-pdf',
       license: 'MIT',
       branch: 'master',
