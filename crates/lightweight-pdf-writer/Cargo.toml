@@ -6,6 +6,11 @@ license.workspace = true
 repository.workspace = true
 description = "Minimal PDF object/xref/stream writer for lightweight-pdf, zero required dependencies (FlateDecode compression via the optional miniz_oxide)"
 
+[package.metadata.docs.rs]
+# docs.rs otherwise builds with `default` only, leaving `pdf-a`, `zugferd`
+# and `tagged-pdf` undocumented.
+all-features = true
+
 [dependencies]
 miniz_oxide = { version = "0.8", optional = true, default-features = false, features = ["with-alloc"] }
 

@@ -6,6 +6,11 @@ license.workspace = true
 repository.workspace = true
 description = "Document model, elements and builder API for lightweight-pdf"
 
+[package.metadata.docs.rs]
+# docs.rs otherwise builds with `default` only, leaving `serde`/`schemars`
+# undocumented.
+all-features = true
+
 [dependencies]
 base64 = { version = "0.23.1", optional = true }
 schemars = { version = "1.2.2", optional = true }

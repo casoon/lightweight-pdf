@@ -23,6 +23,8 @@ crates.io; all workspace crates share one version.
 
 ### Fixed
 
+- **docs.rs:** the crate docs are built with the optional features (`serde`, `schemars`,
+  `hyphenation`, `pdf-a`, `zugferd`, `tagged-pdf`, `png`), so their APIs are documented.
 - Rich text: the space of every font used in a `Text::rich` span is embedded. Before, a font used
   only in rich text (e.g. an italic span) lacked it, so the gaps before its words came out too
   wide and lines ran past their box.

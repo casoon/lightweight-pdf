@@ -6,6 +6,12 @@ license.workspace = true
 repository.workspace = true
 description = "Lightweight, dependency-minimal Rust PDF generation for recurring business documents"
 
+[package.metadata.docs.rs]
+# docs.rs otherwise builds with `default` only, leaving the optional output
+# modes undocumented. `wasm` is deliberately left out: it pulls wasm-bindgen
+# into a host build and documents nothing useful.
+features = ["png", "hyphenation", "zugferd", "tagged-pdf", "serde", "schemars"]
+
 [lib]
 crate-type = ["rlib", "cdylib"]
 
