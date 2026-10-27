@@ -1,6 +1,6 @@
 {
   "name": "@casoon/lightweight-pdf",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Render PDFs from a JSON document/template in WASM — no native dependencies, runs in Node.js and edge runtimes (Cloudflare Workers, ...).",
   "type": "module",
   "main": "./dist/index.js",

@@ -18,6 +18,7 @@ crates.io; all workspace crates share one version.
 
 - **Project site:** the start page shows the demo invoice down to its totals, and the demo PDFs in
   `examples/` are regenerated with the current renderer; theme 0.8.3.
+- **npm:** `@casoon/lightweight-pdf` 0.3.0 was published once by hand, without provenance; 0.3.1 is the first version published from the tag workflow, and the package now ships its WASM, `LICENSE` and a README with install instructions.
 - **npm:** `@casoon/lightweight-pdf` is published from the tag workflow (`npm-vX.Y.Z`) via npm Trusted Publishing — provenance, no stored token — after approval in the `npm` environment.
 
 ### Fixed
