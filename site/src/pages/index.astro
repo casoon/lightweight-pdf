@@ -1,22 +1,33 @@
 ---
+import { readFile } from 'node:fs/promises';
 import {
   Badge,
   Badges,
   BuildOutput,
   CodeBlock,
   Facts,
+  Faq,
   Features,
   Hero,
   Install,
   Quickstart,
+  ReleaseHighlights,
   Terminal,
 } from '@casoon/pages-theme/components';
 import Base from '@casoon/pages-theme/layouts/Base.astro';
 import config from 'virtual:casoon-pages/config';
+import { parseChangelog } from '@casoon/pages-theme/lib/changelog';
 import { cliLog, pdfFile } from '../showcase';
 
 const invoice = pdfFile('demo_invoice');
 const firstPage = invoice.pages[0];
+
+// Skip "Unreleased": it has no version to show as "New in v…" yet.
+const latestRelease = config.changelog
+  ? parseChangelog(await readFile(config.changelog, 'utf8')).find(
+      (r) => r.version.toLowerCase() !== 'unreleased'
+    )
+  : undefined;
 
 const mainRs = `use lightweight_pdf::*;
 
@@ -125,6 +136,33 @@ const cli = `lwpdf render examples/invoice-template.json \\
     <CodeBlock code={mainRs} lang="rust" title="main.rs" label="Rust" />
     <CodeBlock code={cli} lang="sh" title="terminal" label="CLI" />
   </Quickstart>
+
+  {latestRelease && <ReleaseHighlights release={latestRelease} />}
+
+  <Faq
+    items={[
+      {
+        q: 'Does lightweight-pdf depend on a typesetting engine or a headless browser?',
+        a: 'No. It has its own PDF writer (objects, xref, streams) and its own TrueType subsetter – the only required third-party dependency is skrifa, for font parsing.',
+      },
+      {
+        q: 'Can it run at the edge, e.g. in a Cloudflare Worker?',
+        a: 'Yes. The crate builds as wasm32-unknown-unknown, CI gates the gzipped WASM size against a baseline, and examples/ has a Cloudflare Worker starter plus a browser playground.',
+      },
+      {
+        q: 'Do I need to write Rust to generate a PDF?',
+        a: 'No. Documents can be plain JSON, and templates resolve {{placeholders}} and $each rows against a data file – the lwpdf CLI renders, validates and inspects both without any Rust code.',
+      },
+      {
+        q: 'Does it support compliance formats like PDF/A or ZUGFeRD?',
+        a: 'Yes: PDF/A-3b, ZUGFeRD/Factur-X invoice XML embedding, and Tagged PDF/PDF-UA-1 output are each behind a Cargo feature and verified with veraPDF (ZUGFeRD also with Mustang).',
+      },
+      {
+        q: 'How does pagination work for long documents?',
+        a: 'A two-pass layout keeps "Page X of Y" stable, splits tables across pages with a repeating header, honours widow/orphan and keep-with-next rules, and fills a table of contents with real page numbers.',
+      },
+    ]}
+  />
 </Base>
 
 <style>

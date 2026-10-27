@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { url } from '@casoon/pages-theme/lib/url.ts';
+import { url } from '@casoon/pages-theme/lib/url';
 import type { ShowcaseExample } from '@casoon/pages-theme/showcase';
 import './styles/showcase.css';
 

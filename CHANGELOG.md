@@ -16,6 +16,8 @@ crates.io; all workspace crates share one version.
 
 ### Changed
 
+- **Project site:** the footer now follows the page language instead of always showing German
+  text, and the start page carries a release teaser and an FAQ (theme 0.11.1).
 - **Project site:** the start page shows the demo invoice down to its totals, and the demo PDFs in
   `examples/` are regenerated with the current renderer; theme 0.8.3.
 - **npm:** `@casoon/lightweight-pdf` 0.3.0 was published once by hand, without provenance; 0.3.1 is the first version published from the tag workflow, and the package now ships its WASM, `LICENSE` and a README with install instructions.
