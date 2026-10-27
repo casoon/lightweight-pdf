@@ -13,11 +13,16 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Trusted Publishing: no stored token, provenance is automatic. The job
+    # waits for approval in the `npm` environment before it builds.
+    environment: npm
     permissions:
       contents: read
-      id-token: write # npm provenance
+      id-token: write
     steps:
       - uses: actions/checkout@v4
+      - name: Tag matches the package version
+        run: test "${GITHUB_REF_NAME#npm-v}" = "$(node -p "require('./bindings/js/package.json').version")"
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
@@ -29,6 +34,8 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
+      - name: Update npm (Trusted Publishing needs >= 11.5)
+        run: npm install -g npm@latest
       - name: Install JS dependencies
         working-directory: bindings/js
         run: npm ci
@@ -40,6 +47,4 @@ jobs:
         run: npm test
       - name: Publish to npm
         working-directory: bindings/js
-        run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public

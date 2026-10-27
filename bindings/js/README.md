@@ -6,6 +6,16 @@ main [lightweight-pdf](https://github.com/casoon/lightweight-pdf) repo)
 crate. No native dependencies, no headless browser: runs in Node.js and
 edge runtimes (Cloudflare Workers, ...).
 
+## Install
+
+```sh
+npm install @casoon/lightweight-pdf
+```
+
+The WASM module is bundled; nothing else to install.
+
+## Usage
+
 ```ts
 import { render } from "@casoon/lightweight-pdf";
 import { writeFileSync } from "node:fs";
@@ -56,3 +66,13 @@ npm test
 
 Requires the Rust toolchain (`wasm32-unknown-unknown` target),
 `wasm-pack`, and `wasm-opt` (part of [binaryen](https://github.com/WebAssembly/binaryen)).
+
+## Links
+
+- [Documentation](https://casoon.github.io/lightweight-pdf/)
+- [Source and issues](https://github.com/casoon/lightweight-pdf)
+- [Rust crate](https://crates.io/crates/lightweight-pdf)
+
+## License
+
+MIT — see [LICENSE](LICENSE).

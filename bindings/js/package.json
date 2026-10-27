@@ -7,15 +7,18 @@
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
-    "pkg"
+    "pkg",
+    "LICENSE",
+    "README.md"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/casoon/lightweight-pdf"
+    "url": "git+https://github.com/casoon/lightweight-pdf.git",
+    "directory": "bindings/js"
   },
   "scripts": {
-    "build:wasm": "wasm-pack build ../../crates/lightweight-pdf --target web --out-dir ../../bindings/js/pkg -- --no-default-features --features wasm,default-fonts,compress && wasm-opt -Oz --enable-bulk-memory --enable-multivalue --enable-mutable-globals --enable-nontrapping-float-to-int --enable-reference-types --enable-sign-ext pkg/lightweight_pdf_bg.wasm -o pkg/lightweight_pdf_bg.wasm",
+    "build:wasm": "wasm-pack build ../../crates/lightweight-pdf --target web --out-dir ../../bindings/js/pkg -- --no-default-features --features wasm,default-fonts,compress && wasm-opt -Oz --enable-bulk-memory --enable-multivalue --enable-mutable-globals --enable-nontrapping-float-to-int --enable-reference-types --enable-sign-ext pkg/lightweight_pdf_bg.wasm -o pkg/lightweight_pdf_bg.wasm && rm -f pkg/.gitignore",
     "build:schema": "cargo run -p lightweight-pdf-cli -- schema > schema.json && json2ts schema.json --additionalProperties false -o src/document.d.ts",
     "build:ts": "tsc",
     "build": "npm run build:wasm && npm run build:schema && npm run build:ts",
@@ -25,5 +28,20 @@
     "@types/node": "^26.4.0",
     "json-schema-to-typescript": "^16.0.0",
     "typescript": "^5.6.0"
-  }
+  },
+  "homepage": "https://casoon.github.io/lightweight-pdf/",
+  "bugs": {
+    "url": "https://github.com/casoon/lightweight-pdf/issues"
+  },
+  "keywords": [
+    "pdf",
+    "pdf-generation",
+    "wasm",
+    "webassembly",
+    "json",
+    "template",
+    "invoice",
+    "cloudflare-workers",
+    "typescript"
+  ]
 }
