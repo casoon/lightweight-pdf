@@ -15,4 +15,4 @@ steps:
   - output:
       raw: |
         wrote invoice.pdf (10435 bytes)
-  - wait: 3000
+  - wait: 4500
