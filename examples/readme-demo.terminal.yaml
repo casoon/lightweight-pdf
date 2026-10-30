@@ -1,0 +1,18 @@
+version: 1
+
+terminal:
+  title: lwpdf
+  cols: 84
+  rows: 6
+  theme: catppuccin-mocha
+
+steps:
+  - run: lwpdf validate invoice-template.json --data invoice-data.json
+  - output:
+      raw: |
+        ok: invoice-template.json is valid
+  - run: lwpdf render invoice-template.json --data invoice-data.json -o invoice.pdf
+  - output:
+      raw: |
+        wrote invoice.pdf (10435 bytes)
+  - wait: 3000
