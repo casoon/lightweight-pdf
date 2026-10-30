@@ -13,6 +13,8 @@ required external dependency is `skrifa` for font parsing. `miniz_oxide`
 (FlateDecode compression) is an optional dependency behind the default-on
 `compress` feature.
 
+<p align="center"><img src=".github/readme/demo.svg" alt="lwpdf validates an invoice template with its data file, then renders it: wrote invoice.pdf (10435 bytes)." width="730"></p>
+
 ## Example
 
 ```rust
