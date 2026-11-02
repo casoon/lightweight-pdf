@@ -1,0 +1,20 @@
+# Rebuild: npx @casoon/castwright build examples/readme-demo.terminal.yaml -o .github/readme --format svg --loop-delay 4500
+# (the final frame holds for --loop-delay; a trailing wait: is dropped in the SVG export. Output below is recorded.)
+version: 1
+
+terminal:
+  title: lwpdf
+  cols: 84
+  rows: 6
+  theme: catppuccin-mocha
+
+steps:
+  - run: lwpdf validate invoice-template.json --data invoice-data.json
+  - output:
+      raw: |
+        ok: invoice-template.json is valid
+  - run: lwpdf render invoice-template.json --data invoice-data.json -o invoice.pdf
+  - output:
+      raw: |
+        wrote invoice.pdf (10435 bytes)
+  - wait: 4500
