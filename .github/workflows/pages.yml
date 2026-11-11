@@ -26,8 +26,16 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      # Only when the runner image lacks pdftoppm; if the runner's apt mirror is
+      # unreachable, fall back to archive.ubuntu.com instead of failing the deploy.
       - name: Install poppler-utils (pdftoppm)
-        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+        run: |
+          command -v pdftoppm && exit 0
+          if ! sudo apt-get update -o Acquire::Retries=2; then
+            echo "http://archive.ubuntu.com/ubuntu/" | sudo tee /etc/apt/apt-mirrors.txt
+            sudo apt-get update
+          fi
+          sudo apt-get install -y --no-install-recommends poppler-utils
 
       - name: Render showcase PDFs
         run: scripts/render-site-showcase.sh
