@@ -1,0 +1,324 @@
+{
+  "version": 2,
+  "modules": {
+    "lightweight-pdf": {
+      "accepted": "2026-11-13",
+      "reason": "First memory scenario (40-row invoice table): 3.2 MiB peak, no growth per run",
+      "values": {
+        "raw": 1258065,
+        "gzip": 597252,
+        "brotli": 400468,
+        "peak_memory": 3407872,
+        "growth_per_run": 0
+      },
+      "contract": {
+        "runner_schema": 1,
+        "warmup_runs": 1,
+        "compression": "gzip-9 brotli-11-w22",
+        "node": "v24.22.1",
+        "artifact_sha256": "a1efcb01b032d8ce79042f3be7f21472f66d62d4f17a72ecb020e1483f9dc336"
+      },
+      "scenarios": {
+        "scripts/peakmark/render.mjs": {
+          "sha256": "a5ba1b9ec15d5d43f8ac80f65b3f46be59f405c1794590ee5781f3f0f60ffffd",
+          "repeat": 10,
+          "peak_memory": 3407872,
+          "growth_per_run": 0,
+          "after_instantiate": 1966080,
+          "after_run": [
+            3407872,
+            3407872,
+            3407872,
+            3407872,
+            3407872,
+            3407872,
+            3407872,
+            3407872,
+            3407872,
+            3407872
+          ]
+        }
+      },
+      "inventory": {
+        "imports": [
+          {
+            "module": "./lightweight_pdf_bg.js",
+            "name": "__wbg_Error_408e67f47ca7b58b",
+            "kind": "func",
+            "type": "(i32, i32) -> i32"
+          },
+          {
+            "module": "./lightweight_pdf_bg.js",
+            "name": "__wbg_String_8564e559799eccda",
+            "kind": "func",
+            "type": "(i32, i32) -> ()"
+          },
+          {
+            "module": "./lightweight_pdf_bg.js",
+            "name": "__wbg___wbindgen_throw_bb96b2010945f0bc",
+            "kind": "func",
+            "type": "(i32, i32) -> ()"
+          },
+          {
+            "module": "./lightweight_pdf_bg.js",
+            "name": "__wbg_new_116be93542d39019",
+            "kind": "func",
+            "type": "() -> i32"
+          },
+          {
+            "module": "./lightweight_pdf_bg.js",
+            "name": "__wbg_new_ebe3e0f6837f0879",
+            "kind": "func",
+            "type": "() -> i32"
+          },
+          {
+            "module": "./lightweight_pdf_bg.js",
+            "name": "__wbg_set_6be42768c690e380",
+            "kind": "func",
+            "type": "(i32, i32, i32) -> ()"
+          },
+          {
+            "module": "./lightweight_pdf_bg.js",
+            "name": "__wbg_set_a80955eb93b145c6",
+            "kind": "func",
+            "type": "(i32, i32, i32) -> ()"
+          },
+          {
+            "module": "./lightweight_pdf_bg.js",
+            "name": "__wbindgen_cast_0000000000000001",
+            "kind": "func",
+            "type": "(f64) -> i32"
+          },
+          {
+            "module": "./lightweight_pdf_bg.js",
+            "name": "__wbindgen_cast_0000000000000002",
+            "kind": "func",
+            "type": "(i32, i32) -> i32"
+          },
+          {
+            "module": "./lightweight_pdf_bg.js",
+            "name": "__wbindgen_cast_0000000000000003",
+            "kind": "func",
+            "type": "(i64) -> i32"
+          },
+          {
+            "module": "./lightweight_pdf_bg.js",
+            "name": "__wbindgen_object_clone_ref",
+            "kind": "func",
+            "type": "(i32) -> i32"
+          },
+          {
+            "module": "./lightweight_pdf_bg.js",
+            "name": "__wbindgen_object_drop_ref",
+            "kind": "func",
+            "type": "(i32) -> ()"
+          }
+        ],
+        "exports": [
+          {
+            "name": "__abort_handler",
+            "kind": "global",
+            "type": "i32"
+          },
+          {
+            "name": "__instance_terminated",
+            "kind": "global",
+            "type": "i32"
+          },
+          {
+            "name": "__wbg_lightweightpdf_free",
+            "kind": "func",
+            "type": "(i32, i32) -> ()"
+          },
+          {
+            "name": "__wbg_renderresult_free",
+            "kind": "func",
+            "type": "(i32, i32) -> ()"
+          },
+          {
+            "name": "__wbindgen_add_to_stack_pointer",
+            "kind": "func",
+            "type": "(i32) -> i32"
+          },
+          {
+            "name": "__wbindgen_export",
+            "kind": "func",
+            "type": "(i32, i32) -> i32"
+          },
+          {
+            "name": "__wbindgen_export2",
+            "kind": "func",
+            "type": "(i32, i32, i32, i32) -> i32"
+          },
+          {
+            "name": "__wbindgen_export3",
+            "kind": "func",
+            "type": "(i32, i32, i32) -> ()"
+          },
+          {
+            "name": "lightweightpdf_measureElement",
+            "kind": "func",
+            "type": "(i32, i32, i32, i32, f32) -> ()"
+          },
+          {
+            "name": "lightweightpdf_measureText",
+            "kind": "func",
+            "type": "(i32, i32, i32, i32, i32, i32, f32) -> ()"
+          },
+          {
+            "name": "lightweightpdf_new",
+            "kind": "func",
+            "type": "() -> i32"
+          },
+          {
+            "name": "lightweightpdf_registerFont",
+            "kind": "func",
+            "type": "(i32, i32, i32, i32, i32, i32) -> ()"
+          },
+          {
+            "name": "lightweightpdf_render",
+            "kind": "func",
+            "type": "(i32, i32, i32, i32) -> ()"
+          },
+          {
+            "name": "lightweightpdf_renderTemplate",
+            "kind": "func",
+            "type": "(i32, i32, i32, i32, i32, i32, i32) -> ()"
+          },
+          {
+            "name": "lightweightpdf_renderWithDiagnostics",
+            "kind": "func",
+            "type": "(i32, i32, i32, i32) -> ()"
+          },
+          {
+            "name": "lightweightpdf_withDefaultFonts",
+            "kind": "func",
+            "type": "(i32) -> ()"
+          },
+          {
+            "name": "memory",
+            "kind": "memory",
+            "type": "30.."
+          },
+          {
+            "name": "renderresult_bytes",
+            "kind": "func",
+            "type": "(i32, i32) -> ()"
+          },
+          {
+            "name": "renderresult_warnings",
+            "kind": "func",
+            "type": "(i32, i32) -> ()"
+          }
+        ],
+        "tables": [
+          {
+            "name": "#0",
+            "kind": "table",
+            "type": "funcref 214..214"
+          }
+        ],
+        "features": [
+          "bulk_memory",
+          "sign_extension",
+          "saturating_float_to_int"
+        ],
+        "sections": {
+          "code": 402540,
+          "data": 851953,
+          "names": 0,
+          "debug": 0,
+          "custom": 60,
+          "structure": 3471,
+          "overhead": 41
+        },
+        "functions": {
+          "count": 1216,
+          "body_bytes": 400861,
+          "largest": [
+            {
+              "id": 14,
+              "size": 33153
+            },
+            {
+              "id": 144,
+              "size": 16739
+            },
+            {
+              "id": 136,
+              "size": 8204
+            },
+            {
+              "id": 409,
+              "size": 6849
+            },
+            {
+              "id": 17,
+              "size": 5773
+            },
+            {
+              "id": 327,
+              "size": 5360
+            },
+            {
+              "id": 12,
+              "size": 5287
+            },
+            {
+              "id": 44,
+              "size": 5082
+            },
+            {
+              "id": 15,
+              "size": 4869
+            },
+            {
+              "id": 13,
+              "size": 4497
+            },
+            {
+              "id": 326,
+              "size": 4140
+            },
+            {
+              "id": 489,
+              "size": 3997
+            },
+            {
+              "id": 31,
+              "size": 3891
+            },
+            {
+              "id": 259,
+              "size": 3846
+            },
+            {
+              "id": 18,
+              "size": 3721
+            },
+            {
+              "id": 20,
+              "size": 3545
+            },
+            {
+              "id": 23,
+              "size": 3228
+            },
+            {
+              "id": 27,
+              "size": 3031
+            },
+            {
+              "id": 16,
+              "size": 3018
+            },
+            {
+              "id": 19,
+              "size": 2953
+            }
+          ]
+        }
+      }
+    }
+  }
+}

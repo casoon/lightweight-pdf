@@ -1,0 +1,16 @@
+# Size and memory of the WebAssembly module the package ships.
+# `peakmark check` fails when it grows over the budget.
+[[module]]
+name     = "lightweight-pdf"
+artifact = "bindings/js/pkg/lightweight_pdf_bg.wasm"
+glue     = "bindings/js/pkg/lightweight_pdf.js"
+
+[module.budget]
+brotli         = "404500 B"
+peak_memory    = "3.5 MiB"
+growth_per_run = "0"
+
+[[scenario]]
+module = "lightweight-pdf"
+file   = "scripts/peakmark/render.mjs"
+repeat = 10
