@@ -241,3 +241,68 @@ jobs:
         if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
         run: |
           docker run --rm -v "$PWD/examples:/data" verapdf/cli --flavour ua1 --format text /data/demo_pdf_ua.pdf
+
+  # Size and memory of the module the npm package ships (peakmark.toml,
+  # peakmark.baseline.json). Guardrail answers: 1. it proves the processed
+  # pkg/*_bg.wasm stays within budget, which wasm-size (raw cargo output) does
+  # not; 2. it needs one more feature combination (the wasm-pack build below);
+  # 3. no apt package, wasm-opt is the pinned release the local builds use;
+  # 4. same paths filter as wasm-size, always on push to master.
+  peakmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            relevant:
+              - 'crates/lightweight-pdf/**'
+              - 'crates/lightweight-pdf-core/**'
+              - 'crates/lightweight-pdf-layout/**'
+              - 'crates/lightweight-pdf-writer/**'
+              - 'crates/lightweight-pdf-fonts/**'
+              - 'bindings/js/**'
+              - 'Cargo.lock'
+              - 'Cargo.toml'
+              - 'peakmark.*'
+              - 'scripts/peakmark/**'
+              - '.github/workflows/ci.yml'
+      - if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        uses: Swatinem/rust-cache@v2
+      - name: Install wasm-pack
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Install wasm-opt
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        env:
+          BINARYEN: version_133
+        run: |
+          curl -sSfL "https://github.com/WebAssembly/binaryen/releases/download/$BINARYEN/binaryen-$BINARYEN-x86_64-linux.tar.gz" | tar -xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/binaryen-$BINARYEN/bin" >> "$GITHUB_PATH"
+      - name: Build the package module
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        working-directory: bindings/js
+        run: npm run build:wasm
+      - name: Install peakmark
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PEAKMARK_VERSION: "0.1.1"
+        run: |
+          name="peakmark-${PEAKMARK_VERSION}-x86_64-unknown-linux-musl"
+          gh release download "v${PEAKMARK_VERSION}" --repo casoon/peakmark \
+            --pattern "${name}.tar.gz*" --dir "$RUNNER_TEMP"
+          cd "$RUNNER_TEMP"
+          sha256sum -c "${name}.tar.gz.sha256"
+          gh attestation verify "${name}.tar.gz" --repo casoon/peakmark
+          tar -xzf "${name}.tar.gz"
+          echo "$RUNNER_TEMP/${name}" >> "$GITHUB_PATH"
+      - name: peakmark check
+        if: github.event_name != 'pull_request' || steps.filter.outputs.relevant == 'true'
+        run: peakmark check --details
