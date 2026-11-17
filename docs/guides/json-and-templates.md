@@ -33,8 +33,15 @@ versioned:
 - Every element is tagged by a `"type"` field (`"text"`, `"table"`, `"list"`, …).
 - Unknown fields anywhere in the tree are a parse error, never silently dropped.
 - Images embed as base64: `{"bytes_base64": "...", "common": {...}}`.
-- Header and footer are Rust closures and cannot be represented; `to_json()` refuses if either is
-  set rather than dropping them.
+- `header` and `footer` are optional, each `{ "height": <pt>, "content": <element>, "visible_from": <page> }`
+  (`visible_from` defaults to 1). In the texts of `content`, `{page}` and `{total_pages}` are replaced
+  on every page, in text, spans, table cells, list items and the children of rows and columns; any other
+  `{...}` stays as written. Example, a footer from page 2 on:
+  `"footer": { "height": 20.0, "visible_from": 2, "content": { "type": "text", "content": "Page {page} of {total_pages}" } }`.
+  In a template, write the placeholders with single braces: `{{...}}` is the template syntax.
+- A header or footer written in Rust as a closure (`Header::new`, `Footer::new`) cannot be represented;
+  `to_json()` refuses it rather than dropping it. Build it with `Header::from_element` or
+  `Footer::from_element` to keep it writable to JSON.
 - The same `Deserialize` implementation works with other formats (YAML, TOML) through
   `serde_json::from_str::<DocumentSchema>` and friends – bring your own crate.
 

@@ -153,6 +153,9 @@ type HeaderFooterFn = Rc<dyn Fn(&PageContext) -> Element>;
 pub struct Header {
     pub height: f32,
     pub content: HeaderFooterFn,
+    /// The element this header was built from (`Header::from_element`, or
+    /// a JSON document); `None` for a closure, which JSON cannot hold.
+    element: Option<Rc<Element>>,
 }
 
 impl Header {
@@ -160,6 +163,20 @@ impl Header {
         Header {
             height,
             content: Rc::new(content),
+            element: None,
+        }
+    }
+
+    /// A header from a plain element tree: `{page}` and `{total_pages}` in
+    /// its texts are replaced on every page (see `fill_placeholders`).
+    /// Unlike a closure, it can be written back to JSON.
+    pub fn from_element(height: f32, element: Element) -> Self {
+        let element = Rc::new(element);
+        let template = Rc::clone(&element);
+        Header {
+            height,
+            content: Rc::new(move |ctx| fill_placeholders(&template, ctx)),
+            element: Some(element),
         }
     }
 }
@@ -168,6 +185,8 @@ impl Header {
 pub struct Footer {
     pub height: f32,
     pub content: HeaderFooterFn,
+    /// See `Header::element`.
+    element: Option<Rc<Element>>,
 }
 
 impl Footer {
@@ -175,8 +194,74 @@ impl Footer {
         Footer {
             height,
             content: Rc::new(content),
+            element: None,
         }
     }
+
+    /// See `Header::from_element`.
+    pub fn from_element(height: f32, element: Element) -> Self {
+        let element = Rc::new(element);
+        let template = Rc::clone(&element);
+        Footer {
+            height,
+            content: Rc::new(move |ctx| fill_placeholders(&template, ctx)),
+            element: Some(element),
+        }
+    }
+}
+
+/// Copy of `element` with `{page}` and `{total_pages}` replaced by the
+/// numbers in `ctx`, in every text it holds: `Text` content and spans,
+/// table cells, list items and the children of rows and columns. Any
+/// other `{...}` stays as written.
+fn fill_placeholders(element: &Element, ctx: &PageContext) -> Element {
+    let mut copy = element.clone();
+    fill_element(&mut copy, ctx);
+    copy
+}
+
+fn fill_text(text: &mut String, ctx: &PageContext) {
+    if text.contains('{') {
+        *text = text
+            .replace("{page}", &ctx.page.to_string())
+            .replace("{total_pages}", &ctx.total_pages.to_string());
+    }
+}
+
+fn fill_element(element: &mut Element, ctx: &PageContext) {
+    match element {
+        Element::Text(t) => {
+            fill_text(&mut t.content, ctx);
+            for span in t.spans.iter_mut().flat_map(|spans| spans.iter_mut()) {
+                fill_text(&mut span.text, ctx);
+            }
+        }
+        Element::Row(r) => r.children.iter_mut().for_each(|c| fill_element(c, ctx)),
+        Element::Column(c) => c.children.iter_mut().for_each(|c| fill_element(c, ctx)),
+        Element::Table(t) => {
+            let cells = t.header.iter_mut().flatten().chain(t.rows.iter_mut().flatten());
+            for cell in cells {
+                fill_element(&mut cell.element, ctx);
+            }
+        }
+        Element::List(l) => l.items.iter_mut().for_each(|item| fill_element(&mut item.content, ctx)),
+        Element::Spacer(_) | Element::Line(_) | Element::Rect(_) | Element::Image(_) | Element::TableOfContents(_) | Element::PageBreak => {
+        }
+    }
+}
+
+/// JSON form of a header or footer: a fixed band `height` in points, the
+/// `content` element (`{page}` and `{total_pages}` in its texts are
+/// replaced on every page) and the first page it is drawn on.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[derive(Clone, Debug)]
+pub struct BandSpec {
+    pub height: f32,
+    pub content: Element,
+    /// First page number (1-based) on which the band is drawn.
+    #[cfg_attr(feature = "serde", serde(default = "default_visible_from"))]
+    pub visible_from: usize,
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(deny_unknown_fields))]
@@ -188,14 +273,21 @@ pub struct Document {
     pub orientation: Orientation,
     #[cfg_attr(feature = "serde", serde(default))]
     pub margin: Margin,
-    /// Not representable in the JSON schema (issue #17 V1 scope): the
-    /// content is a Rust closure, re-evaluated per page. Always `None` on
-    /// a JSON-loaded `Document`; `Document::to_json` refuses to serialize
-    /// a `Document` that has one set rather than silently dropping it.
+    /// A closure is not representable in JSON: `Document::to_json` refuses
+    /// a `Document` whose header or footer is one, rather than silently
+    /// dropping it. A header built with `Header::from_element`, or loaded
+    /// from the `header` key of a JSON document, is written back.
     #[cfg_attr(feature = "serde", serde(skip))]
     pub header: Option<Header>,
     #[cfg_attr(feature = "serde", serde(skip))]
     pub footer: Option<Footer>,
+    /// JSON form of `header`/`footer`: read by `from_json`, which turns
+    /// them into `header`/`footer`, and filled by `to_json`. Always `None`
+    /// on a `Document` handed out by this crate.
+    #[cfg_attr(feature = "serde", serde(default, rename = "header", skip_serializing_if = "Option::is_none"))]
+    pub(crate) header_spec: Option<BandSpec>,
+    #[cfg_attr(feature = "serde", serde(default, rename = "footer", skip_serializing_if = "Option::is_none"))]
+    pub(crate) footer_spec: Option<BandSpec>,
     #[cfg_attr(feature = "serde", serde(skip, default = "default_visible_from"))]
     pub header_visible_from: usize,
     #[cfg_attr(feature = "serde", serde(skip, default = "default_visible_from"))]
@@ -261,6 +353,8 @@ impl Document {
             margin: Margin::default(),
             header: None,
             footer: None,
+            header_spec: None,
+            footer_spec: None,
             header_visible_from: 1,
             footer_visible_from: 1,
             watermark: None,
@@ -457,9 +551,9 @@ pub struct DocumentSchema {
 pub enum DocumentJsonError {
     /// `schema_version` isn't one this version of the crate understands.
     UnsupportedSchemaVersion(u32),
-    /// `Document::to_json` on a `Document` with a `header`/`footer` set —
-    /// neither is representable in JSON, so refusing beats silently
-    /// dropping them.
+    /// `Document::to_json` on a `Document` whose `header`/`footer` is a
+    /// Rust closure — not representable in JSON, so refusing beats
+    /// silently dropping it.
     HeaderOrFooterNotSupported,
     /// `Document::to_json` on a `Document` with `zugferd_xml` set (issue
     /// #26) — not representable in JSON either, same reasoning.
@@ -484,7 +578,7 @@ impl std::fmt::Display for DocumentJsonError {
             DocumentJsonError::HeaderOrFooterNotSupported => {
                 write!(
                     f,
-                    "Document::to_json: header/footer aren't representable in the JSON schema (issue #17 V1 scope)"
+                    "Document::to_json: a header/footer written as a closure isn't representable in JSON; build it with Header::from_element / Footer::from_element"
                 )
             }
             DocumentJsonError::ZugferdXmlNotSupported => {
@@ -519,7 +613,16 @@ impl Document {
         if schema.schema_version != CURRENT_SCHEMA_VERSION {
             return Err(DocumentJsonError::UnsupportedSchemaVersion(schema.schema_version));
         }
-        Ok(schema.document)
+        let mut doc = schema.document;
+        if let Some(spec) = doc.header_spec.take() {
+            doc.header = Some(Header::from_element(spec.height, spec.content));
+            doc.header_visible_from = spec.visible_from;
+        }
+        if let Some(spec) = doc.footer_spec.take() {
+            doc.footer = Some(Footer::from_element(spec.height, spec.content));
+            doc.footer_visible_from = spec.visible_from;
+        }
+        Ok(doc)
     }
 
     /// `crate::template::render_template` + `from_json` in one call — a
@@ -536,17 +639,34 @@ impl Document {
     }
 
     /// The inverse of `from_json` — round-trips to a byte-identical
-    /// rendered PDF as long as neither `header` nor `footer` is set.
+    /// rendered PDF. A header or footer written as a Rust closure
+    /// (`Header::new`, `Footer::new`) is refused with
+    /// `HeaderOrFooterNotSupported`; one from `Header::from_element` or
+    /// from JSON is written back.
     pub fn to_json(&self) -> Result<String, DocumentJsonError> {
-        if self.header.is_some() || self.footer.is_some() {
-            return Err(DocumentJsonError::HeaderOrFooterNotSupported);
-        }
         if self.zugferd_xml.is_some() {
             return Err(DocumentJsonError::ZugferdXmlNotSupported);
         }
+        let mut document = self.clone();
+        if let Some(header) = &self.header {
+            let element = header.element.as_deref().ok_or(DocumentJsonError::HeaderOrFooterNotSupported)?;
+            document.header_spec = Some(BandSpec {
+                height: header.height,
+                content: element.clone(),
+                visible_from: self.header_visible_from,
+            });
+        }
+        if let Some(footer) = &self.footer {
+            let element = footer.element.as_deref().ok_or(DocumentJsonError::HeaderOrFooterNotSupported)?;
+            document.footer_spec = Some(BandSpec {
+                height: footer.height,
+                content: element.clone(),
+                visible_from: self.footer_visible_from,
+            });
+        }
         let schema = DocumentSchema {
             schema_version: CURRENT_SCHEMA_VERSION,
-            document: self.clone(),
+            document,
         };
         serde_json::to_string(&schema).map_err(DocumentJsonError::Json)
     }

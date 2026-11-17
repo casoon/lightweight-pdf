@@ -8,6 +8,9 @@ crates.io; all workspace crates share one version.
 
 ### Added
 
+- **JSON:** `header` and `footer` in the document format, with `{page}` and `{total_pages}` in their
+  texts, and `Header::from_element` / `Footer::from_element` in Rust. Details:
+  [JSON and templates](https://casoon.github.io/lightweight-pdf/docs/guides/json-and-templates/) (#39).
 - Table cell vertical alignment (`VerticalAlign::Top`, `Middle`, `Bottom`) on `TableCell`, `TableColumn`, and `Table`, plus `Table::min_row_height` so fixed-size grids can centre their content (#35).
 - Source Sans 3 Medium font weight behind optional `default-fonts-medium` feature (#36).
 - Measurement API: `measure_text` and `measure_element` in Rust and JavaScript WASM bindings (#37).
