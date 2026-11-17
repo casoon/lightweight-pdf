@@ -155,6 +155,7 @@ pub struct Header {
     pub content: HeaderFooterFn,
     /// The element this header was built from (`Header::from_element`, or
     /// a JSON document); `None` for a closure, which JSON cannot hold.
+    #[cfg_attr(not(feature = "serde"), allow(dead_code))]
     element: Option<Rc<Element>>,
 }
 
@@ -186,6 +187,7 @@ pub struct Footer {
     pub height: f32,
     pub content: HeaderFooterFn,
     /// See `Header::element`.
+    #[cfg_attr(not(feature = "serde"), allow(dead_code))]
     element: Option<Rc<Element>>,
 }
 
@@ -285,8 +287,10 @@ pub struct Document {
     /// them into `header`/`footer`, and filled by `to_json`. Always `None`
     /// on a `Document` handed out by this crate.
     #[cfg_attr(feature = "serde", serde(default, rename = "header", skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(not(feature = "serde"), allow(dead_code))]
     pub(crate) header_spec: Option<BandSpec>,
     #[cfg_attr(feature = "serde", serde(default, rename = "footer", skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(not(feature = "serde"), allow(dead_code))]
     pub(crate) footer_spec: Option<BandSpec>,
     #[cfg_attr(feature = "serde", serde(skip, default = "default_visible_from"))]
     pub header_visible_from: usize,
