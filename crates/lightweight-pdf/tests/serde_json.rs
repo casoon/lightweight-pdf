@@ -91,3 +91,83 @@ fn from_json_documented_example_parses_and_renders() {
     let (ok, log) = support::qpdf_check(&bytes).unwrap();
     assert!(ok, "qpdf check failed: {log}");
 }
+
+/// Issue #39: a footer and a header in JSON, with page placeholders.
+fn document_with_json_footer() -> String {
+    let paragraphs: Vec<String> = (0..80)
+        .map(|i| {
+            format!(
+                r#"{{"type":"text","content":"Absatz {i}: Dies ist ein Testabsatz mit genug Text, um über mehrere Zeilen zu laufen und irgendwann eine neue Seite zu erzwingen."}}"#
+            )
+        })
+        .collect();
+    format!(
+        r#"{{"schema_version":1,"document":{{
+            "page_format":"A4",
+            "margin":{{"top":56.0,"right":56.0,"bottom":56.0,"left":56.0}},
+            "header":{{"height":20.0,"content":{{"type":"text","content":"Kopfzeile"}}}},
+            "footer":{{"height":20.0,"visible_from":2,"content":{{"type":"text","content":"Seite {{page}} von {{total_pages}}"}}}},
+            "children":[{}]
+        }}}}"#,
+        paragraphs.join(",")
+    )
+}
+
+#[test]
+fn json_footer_shows_page_and_total_from_the_second_page_on() {
+    let doc = Document::from_json(&document_with_json_footer()).expect("header/footer JSON should parse");
+    let bytes = doc.render().expect("render should succeed");
+    let n = support::page_count(&bytes).unwrap();
+    assert!(n > 2, "expected several pages, got {n}");
+    for page in 1..=n {
+        let text = support::pdftotext_page(&bytes, page).unwrap();
+        assert!(text.contains("Kopfzeile"), "page {page}: header missing:\n{text}");
+        if page == 1 {
+            assert!(!text.contains("Seite 1 von"), "footer must not be drawn on page 1:\n{text}");
+        } else {
+            let expected = format!("Seite {page} von {n}");
+            assert!(text.contains(&expected), "page {page}/{n}: footer missing, got:\n{text}");
+        }
+    }
+}
+
+#[test]
+fn json_header_and_footer_round_trip_to_a_byte_identical_pdf() {
+    let original = Document::from_json(&document_with_json_footer()).unwrap();
+    let json = original.to_json().expect("a header/footer from JSON is written back");
+    assert!(json.contains("\"footer\"") && json.contains("\"visible_from\":2"), "got: {json}");
+    let again = Document::from_json(&json).unwrap();
+    assert_eq!(original.render().unwrap(), again.render().unwrap());
+}
+
+#[test]
+fn to_json_still_refuses_a_closure_footer() {
+    let doc = Document::new(PageFormat::A4).footer(Footer::new(20.0, |_| Text::new("x").into()));
+    assert!(matches!(doc.to_json(), Err(DocumentJsonError::HeaderOrFooterNotSupported)));
+}
+
+#[test]
+fn a_footer_built_from_an_element_is_written_to_json() {
+    let doc = Document::new(PageFormat::A4)
+        .footer(Footer::from_element(20.0, Text::new("S. {page}").into()))
+        .footer_visible_from(3);
+    let json = doc.to_json().unwrap();
+    assert!(json.contains("S. {page}") && json.contains("\"visible_from\":3"), "got: {json}");
+}
+
+#[test]
+fn page_placeholders_are_replaced_in_spans_tables_and_lists_and_other_braces_stay() {
+    let json = r#"{"schema_version":1,"document":{"page_format":"A4","footer":{"height":60.0,"content":{"type":"column","children":[
+        {"type":"text","content":"","spans":[{"text":"rich {page}"},{"text":" / {total_pages}"}]},
+        {"type":"table","columns":[{"width":{"flex":1.0}}],"rows":[[{"element":{"type":"text","content":"cell {page}"}}]]},
+        {"type":"list","items":[{"marker":"bullet","content":{"type":"text","content":"item {page}"}}]},
+        {"type":"text","content":"keep {other} {{page}}"}
+    ]}}}}"#;
+    let doc = Document::from_json(json).expect("should parse");
+    let footer = doc.footer.as_ref().unwrap();
+    let element = (footer.content)(&PageContext { page: 7, total_pages: 9 });
+    let rendered = format!("{element:?}");
+    for expected in ["rich 7", " / 9", "cell 7", "item 7", "keep {other} {7}"] {
+        assert!(rendered.contains(expected), "missing {expected:?} in {rendered}");
+    }
+}
