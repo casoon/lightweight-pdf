@@ -59,8 +59,13 @@ cargo add lightweight-pdf            # the library
 cargo install lightweight-pdf-cli    # the `lwpdf` CLI: JSON document/template in, PDF out
 ```
 
-The `@casoon/lightweight-pdf` JavaScript/WASM package is built from
-`bindings/js` (see its README); it is not on the npm registry yet.
+The JavaScript/WASM package is on npm:
+
+```sh
+npm install @casoon/lightweight-pdf
+```
+
+Its sources are in `bindings/js` (see its README).
 
 ## Documentation
 
