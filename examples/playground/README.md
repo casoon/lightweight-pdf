@@ -18,11 +18,12 @@ npm run build && npm run preview   # proves the static-build path works too
 
 ## What it does
 
-- **Templates** — the picker loads one of four JSON documents adapted
-  from the library's own demos (invoice, offer, report, docs). They're
-  adaptations, not 1:1 ports of `crates/lightweight-pdf/examples/*.rs`:
-  those Rust demos use `Header`/`Footer`, which aren't part of the JSON
-  document schema (issue #17) and so can't be represented here.
+- **Templates** — the picker loads one of four JSON documents. Invoice and
+  offer are the JSON form of `examples/demo_invoice.rs` and
+  `examples/demo_offer.rs` (letterhead, address block, position table,
+  totals, four-column footer), written by `Document::to_json()`; the logo
+  image is a text wordmark so the JSON stays readable. Report and docs are
+  adaptations of the other demos.
 - **Preview** — rendered bytes become a `blob:` URL loaded into an
   `<iframe>`, so the preview is the browser's own native PDF viewer, not
   a custom one.
