@@ -18,12 +18,11 @@ npm run build && npm run preview   # proves the static-build path works too
 
 ## What it does
 
-- **Templates** — the picker loads one of four JSON documents. Invoice and
-  offer are the JSON form of `examples/demo_invoice.rs` and
-  `examples/demo_offer.rs` (letterhead, address block, position table,
-  totals, four-column footer), written by `Document::to_json()`; the logo
-  image is a text wordmark so the JSON stays readable. Report and docs are
-  adaptations of the other demos.
+- **Templates** — the picker loads one of four JSON documents: the JSON form
+  of `examples/demo_invoice.rs`, `demo_offer.rs`, `demo_report.rs` and
+  `demo_documentation.rs`, written by `Document::to_json()` (letterhead, tables
+  of contents, headers and footers with `{page}` / `{total_pages}`). The logo
+  image is a text wordmark so the JSON stays readable.
 - **Preview** — rendered bytes become a `blob:` URL loaded into an
   `<iframe>`, so the preview is the browser's own native PDF viewer, not
   a custom one.

@@ -23,6 +23,8 @@ jobs:
       # The showcase PDFs and their page previews are rendered with this repository's
       # own examples and CLI (scripts/render-site-showcase.sh).
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
 
@@ -53,12 +55,24 @@ jobs:
 
       - uses: actions/configure-pages@v6
 
-      # The live demo page embeds examples/playground, built against the published npm
-      # package (same wasm as the crate) and served from this site's own origin.
+      # The live demo page embeds examples/playground. It is built against the wasm of this
+      # commit (like release-npm.yml builds the package), not the last published npm version,
+      # so templates can use what is not released yet. Served from this site's own origin.
+      - name: Install binaryen (wasm-opt) and wasm-pack
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends binaryen
+          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Build the JS package (wasm, schema, types)
+        working-directory: bindings/js
+        run: |
+          npm ci
+          npm run build
+
       - name: Build playground
         working-directory: examples/playground
         run: |
-          npm install --no-save --no-package-lock @casoon/lightweight-pdf@0.3.1
+          npm install --no-package-lock
           npx astro build --base /lightweight-pdf/playground/
           mkdir -p ../../site/public/playground
           cp -r dist/. ../../site/public/playground/
