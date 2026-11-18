@@ -10,13 +10,16 @@ import {
   Features,
   Hero,
   Install,
+  LinkRow,
   Quickstart,
   ReleaseHighlights,
+  Section,
   Terminal,
 } from '@casoon/pages-theme/components';
 import Base from '@casoon/pages-theme/layouts/Base.astro';
 import config from 'virtual:casoon-pages/config';
 import { parseChangelog } from '@casoon/pages-theme/lib/changelog';
+import { url } from '@casoon/pages-theme/lib/url';
 import { cliLog, pdfFile } from '../showcase';
 
 const invoice = pdfFile('demo_invoice');
@@ -136,6 +139,19 @@ const cli = `lwpdf render examples/invoice-template.json \\
     <CodeBlock code={mainRs} lang="rust" title="main.rs" label="Rust" />
     <CodeBlock code={cli} lang="sh" title="terminal" label="CLI" />
   </Quickstart>
+
+  <Section
+    title="Try it, see it in use"
+    lead="The wasm build runs in your browser: edit a JSON document and the PDF re-renders on the spot. The same module generates the reports of public projects."
+  >
+    <LinkRow
+      links={[
+        { label: 'Live demo (playground)', href: url('demo/') },
+        { label: 'Solarrechner, PDF report in the browser', href: 'https://solarrechner.casoon.de' },
+        { label: 'Cloudflare Worker starter', href: 'https://github.com/casoon/lightweight-pdf/tree/master/examples/worker' },
+      ]}
+    />
+  </Section>
 
   {latestRelease && <ReleaseHighlights release={latestRelease} />}
 
