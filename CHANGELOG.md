@@ -8,6 +8,7 @@ crates.io; all workspace crates share one version.
 
 ### Added
 
+- **Playground:** the invoice and offer templates are the JSON form of the invoice and offer demos, with letterhead, address block, totals and a footer.
 - **Project page:** a live demo page that runs the browser playground on the site, and an "in use" section pointing to the Solarrechner.
 - **JSON:** `header` and `footer` in the document format, with `{page}` and `{total_pages}` in their
   texts, and `Header::from_element` / `Footer::from_element` in Rust. Details:
