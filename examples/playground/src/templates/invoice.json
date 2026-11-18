@@ -1,718 +1,736 @@
 {
-  "schema_version": 1,
-  "document": {
-    "page_format": "A4",
-    "orientation": "portrait",
-    "margin": {
-      "top": 56.692917,
-      "right": 56.692917,
-      "bottom": 56.692917,
-      "left": 56.692917
-    },
-    "footer": {
-      "height": 62.0,
-      "content": {
-        "type": "column",
-        "children": [
-          {
-            "type": "line",
-            "thickness": 1.0,
-            "color": [0, 0, 0]
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "column",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Sample Design Studio",
-                    "style": {"font": "sans-bold", "size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "John Doe",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "1 Sample Street",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "12345 Sampletown",
-                    "style": {"size": 8.0}
-                  }
-                ],
-                "gap": 1.0,
-                "align": "start",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "column",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Phone: +1 555 0100",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "Email: hello@sample-design.example",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "Web: www.sample-design.example",
-                    "style": {"size": 8.0}
-                  }
-                ],
-                "gap": 1.0,
-                "align": "start",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "column",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Owner:",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "John Doe",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "VAT ID:",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "EU123456789",
-                    "style": {"size": 8.0}
-                  }
-                ],
-                "gap": 1.0,
-                "align": "start",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "column",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Bank: Sample Bank",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "Account Holder: John Doe",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "IBAN: DE12 3456 7890 1234 5678 90",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "BIC/SWIFT: SMPLUS33",
-                    "style": {"size": 8.0}
-                  }
-                ],
-                "gap": 1.0,
-                "align": "start",
-                "common": {"flex": 1.0}
-              }
-            ],
-            "gap": 16.0,
-            "align": "start"
-          }
-        ],
-        "gap": 4.0,
-        "align": "start"
-      },
-      "visible_from": 1
-    },
-    "metadata": {},
-    "pdf_a3b": false,
-    "pdf_ua": false,
-    "children": [
-      {
-        "type": "column",
-        "children": [
-          {
-            "type": "text",
-            "content": "Sample Design Studio",
-            "style": {"font": "sans-bold", "size": 16.0, "color": [42, 77, 143]}
-          }
-        ],
-        "gap": 0.0,
-        "align": "end"
-      },
-      {
-        "type": "spacer",
-        "size": 28.346458
-      },
-      {
-        "type": "row",
-        "children": [
-          {
-            "type": "column",
-            "children": [
-              {
-                "type": "text",
-                "content": "John Doe · 1 Sample Street · 12345 Sampletown",
-                "style": {"size": 7.0}
-              },
-              {
-                "type": "spacer",
-                "size": 8.0
-              },
-              {
-                "type": "text",
-                "content": "Sample Trading Ltd.",
-                "role": "body"
-              },
-              {
-                "type": "text",
-                "content": "Sample Trading Ltd.",
-                "role": "body"
-              },
-              {
-                "type": "text",
-                "content": "42 Example Road",
-                "role": "body"
-              },
-              {
-                "type": "text",
-                "content": "54321 Exampleville",
-                "role": "body"
-              }
-            ],
-            "gap": 2.0,
-            "align": "start",
-            "common": {"flex": 1.0}
-          },
-          {
-            "type": "column",
-            "children": [
-              {
-                "type": "text",
-                "content": "Inquiries to:",
-                "style": {"font": "sans-bold"}
-              },
-              {
-                "type": "text",
-                "content": "Sample Design Studio",
-                "role": "body"
-              },
-              {
-                "type": "text",
-                "content": "+1 555 0100",
-                "role": "body"
-              },
-              {
-                "type": "text",
-                "content": "hello@sample-design.example",
-                "role": "body"
-              },
-              {
-                "type": "spacer",
-                "size": 8.0
-              },
-              {
-                "type": "row",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Invoice No.:",
-                    "style": {"font": "sans-bold"},
-                    "common": {"flex": 1.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "INV-DEMO-0001",
-                    "role": "body"
-                  }
-                ],
-                "gap": 0.0,
-                "align": "start"
-              },
-              {
-                "type": "row",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Customer No.:",
-                    "style": {"font": "sans-bold"},
-                    "common": {"flex": 1.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "C-0001",
-                    "role": "body"
-                  }
-                ],
-                "gap": 0.0,
-                "align": "start"
-              },
-              {
-                "type": "row",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Invoice Date:",
-                    "style": {"font": "sans-bold"},
-                    "common": {"flex": 1.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "02/02/2026",
-                    "role": "body"
-                  }
-                ],
-                "gap": 0.0,
-                "align": "start"
-              },
-              {
-                "type": "row",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Service Period:",
-                    "style": {"font": "sans-bold"},
-                    "common": {"flex": 1.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "Jan 2026",
-                    "role": "body"
-                  }
-                ],
-                "gap": 0.0,
-                "align": "start"
-              },
-              {
-                "type": "row",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Due Date:",
-                    "style": {"font": "sans-bold"},
-                    "common": {"flex": 1.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "02/16/2026",
-                    "role": "body"
-                  }
-                ],
-                "gap": 0.0,
-                "align": "start"
-              }
-            ],
-            "gap": 2.0,
-            "align": "start",
-            "common": {"width": 190.0}
-          }
-        ],
-        "gap": 20.0,
-        "align": "start"
-      },
-      {
-        "type": "spacer",
-        "size": 39.68504
-      },
-      {
-        "type": "text",
-        "content": "Invoice",
-        "style": {"font": "sans-bold", "size": 14.0},
-        "outline_level": 3,
-        "role": "heading3",
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "spacer",
-        "size": 6.0
-      },
-      {
-        "type": "text",
-        "content": "Project: SMP-001 Website Maintenance (Demo)",
-        "role": "body"
-      },
-      {
-        "type": "spacer",
-        "size": 10.0
-      },
-      {
-        "type": "table",
-        "columns": [
-          {"width": {"fixed": 32.0}, "align": "start"},
-          {"width": {"flex": 1.0}, "align": "start"},
-          {"width": {"fixed": 45.0}, "align": "end"},
-          {"width": {"fixed": 35.0}, "align": "start"},
-          {"width": {"fixed": 40.0}, "align": "end"},
-          {"width": {"fixed": 85.0}, "align": "end"},
-          {"width": {"fixed": 65.0}, "align": "end"}
-        ],
-        "header": [
-          {
-            "element": {
-              "type": "text",
-              "content": "No.",
-              "role": "body"
-            },
-            "colspan": 1,
-            "rowspan": 1
-          },
-          {
-            "element": {
-              "type": "text",
-              "content": "Description",
-              "role": "body"
-            },
-            "colspan": 1,
-            "rowspan": 1
-          },
-          {
-            "element": {
-              "type": "text",
-              "content": "Qty",
-              "role": "body"
-            },
-            "colspan": 1,
-            "rowspan": 1
-          },
-          {
-            "element": {
-              "type": "text",
-              "content": "Unit",
-              "role": "body"
-            },
-            "colspan": 1,
-            "rowspan": 1
-          },
-          {
-            "element": {
-              "type": "text",
-              "content": "VAT",
-              "role": "body"
-            },
-            "colspan": 1,
-            "rowspan": 1
-          },
-          {
-            "element": {
-              "type": "text",
-              "content": "Unit Price",
-              "role": "body"
-            },
-            "colspan": 1,
-            "rowspan": 1
-          },
-          {
-            "element": {
-              "type": "text",
-              "content": "Total",
-              "role": "body"
-            },
-            "colspan": 1,
-            "rowspan": 1
-          }
-        ],
-        "rows": [
-          [
+  "page_format": "A4",
+  "orientation": "portrait",
+  "margin": {
+    "top": 56.692917,
+    "right": 56.692917,
+    "bottom": 56.692917,
+    "left": 56.692917
+  },
+  "footer": {
+    "height": 62.0,
+    "content": {
+      "type": "column",
+      "children": [
+        {
+          "type": "line",
+          "thickness": 1.0,
+          "color": [0, 0, 0]
+        },
+        {
+          "type": "row",
+          "children": [
             {
-              "element": {
-                "type": "text",
-                "content": "1",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "column",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Sample Design Studio",
+                  "style": {"font": "sans-bold", "size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "John Doe",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "1 Sample Street",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "12345 Sampletown",
+                  "style": {"size": 8.0}
+                }
+              ],
+              "gap": 1.0,
+              "align": "start",
+              "common": {"flex": 1.0}
             },
             {
-              "element": {
-                "type": "column",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Content Onboarding",
-                    "role": "body"
-                  },
-                  {
-                    "type": "text",
-                    "content": "Creation of sample pages from supplied content (demo data)",
-                    "style": {"size": 8.0, "color": [102, 102, 102]}
-                  }
-                ],
-                "gap": 2.0,
-                "align": "start"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "column",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Phone: +1 555 0100",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "Email: hello@sample-design.example",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "Web: www.sample-design.example",
+                  "style": {"size": 8.0}
+                }
+              ],
+              "gap": 1.0,
+              "align": "start",
+              "common": {"flex": 1.0}
             },
             {
-              "element": {
-                "type": "text",
-                "content": "5",
-                "style": {"align": "end"},
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "column",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Owner:",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "John Doe",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "VAT ID:",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "EU123456789",
+                  "style": {"size": 8.0}
+                }
+              ],
+              "gap": 1.0,
+              "align": "start",
+              "common": {"flex": 1.0}
             },
             {
-              "element": {
-                "type": "text",
-                "content": "hrs",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "19%",
-                "style": {"align": "end"},
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "50.00",
-                "style": {"align": "end"},
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "250.00",
-                "style": {"font": "sans-bold", "align": "end"}
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "column",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Bank: Sample Bank",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "Account Holder: John Doe",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "IBAN: DE12 3456 7890 1234 5678 90",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "BIC/SWIFT: SMPLUS33",
+                  "style": {"size": 8.0}
+                }
+              ],
+              "gap": 1.0,
+              "align": "start",
+              "common": {"flex": 1.0}
             }
           ],
-          [
+          "gap": 16.0,
+          "align": "start"
+        }
+      ],
+      "gap": 4.0,
+      "align": "start"
+    },
+    "visible_from": 1
+  },
+  "metadata": {},
+  "pdf_a3b": false,
+  "pdf_ua": false,
+  "children": [
+    {
+      "type": "column",
+      "children": [
+        {
+          "type": "text",
+          "content": "Sample Design Studio",
+          "style": {"font": "sans-bold", "size": 16.0, "color": [42, 77, 143]}
+        }
+      ],
+      "gap": 0.0,
+      "align": "end"
+    },
+    {
+      "type": "spacer",
+      "size": 28.346458
+    },
+    {
+      "type": "row",
+      "children": [
+        {
+          "type": "column",
+          "children": [
             {
-              "element": {
-                "type": "text",
-                "content": "2",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "text",
+              "content": "John Doe · 1 Sample Street · 12345 Sampletown",
+              "style": {"size": 7.0}
             },
             {
-              "element": {
-                "type": "column",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Maintenance & Support",
-                    "role": "body"
-                  },
-                  {
-                    "type": "text",
-                    "content": "Updates and security patches / on-site visits (demo data)",
-                    "style": {"size": 8.0, "color": [102, 102, 102]}
-                  }
-                ],
-                "gap": 2.0,
-                "align": "start"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "spacer",
+              "size": 8.0
             },
             {
-              "element": {
-                "type": "text",
-                "content": "4",
-                "style": {"align": "end"},
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "text",
+              "content": "Sample Trading Ltd.",
+              "role": "body"
             },
             {
-              "element": {
-                "type": "text",
-                "content": "hrs",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "text",
+              "content": "Sample Trading Ltd.",
+              "role": "body"
             },
             {
-              "element": {
-                "type": "text",
-                "content": "19%",
-                "style": {"align": "end"},
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "text",
+              "content": "42 Example Road",
+              "role": "body"
             },
             {
-              "element": {
-                "type": "text",
-                "content": "50.00",
-                "style": {"align": "end"},
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "200.00",
-                "style": {"font": "sans-bold", "align": "end"}
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "text",
+              "content": "54321 Exampleville",
+              "role": "body"
             }
-          ]
-        ],
-        "cell_padding": 4.0
-      },
-      {
-        "type": "spacer",
-        "size": 14.0
-      },
-      {
-        "type": "column",
-        "children": [
+          ],
+          "gap": 2.0,
+          "align": "start",
+          "common": {"flex": 1.0}
+        },
+        {
+          "type": "column",
+          "children": [
+            {
+              "type": "text",
+              "content": "Inquiries to:",
+              "style": {"font": "sans-bold"}
+            },
+            {
+              "type": "text",
+              "content": "Sample Design Studio",
+              "role": "body"
+            },
+            {
+              "type": "text",
+              "content": "+1 555 0100",
+              "role": "body"
+            },
+            {
+              "type": "text",
+              "content": "hello@sample-design.example",
+              "role": "body"
+            },
+            {
+              "type": "spacer",
+              "size": 8.0
+            },
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Invoice No.:",
+                  "style": {"font": "sans-bold"},
+                  "common": {"flex": 1.0}
+                },
+                {
+                  "type": "text",
+                  "content": "INV-DEMO-0001",
+                  "role": "body"
+                }
+              ],
+              "gap": 0.0,
+              "align": "start"
+            },
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Customer No.:",
+                  "style": {"font": "sans-bold"},
+                  "common": {"flex": 1.0}
+                },
+                {
+                  "type": "text",
+                  "content": "C-0001",
+                  "role": "body"
+                }
+              ],
+              "gap": 0.0,
+              "align": "start"
+            },
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Invoice Date:",
+                  "style": {"font": "sans-bold"},
+                  "common": {"flex": 1.0}
+                },
+                {
+                  "type": "text",
+                  "content": "02/02/2026",
+                  "role": "body"
+                }
+              ],
+              "gap": 0.0,
+              "align": "start"
+            },
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Service Period:",
+                  "style": {"font": "sans-bold"},
+                  "common": {"flex": 1.0}
+                },
+                {
+                  "type": "text",
+                  "content": "Jan 2026",
+                  "role": "body"
+                }
+              ],
+              "gap": 0.0,
+              "align": "start"
+            },
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Due Date:",
+                  "style": {"font": "sans-bold"},
+                  "common": {"flex": 1.0}
+                },
+                {
+                  "type": "text",
+                  "content": "02/16/2026",
+                  "role": "body"
+                }
+              ],
+              "gap": 0.0,
+              "align": "start"
+            }
+          ],
+          "gap": 2.0,
+          "align": "start",
+          "common": {"width": 190.0}
+        }
+      ],
+      "gap": 20.0,
+      "align": "start"
+    },
+    {
+      "type": "spacer",
+      "size": 39.68504
+    },
+    {
+      "type": "text",
+      "content": "Invoice",
+      "style": {"font": "sans-bold", "size": 14.0},
+      "outline_level": 3,
+      "role": "heading3",
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "spacer",
+      "size": 6.0
+    },
+    {
+      "type": "text",
+      "content": "Project: SMP-001 Website Maintenance (Demo)",
+      "role": "body"
+    },
+    {
+      "type": "spacer",
+      "size": 10.0
+    },
+    {
+      "type": "table",
+      "columns": [
+        {
+          "width": {"fixed": 32.0},
+          "align": "start"
+        },
+        {
+          "width": {"flex": 1.0},
+          "align": "start"
+        },
+        {
+          "width": {"fixed": 45.0},
+          "align": "end"
+        },
+        {
+          "width": {"fixed": 35.0},
+          "align": "start"
+        },
+        {
+          "width": {"fixed": 40.0},
+          "align": "end"
+        },
+        {
+          "width": {"fixed": 85.0},
+          "align": "end"
+        },
+        {
+          "width": {"fixed": 65.0},
+          "align": "end"
+        }
+      ],
+      "header": [
+        {
+          "element": {
+            "type": "text",
+            "content": "No.",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Description",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Qty",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Unit",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "VAT",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Unit Price",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Total",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        }
+      ],
+      "rows": [
+        [
           {
-            "type": "column",
-            "children": [
-              {
-                "type": "row",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Subtotal:",
-                    "role": "body",
-                    "common": {"flex": 1.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "EUR 450.00",
-                    "role": "body"
-                  }
-                ],
-                "gap": 0.0,
-                "align": "start"
-              },
-              {
-                "type": "row",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "VAT (19%):",
-                    "role": "body",
-                    "common": {"flex": 1.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "EUR 85.50",
-                    "role": "body"
-                  }
-                ],
-                "gap": 0.0,
-                "align": "start"
-              },
-              {
-                "type": "line",
-                "thickness": 1.0,
-                "color": [0, 0, 0]
-              },
-              {
-                "type": "row",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Total:",
-                    "style": {"font": "sans-bold"},
-                    "common": {"flex": 1.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "EUR 535.50",
-                    "style": {"font": "sans-bold"}
-                  }
-                ],
-                "gap": 0.0,
-                "align": "start"
-              }
-            ],
-            "gap": 2.0,
-            "align": "start",
-            "common": {"width": 200.0}
+            "element": {
+              "type": "text",
+              "content": "1",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "column",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Content Onboarding",
+                  "role": "body"
+                },
+                {
+                  "type": "text",
+                  "content": "Creation of sample pages from supplied content (demo data)",
+                  "style": {"size": 8.0, "color": [102, 102, 102]}
+                }
+              ],
+              "gap": 2.0,
+              "align": "start"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "5",
+              "style": {"align": "end"},
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "hrs",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "19%",
+              "style": {"align": "end"},
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "50.00",
+              "style": {"align": "end"},
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "250.00",
+              "style": {"font": "sans-bold", "align": "end"}
+            },
+            "colspan": 1,
+            "rowspan": 1
           }
         ],
-        "gap": 0.0,
-        "align": "end"
-      },
-      {
-        "type": "spacer",
-        "size": 20.0
-      },
-      {
-        "type": "text",
-        "content": "Payable without deduction by 02/16/2026.",
-        "role": "body"
-      },
-      {
-        "type": "spacer",
-        "size": 10.0
-      },
-      {
-        "type": "text",
-        "content": "Delivered goods remain our property until paid in full.",
-        "role": "body"
-      },
-      {
-        "type": "spacer",
-        "size": 10.0
-      },
-      {
-        "type": "text",
-        "content": "Sample document — all names, addresses and amounts are fictional.",
-        "style": {"size": 9.0, "color": [136, 136, 136]}
-      },
-      {
-        "type": "spacer",
-        "size": 20.0
-      },
-      {
-        "type": "text",
-        "content": "Kind regards",
-        "role": "body"
-      },
-      {
-        "type": "spacer",
-        "size": 20.0
-      },
-      {
-        "type": "text",
-        "content": "John Doe",
-        "role": "body"
-      }
-    ]
-  }
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "2",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "column",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Maintenance & Support",
+                  "role": "body"
+                },
+                {
+                  "type": "text",
+                  "content": "Updates and security patches / on-site visits (demo data)",
+                  "style": {"size": 8.0, "color": [102, 102, 102]}
+                }
+              ],
+              "gap": 2.0,
+              "align": "start"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "4",
+              "style": {"align": "end"},
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "hrs",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "19%",
+              "style": {"align": "end"},
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "50.00",
+              "style": {"align": "end"},
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "200.00",
+              "style": {"font": "sans-bold", "align": "end"}
+            },
+            "colspan": 1,
+            "rowspan": 1
+          }
+        ]
+      ],
+      "cell_padding": 4.0
+    },
+    {
+      "type": "spacer",
+      "size": 14.0
+    },
+    {
+      "type": "column",
+      "children": [
+        {
+          "type": "column",
+          "children": [
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Subtotal:",
+                  "role": "body",
+                  "common": {"flex": 1.0}
+                },
+                {
+                  "type": "text",
+                  "content": "EUR 450.00",
+                  "role": "body"
+                }
+              ],
+              "gap": 0.0,
+              "align": "start"
+            },
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "VAT (19%):",
+                  "role": "body",
+                  "common": {"flex": 1.0}
+                },
+                {
+                  "type": "text",
+                  "content": "EUR 85.50",
+                  "role": "body"
+                }
+              ],
+              "gap": 0.0,
+              "align": "start"
+            },
+            {
+              "type": "line",
+              "thickness": 1.0,
+              "color": [0, 0, 0]
+            },
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Total:",
+                  "style": {"font": "sans-bold"},
+                  "common": {"flex": 1.0}
+                },
+                {
+                  "type": "text",
+                  "content": "EUR 535.50",
+                  "style": {"font": "sans-bold"}
+                }
+              ],
+              "gap": 0.0,
+              "align": "start"
+            }
+          ],
+          "gap": 2.0,
+          "align": "start",
+          "common": {"width": 200.0}
+        }
+      ],
+      "gap": 0.0,
+      "align": "end"
+    },
+    {
+      "type": "spacer",
+      "size": 20.0
+    },
+    {
+      "type": "text",
+      "content": "Payable without deduction by 02/16/2026.",
+      "role": "body"
+    },
+    {
+      "type": "spacer",
+      "size": 10.0
+    },
+    {
+      "type": "text",
+      "content": "Delivered goods remain our property until paid in full.",
+      "role": "body"
+    },
+    {
+      "type": "spacer",
+      "size": 10.0
+    },
+    {
+      "type": "text",
+      "content": "Sample document — all names, addresses and amounts are fictional.",
+      "style": {"size": 9.0, "color": [136, 136, 136]}
+    },
+    {
+      "type": "spacer",
+      "size": 20.0
+    },
+    {
+      "type": "text",
+      "content": "Kind regards",
+      "role": "body"
+    },
+    {
+      "type": "spacer",
+      "size": 20.0
+    },
+    {
+      "type": "text",
+      "content": "John Doe",
+      "role": "body"
+    }
+  ]
 }

@@ -1,528 +1,556 @@
 {
-  "schema_version": 1,
-  "document": {
-    "page_format": "A4",
-    "orientation": "portrait",
-    "margin": {
-      "top": 56.692913,
-      "right": 56.692913,
-      "bottom": 56.692913,
-      "left": 56.692913
+  "page_format": "A4",
+  "orientation": "portrait",
+  "margin": {
+    "top": 56.692913,
+    "right": 56.692913,
+    "bottom": 56.692913,
+    "left": 56.692913
+  },
+  "header": {
+    "height": 20.0,
+    "content": {
+      "type": "row",
+      "children": [
+        {
+          "type": "text",
+          "content": "SMP-DOC-DEMO-0001",
+          "style": {"size": 8.0},
+          "common": {"flex": 1.0}
+        },
+        {
+          "type": "text",
+          "content": "Sample API Documentation",
+          "style": {"size": 8.0, "align": "center"},
+          "common": {"flex": 1.0}
+        },
+        {
+          "type": "text",
+          "content": "Version 2.0",
+          "style": {"size": 8.0, "align": "end"},
+          "common": {"flex": 1.0}
+        }
+      ],
+      "gap": 0.0,
+      "align": "start"
     },
-    "header": {
-      "height": 20.0,
-      "content": {
-        "type": "row",
-        "children": [
-          {
-            "type": "text",
-            "content": "SMP-DOC-DEMO-0001",
-            "style": {"size": 8.0},
-            "common": {"flex": 1.0}
-          },
-          {
-            "type": "text",
-            "content": "Sample API Documentation",
-            "style": {"size": 8.0, "align": "center"},
-            "common": {"flex": 1.0}
-          },
-          {
-            "type": "text",
-            "content": "Version 2.0",
-            "style": {"size": 8.0, "align": "end"},
-            "common": {"flex": 1.0}
-          }
-        ],
-        "gap": 0.0,
-        "align": "start"
-      },
-      "visible_from": 2
+    "visible_from": 2
+  },
+  "footer": {
+    "height": 24.0,
+    "content": {
+      "type": "column",
+      "children": [
+        {
+          "type": "line",
+          "thickness": 1.0,
+          "color": [0, 0, 0]
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "Sample Studio Ltd.",
+              "style": {"size": 8.0},
+              "common": {"flex": 1.0}
+            },
+            {
+              "type": "text",
+              "content": "Page {page} of {total_pages}",
+              "style": {"size": 8.0, "align": "center"},
+              "common": {"flex": 1.0}
+            },
+            {
+              "type": "text",
+              "content": "02/02/2026",
+              "style": {"size": 8.0, "align": "end"},
+              "common": {"flex": 1.0}
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        }
+      ],
+      "gap": 4.0,
+      "align": "start"
     },
-    "footer": {
-      "height": 24.0,
-      "content": {
-        "type": "column",
-        "children": [
-          {
-            "type": "line",
-            "thickness": 1.0,
-            "color": [0, 0, 0]
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "Sample Studio Ltd.",
-                "style": {"size": 8.0},
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "text",
-                "content": "Page {page} of {total_pages}",
-                "style": {"size": 8.0, "align": "center"},
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "text",
-                "content": "02/02/2026",
-                "style": {"size": 8.0, "align": "end"},
-                "common": {"flex": 1.0}
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          }
-        ],
-        "gap": 4.0,
-        "align": "start"
-      },
-      "visible_from": 1
+    "visible_from": 1
+  },
+  "metadata": {},
+  "pdf_a3b": false,
+  "pdf_ua": false,
+  "children": [
+    {
+      "type": "spacer",
+      "size": 60.0
     },
-    "metadata": {},
-    "pdf_a3b": false,
-    "pdf_ua": false,
-    "children": [
-      {
-        "type": "spacer",
-        "size": 60.0
-      },
-      {
-        "type": "column",
-        "children": [
-          {
+    {
+      "type": "column",
+      "children": [
+        {
+          "type": "text",
+          "content": "Sample Design Studio",
+          "style": {"font": "sans-bold", "size": 26.0, "color": [42, 77, 143]}
+        }
+      ],
+      "gap": 0.0,
+      "align": "center"
+    },
+    {
+      "type": "spacer",
+      "size": 70.0
+    },
+    {
+      "type": "text",
+      "content": "Sample API Documentation",
+      "style": {"font": "sans-bold", "size": 24.0},
+      "outline_level": 1,
+      "role": "heading1",
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "spacer",
+      "size": 20.0
+    },
+    {
+      "type": "row",
+      "children": [
+        {
+          "type": "text",
+          "content": "DOCUMENTATION",
+          "style": {"font": "sans-bold", "color": [224, 80, 64]}
+        },
+        {
+          "type": "text",
+          "content": "· SMP-DOC-DEMO-0001",
+          "style": {"color": [136, 136, 136]}
+        }
+      ],
+      "gap": 4.0,
+      "align": "start"
+    },
+    {
+      "type": "spacer",
+      "size": 24.0
+    },
+    {
+      "type": "column",
+      "children": [
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "Project",
+              "style": {"color": [136, 136, 136]},
+              "common": {"width": 90.0}
+            },
+            {
+              "type": "text",
+              "content": "Sample Platform API (Demo)",
+              "role": "body",
+              "common": {"flex": 1.0, "overflow": "ellipsis"}
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "Client",
+              "style": {"color": [136, 136, 136]},
+              "common": {"width": 90.0}
+            },
+            {
+              "type": "text",
+              "content": "Sample Studio Ltd.",
+              "role": "body",
+              "common": {"flex": 1.0, "overflow": "ellipsis"}
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "Version",
+              "style": {"color": [136, 136, 136]},
+              "common": {"width": 90.0}
+            },
+            {
+              "type": "text",
+              "content": "2.0",
+              "role": "body",
+              "common": {"flex": 1.0, "overflow": "ellipsis"}
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "Status",
+              "style": {"color": [136, 136, 136]},
+              "common": {"width": 90.0}
+            },
+            {
+              "type": "text",
+              "content": "FINAL",
+              "style": {"font": "sans-bold", "color": [224, 80, 64]},
+              "common": {"flex": 1.0, "overflow": "ellipsis"}
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "Created",
+              "style": {"color": [136, 136, 136]},
+              "common": {"width": 90.0}
+            },
+            {
+              "type": "text",
+              "content": "02/02/2026",
+              "role": "body",
+              "common": {"flex": 1.0, "overflow": "ellipsis"}
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        }
+      ],
+      "gap": 4.0,
+      "align": "start",
+      "common": {"width": 320.0}
+    },
+    {
+      "type": "spacer",
+      "size": 200.0
+    },
+    {
+      "type": "row",
+      "children": [
+        {
+          "type": "text",
+          "content": "API",
+          "style": {"font": "sans-bold", "size": 8.0, "color": [224, 80, 64]},
+          "common": {"padding": 6.0, "background": [251, 228, 225]}
+        },
+        {
+          "type": "text",
+          "content": "REST",
+          "style": {"font": "sans-bold", "size": 8.0, "color": [224, 80, 64]},
+          "common": {"padding": 6.0, "background": [251, 228, 225]}
+        },
+        {
+          "type": "text",
+          "content": "DEMO",
+          "style": {"font": "sans-bold", "size": 8.0, "color": [224, 80, 64]},
+          "common": {"padding": 6.0, "background": [251, 228, 225]}
+        }
+      ],
+      "gap": 8.0,
+      "align": "start"
+    },
+    {
+      "type": "page_break"
+    },
+    {
+      "type": "text",
+      "content": "Table of Contents",
+      "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
+      "outline_level": 2,
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "spacer",
+      "size": 10.0
+    },
+    {
+      "type": "column",
+      "children": [
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "1  Overview",
+              "role": "body",
+              "common": {"flex": 1.0}
+            },
+            {
+              "type": "text",
+              "content": "3",
+              "role": "body"
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "2  Authentication",
+              "role": "body",
+              "common": {"flex": 1.0}
+            },
+            {
+              "type": "text",
+              "content": "3",
+              "role": "body"
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "3  Endpoints",
+              "role": "body",
+              "common": {"flex": 1.0}
+            },
+            {
+              "type": "text",
+              "content": "3",
+              "role": "body"
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "3.1  GET /v2/items",
+              "role": "body",
+              "common": {"flex": 1.0}
+            },
+            {
+              "type": "text",
+              "content": "3",
+              "role": "body"
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "4  Error Handling",
+              "role": "body",
+              "common": {"flex": 1.0}
+            },
+            {
+              "type": "text",
+              "content": "4",
+              "role": "body"
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        }
+      ],
+      "gap": 4.0,
+      "align": "start"
+    },
+    {
+      "type": "page_break"
+    },
+    {
+      "type": "text",
+      "content": "1 Overview",
+      "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
+      "outline_level": 2,
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "text",
+      "content": "The Sample API exposes resources of the Sample Platform as a REST interface. All responses are JSON-encoded (demo text).",
+      "role": "body"
+    },
+    {
+      "type": "spacer",
+      "size": 12.0
+    },
+    {
+      "type": "text",
+      "content": "2 Authentication",
+      "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
+      "outline_level": 2,
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "text",
+      "content": "Every request needs a bearer token in the Authorization header (demo text):",
+      "role": "body"
+    },
+    {
+      "type": "spacer",
+      "size": 6.0
+    },
+    {
+      "type": "column",
+      "children": [
+        {
+          "type": "text",
+          "content": "Authorization: Bearer REDACTED-DEMO-PLACEHOLDER",
+          "style": {"size": 9.0}
+        }
+      ],
+      "gap": 2.0,
+      "align": "start",
+      "common": {"padding": 8.0, "background": [245, 245, 245]}
+    },
+    {
+      "type": "spacer",
+      "size": 12.0
+    },
+    {
+      "type": "text",
+      "content": "3 Endpoints",
+      "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
+      "outline_level": 2,
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "spacer",
+      "size": 6.0
+    },
+    {
+      "type": "text",
+      "content": "3.1 GET /v2/items",
+      "style": {"font": "sans-bold", "size": 14.0},
+      "outline_level": 3,
+      "role": "heading3",
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "text",
+      "content": "Returns a list of sample objects (demo text).",
+      "role": "body"
+    },
+    {
+      "type": "spacer",
+      "size": 6.0
+    },
+    {
+      "type": "column",
+      "children": [
+        {
+          "type": "text",
+          "content": "GET /v2/items?limit=20 HTTP/1.1",
+          "style": {"size": 9.0}
+        },
+        {
+          "type": "text",
+          "content": "Host: api-demo.sample-design.example",
+          "style": {"size": 9.0}
+        },
+        {
+          "type": "text",
+          "content": "",
+          "style": {"size": 9.0}
+        },
+        {
+          "type": "text",
+          "content": "{ \"items\": [ { \"id\": \"itm_001\", \"name\": \"Sample\" } ], \"total\": 1 }",
+          "style": {"size": 9.0}
+        }
+      ],
+      "gap": 2.0,
+      "align": "start",
+      "common": {"padding": 8.0, "background": [245, 245, 245]}
+    },
+    {
+      "type": "spacer",
+      "size": 12.0
+    },
+    {
+      "type": "text",
+      "content": "4 Error Handling",
+      "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
+      "outline_level": 2,
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "spacer",
+      "size": 6.0
+    },
+    {
+      "type": "table",
+      "columns": [
+        {
+          "width": {"fixed": 60.0},
+          "align": "start"
+        },
+        {
+          "width": {"fixed": 140.0},
+          "align": "start"
+        },
+        {
+          "width": {"flex": 1.0},
+          "align": "start"
+        }
+      ],
+      "header": [
+        {
+          "element": {
             "type": "text",
-            "content": "Sample Design Studio",
-            "style": {"font": "sans-bold", "size": 26.0, "color": [42, 77, 143]}
-          }
-        ],
-        "gap": 0.0,
-        "align": "center"
-      },
-      {
-        "type": "spacer",
-        "size": 70.0
-      },
-      {
-        "type": "text",
-        "content": "Sample API Documentation",
-        "style": {"font": "sans-bold", "size": 24.0},
-        "outline_level": 1,
-        "role": "heading1",
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "spacer",
-        "size": 20.0
-      },
-      {
-        "type": "row",
-        "children": [
-          {
+            "content": "Code",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
             "type": "text",
-            "content": "DOCUMENTATION",
-            "style": {"font": "sans-bold", "color": [224, 80, 64]}
+            "content": "Meaning",
+            "role": "body"
           },
-          {
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
             "type": "text",
-            "content": "· SMP-DOC-DEMO-0001",
-            "style": {"color": [136, 136, 136]}
-          }
-        ],
-        "gap": 4.0,
-        "align": "start"
-      },
-      {
-        "type": "spacer",
-        "size": 24.0
-      },
-      {
-        "type": "column",
-        "children": [
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "Project",
-                "style": {"color": [136, 136, 136]},
-                "common": {"width": 90.0}
-              },
-              {
-                "type": "text",
-                "content": "Sample Platform API (Demo)",
-                "role": "body",
-                "common": {"flex": 1.0, "overflow": "ellipsis"}
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
+            "content": "Description",
+            "role": "body"
           },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "Client",
-                "style": {"color": [136, 136, 136]},
-                "common": {"width": 90.0}
-              },
-              {
-                "type": "text",
-                "content": "Sample Studio Ltd.",
-                "role": "body",
-                "common": {"flex": 1.0, "overflow": "ellipsis"}
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "Version",
-                "style": {"color": [136, 136, 136]},
-                "common": {"width": 90.0}
-              },
-              {
-                "type": "text",
-                "content": "2.0",
-                "role": "body",
-                "common": {"flex": 1.0, "overflow": "ellipsis"}
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "Status",
-                "style": {"color": [136, 136, 136]},
-                "common": {"width": 90.0}
-              },
-              {
-                "type": "text",
-                "content": "FINAL",
-                "style": {"font": "sans-bold", "color": [224, 80, 64]},
-                "common": {"flex": 1.0, "overflow": "ellipsis"}
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "Created",
-                "style": {"color": [136, 136, 136]},
-                "common": {"width": 90.0}
-              },
-              {
-                "type": "text",
-                "content": "02/02/2026",
-                "role": "body",
-                "common": {"flex": 1.0, "overflow": "ellipsis"}
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          }
-        ],
-        "gap": 4.0,
-        "align": "start",
-        "common": {"width": 320.0}
-      },
-      {
-        "type": "spacer",
-        "size": 200.0
-      },
-      {
-        "type": "row",
-        "children": [
-          {
-            "type": "text",
-            "content": "API",
-            "style": {"font": "sans-bold", "size": 8.0, "color": [224, 80, 64]},
-            "common": {"padding": 6.0, "background": [251, 228, 225]}
-          },
-          {
-            "type": "text",
-            "content": "REST",
-            "style": {"font": "sans-bold", "size": 8.0, "color": [224, 80, 64]},
-            "common": {"padding": 6.0, "background": [251, 228, 225]}
-          },
-          {
-            "type": "text",
-            "content": "DEMO",
-            "style": {"font": "sans-bold", "size": 8.0, "color": [224, 80, 64]},
-            "common": {"padding": 6.0, "background": [251, 228, 225]}
-          }
-        ],
-        "gap": 8.0,
-        "align": "start"
-      },
-      {
-        "type": "page_break"
-      },
-      {
-        "type": "text",
-        "content": "Table of Contents",
-        "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
-        "outline_level": 2,
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "spacer",
-        "size": 10.0
-      },
-      {
-        "type": "column",
-        "children": [
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "1  Overview",
-                "role": "body",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "text",
-                "content": "3",
-                "role": "body"
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "2  Authentication",
-                "role": "body",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "text",
-                "content": "3",
-                "role": "body"
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "3  Endpoints",
-                "role": "body",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "text",
-                "content": "3",
-                "role": "body"
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "3.1  GET /v2/items",
-                "role": "body",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "text",
-                "content": "3",
-                "role": "body"
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "4  Error Handling",
-                "role": "body",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "text",
-                "content": "4",
-                "role": "body"
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          }
-        ],
-        "gap": 4.0,
-        "align": "start"
-      },
-      {
-        "type": "page_break"
-      },
-      {
-        "type": "text",
-        "content": "1 Overview",
-        "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
-        "outline_level": 2,
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "text",
-        "content": "The Sample API exposes resources of the Sample Platform as a REST interface. All responses are JSON-encoded (demo text).",
-        "role": "body"
-      },
-      {
-        "type": "spacer",
-        "size": 12.0
-      },
-      {
-        "type": "text",
-        "content": "2 Authentication",
-        "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
-        "outline_level": 2,
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "text",
-        "content": "Every request needs a bearer token in the Authorization header (demo text):",
-        "role": "body"
-      },
-      {
-        "type": "spacer",
-        "size": 6.0
-      },
-      {
-        "type": "column",
-        "children": [
-          {
-            "type": "text",
-            "content": "Authorization: Bearer REDACTED-DEMO-PLACEHOLDER",
-            "style": {"size": 9.0}
-          }
-        ],
-        "gap": 2.0,
-        "align": "start",
-        "common": {"padding": 8.0, "background": [245, 245, 245]}
-      },
-      {
-        "type": "spacer",
-        "size": 12.0
-      },
-      {
-        "type": "text",
-        "content": "3 Endpoints",
-        "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
-        "outline_level": 2,
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "spacer",
-        "size": 6.0
-      },
-      {
-        "type": "text",
-        "content": "3.1 GET /v2/items",
-        "style": {"font": "sans-bold", "size": 14.0},
-        "outline_level": 3,
-        "role": "heading3",
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "text",
-        "content": "Returns a list of sample objects (demo text).",
-        "role": "body"
-      },
-      {
-        "type": "spacer",
-        "size": 6.0
-      },
-      {
-        "type": "column",
-        "children": [
-          {
-            "type": "text",
-            "content": "GET /v2/items?limit=20 HTTP/1.1",
-            "style": {"size": 9.0}
-          },
-          {
-            "type": "text",
-            "content": "Host: api-demo.sample-design.example",
-            "style": {"size": 9.0}
-          },
-          {
-            "type": "text",
-            "content": "",
-            "style": {"size": 9.0}
-          },
-          {
-            "type": "text",
-            "content": "{ \"items\": [ { \"id\": \"itm_001\", \"name\": \"Sample\" } ], \"total\": 1 }",
-            "style": {"size": 9.0}
-          }
-        ],
-        "gap": 2.0,
-        "align": "start",
-        "common": {"padding": 8.0, "background": [245, 245, 245]}
-      },
-      {
-        "type": "spacer",
-        "size": 12.0
-      },
-      {
-        "type": "text",
-        "content": "4 Error Handling",
-        "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
-        "outline_level": 2,
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "spacer",
-        "size": 6.0
-      },
-      {
-        "type": "table",
-        "columns": [
-          {
-            "width": {"fixed": 60.0},
-            "align": "start"
-          },
-          {
-            "width": {"fixed": 140.0},
-            "align": "start"
-          },
-          {
-            "width": {"flex": 1.0},
-            "align": "start"
-          }
-        ],
-        "header": [
+          "colspan": 1,
+          "rowspan": 1
+        }
+      ],
+      "rows": [
+        [
           {
             "element": {
               "type": "text",
-              "content": "Code",
+              "content": "400",
               "role": "body"
             },
             "colspan": 1,
@@ -531,7 +559,7 @@
           {
             "element": {
               "type": "text",
-              "content": "Meaning",
+              "content": "Bad Request",
               "role": "body"
             },
             "colspan": 1,
@@ -540,133 +568,102 @@
           {
             "element": {
               "type": "text",
-              "content": "Description",
+              "content": "Invalid or missing parameters",
               "role": "body"
             },
             "colspan": 1,
             "rowspan": 1
           }
         ],
-        "rows": [
-          [
-            {
-              "element": {
-                "type": "text",
-                "content": "400",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "401",
+              "role": "body"
             },
-            {
-              "element": {
-                "type": "text",
-                "content": "Bad Request",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "Unauthorized",
+              "role": "body"
             },
-            {
-              "element": {
-                "type": "text",
-                "content": "Invalid or missing parameters",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            }
-          ],
-          [
-            {
-              "element": {
-                "type": "text",
-                "content": "401",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "Token missing or invalid",
+              "role": "body"
             },
-            {
-              "element": {
-                "type": "text",
-                "content": "Unauthorized",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "Token missing or invalid",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            }
-          ],
-          [
-            {
-              "element": {
-                "type": "text",
-                "content": "404",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "Not Found",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "Resource does not exist",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            }
-          ],
-          [
-            {
-              "element": {
-                "type": "text",
-                "content": "429",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "Too Many Requests",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "Rate limit exceeded",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            }
-          ]
+            "colspan": 1,
+            "rowspan": 1
+          }
         ],
-        "cell_padding": 4.0
-      }
-    ]
-  }
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "404",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "Not Found",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "Resource does not exist",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          }
+        ],
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "429",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "Too Many Requests",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "Rate limit exceeded",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          }
+        ]
+      ],
+      "cell_padding": 4.0
+    }
+  ]
 }

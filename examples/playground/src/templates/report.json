@@ -1,418 +1,446 @@
 {
-  "schema_version": 1,
-  "document": {
-    "page_format": "A4",
-    "orientation": "portrait",
-    "margin": {
-      "top": 56.692913,
-      "right": 56.692913,
-      "bottom": 56.692913,
-      "left": 56.692913
+  "page_format": "A4",
+  "orientation": "portrait",
+  "margin": {
+    "top": 56.692913,
+    "right": 56.692913,
+    "bottom": 56.692913,
+    "left": 56.692913
+  },
+  "header": {
+    "height": 20.0,
+    "content": {
+      "type": "row",
+      "children": [
+        {
+          "type": "text",
+          "content": "SMP-RPT-DEMO-0001",
+          "style": {"size": 8.0},
+          "common": {"flex": 1.0}
+        },
+        {
+          "type": "text",
+          "content": "Website Analysis: sample-shop.example",
+          "style": {"size": 8.0, "align": "center"},
+          "common": {"flex": 1.0}
+        },
+        {
+          "type": "text",
+          "content": "Version 1.0",
+          "style": {"size": 8.0, "align": "end"},
+          "common": {"flex": 1.0}
+        }
+      ],
+      "gap": 0.0,
+      "align": "start"
     },
-    "header": {
-      "height": 20.0,
-      "content": {
-        "type": "row",
-        "children": [
-          {
-            "type": "text",
-            "content": "SMP-RPT-DEMO-0001",
-            "style": {"size": 8.0},
-            "common": {"flex": 1.0}
-          },
-          {
-            "type": "text",
-            "content": "Website Analysis: sample-shop.example",
-            "style": {"size": 8.0, "align": "center"},
-            "common": {"flex": 1.0}
-          },
-          {
-            "type": "text",
-            "content": "Version 1.0",
-            "style": {"size": 8.0, "align": "end"},
-            "common": {"flex": 1.0}
-          }
-        ],
-        "gap": 0.0,
-        "align": "start"
-      },
-      "visible_from": 2
+    "visible_from": 2
+  },
+  "footer": {
+    "height": 24.0,
+    "content": {
+      "type": "column",
+      "children": [
+        {
+          "type": "line",
+          "thickness": 1.0,
+          "color": [0, 0, 0]
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "Sample Shop Ltd.",
+              "style": {"size": 8.0},
+              "common": {"flex": 1.0}
+            },
+            {
+              "type": "text",
+              "content": "Page {page} of {total_pages}",
+              "style": {"size": 8.0, "align": "center"},
+              "common": {"flex": 1.0}
+            },
+            {
+              "type": "text",
+              "content": "02/02/2026",
+              "style": {"size": 8.0, "align": "end"},
+              "common": {"flex": 1.0}
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        }
+      ],
+      "gap": 4.0,
+      "align": "start"
     },
-    "footer": {
-      "height": 24.0,
-      "content": {
-        "type": "column",
-        "children": [
-          {
-            "type": "line",
-            "thickness": 1.0,
-            "color": [0, 0, 0]
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "Sample Shop Ltd.",
-                "style": {"size": 8.0},
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "text",
-                "content": "Page {page} of {total_pages}",
-                "style": {"size": 8.0, "align": "center"},
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "text",
-                "content": "02/02/2026",
-                "style": {"size": 8.0, "align": "end"},
-                "common": {"flex": 1.0}
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          }
-        ],
-        "gap": 4.0,
-        "align": "start"
-      },
-      "visible_from": 1
+    "visible_from": 1
+  },
+  "metadata": {},
+  "pdf_a3b": false,
+  "pdf_ua": false,
+  "children": [
+    {
+      "type": "spacer",
+      "size": 60.0
     },
-    "metadata": {},
-    "pdf_a3b": false,
-    "pdf_ua": false,
-    "children": [
-      {
-        "type": "spacer",
-        "size": 60.0
-      },
-      {
-        "type": "column",
-        "children": [
-          {
+    {
+      "type": "column",
+      "children": [
+        {
+          "type": "text",
+          "content": "Sample Design Studio",
+          "style": {"font": "sans-bold", "size": 26.0, "color": [42, 77, 143]}
+        }
+      ],
+      "gap": 0.0,
+      "align": "center"
+    },
+    {
+      "type": "spacer",
+      "size": 70.0
+    },
+    {
+      "type": "text",
+      "content": "Website Analysis: sample-shop.example",
+      "style": {"font": "sans-bold", "size": 24.0},
+      "outline_level": 1,
+      "role": "heading1",
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "spacer",
+      "size": 20.0
+    },
+    {
+      "type": "row",
+      "children": [
+        {
+          "type": "text",
+          "content": "REPORT",
+          "style": {"font": "sans-bold", "color": [224, 80, 64]}
+        },
+        {
+          "type": "text",
+          "content": "· SMP-RPT-DEMO-0001",
+          "style": {"color": [136, 136, 136]}
+        }
+      ],
+      "gap": 4.0,
+      "align": "start"
+    },
+    {
+      "type": "spacer",
+      "size": 24.0
+    },
+    {
+      "type": "column",
+      "children": [
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "Project",
+              "style": {"color": [136, 136, 136]},
+              "common": {"width": 90.0}
+            },
+            {
+              "type": "text",
+              "content": "WebCheck (Demo)",
+              "role": "body",
+              "common": {"flex": 1.0, "overflow": "ellipsis"}
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "Client",
+              "style": {"color": [136, 136, 136]},
+              "common": {"width": 90.0}
+            },
+            {
+              "type": "text",
+              "content": "Sample Shop Ltd.",
+              "role": "body",
+              "common": {"flex": 1.0, "overflow": "ellipsis"}
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "Version",
+              "style": {"color": [136, 136, 136]},
+              "common": {"width": 90.0}
+            },
+            {
+              "type": "text",
+              "content": "1.0",
+              "role": "body",
+              "common": {"flex": 1.0, "overflow": "ellipsis"}
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "Status",
+              "style": {"color": [136, 136, 136]},
+              "common": {"width": 90.0}
+            },
+            {
+              "type": "text",
+              "content": "COMPLETED",
+              "style": {"font": "sans-bold", "color": [224, 80, 64]},
+              "common": {"flex": 1.0, "overflow": "ellipsis"}
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "Created",
+              "style": {"color": [136, 136, 136]},
+              "common": {"width": 90.0}
+            },
+            {
+              "type": "text",
+              "content": "02/02/2026",
+              "role": "body",
+              "common": {"flex": 1.0, "overflow": "ellipsis"}
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        }
+      ],
+      "gap": 4.0,
+      "align": "start",
+      "common": {"width": 320.0}
+    },
+    {
+      "type": "spacer",
+      "size": 200.0
+    },
+    {
+      "type": "row",
+      "children": [
+        {
+          "type": "text",
+          "content": "WEBSITE ANALYSIS",
+          "style": {"font": "sans-bold", "size": 8.0, "color": [224, 80, 64]},
+          "common": {"padding": 6.0, "background": [251, 228, 225]}
+        },
+        {
+          "type": "text",
+          "content": "ACCESSIBILITY",
+          "style": {"font": "sans-bold", "size": 8.0, "color": [224, 80, 64]},
+          "common": {"padding": 6.0, "background": [251, 228, 225]}
+        },
+        {
+          "type": "text",
+          "content": "PERFORMANCE",
+          "style": {"font": "sans-bold", "size": 8.0, "color": [224, 80, 64]},
+          "common": {"padding": 6.0, "background": [251, 228, 225]}
+        }
+      ],
+      "gap": 8.0,
+      "align": "start"
+    },
+    {
+      "type": "page_break"
+    },
+    {
+      "type": "text",
+      "content": "Table of Contents",
+      "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
+      "outline_level": 2,
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "spacer",
+      "size": 10.0
+    },
+    {
+      "type": "column",
+      "children": [
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "1  Result",
+              "role": "body",
+              "common": {"flex": 1.0}
+            },
+            {
+              "type": "text",
+              "content": "3",
+              "role": "body"
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "1.1  Scorecard",
+              "role": "body",
+              "common": {"flex": 1.0}
+            },
+            {
+              "type": "text",
+              "content": "3",
+              "role": "body"
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "1.2  Top Issues",
+              "role": "body",
+              "common": {"flex": 1.0}
+            },
+            {
+              "type": "text",
+              "content": "3",
+              "role": "body"
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        },
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "2  Quick Wins",
+              "role": "body",
+              "common": {"flex": 1.0}
+            },
+            {
+              "type": "text",
+              "content": "4",
+              "role": "body"
+            }
+          ],
+          "gap": 0.0,
+          "align": "start"
+        }
+      ],
+      "gap": 4.0,
+      "align": "start"
+    },
+    {
+      "type": "page_break"
+    },
+    {
+      "type": "text",
+      "content": "1 Result",
+      "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
+      "outline_level": 2,
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "text",
+      "content": "The website works in principle — but loses impact in several places (demo text).",
+      "role": "body"
+    },
+    {
+      "type": "spacer",
+      "size": 10.0
+    },
+    {
+      "type": "text",
+      "content": "1.1 Scorecard",
+      "style": {"font": "sans-bold", "size": 14.0},
+      "outline_level": 3,
+      "role": "heading3",
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "spacer",
+      "size": 6.0
+    },
+    {
+      "type": "table",
+      "columns": [
+        {
+          "width": {"flex": 1.0},
+          "align": "start"
+        },
+        {
+          "width": {"fixed": 90.0},
+          "align": "start"
+        },
+        {
+          "width": {"fixed": 180.0},
+          "align": "start"
+        }
+      ],
+      "header": [
+        {
+          "element": {
             "type": "text",
-            "content": "Sample Design Studio",
-            "style": {"font": "sans-bold", "size": 26.0, "color": [42, 77, 143]}
-          }
-        ],
-        "gap": 0.0,
-        "align": "center"
-      },
-      {
-        "type": "spacer",
-        "size": 70.0
-      },
-      {
-        "type": "text",
-        "content": "Website Analysis: sample-shop.example",
-        "style": {"font": "sans-bold", "size": 24.0},
-        "outline_level": 1,
-        "role": "heading1",
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "spacer",
-        "size": 20.0
-      },
-      {
-        "type": "row",
-        "children": [
-          {
+            "content": "Area",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
             "type": "text",
-            "content": "REPORT",
-            "style": {"font": "sans-bold", "color": [224, 80, 64]}
+            "content": "Score",
+            "role": "body"
           },
-          {
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
             "type": "text",
-            "content": "· SMP-RPT-DEMO-0001",
-            "style": {"color": [136, 136, 136]}
-          }
-        ],
-        "gap": 4.0,
-        "align": "start"
-      },
-      {
-        "type": "spacer",
-        "size": 24.0
-      },
-      {
-        "type": "column",
-        "children": [
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "Project",
-                "style": {"color": [136, 136, 136]},
-                "common": {"width": 90.0}
-              },
-              {
-                "type": "text",
-                "content": "WebCheck (Demo)",
-                "role": "body",
-                "common": {"flex": 1.0, "overflow": "ellipsis"}
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
+            "content": "Assessment",
+            "role": "body"
           },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "Client",
-                "style": {"color": [136, 136, 136]},
-                "common": {"width": 90.0}
-              },
-              {
-                "type": "text",
-                "content": "Sample Shop Ltd.",
-                "role": "body",
-                "common": {"flex": 1.0, "overflow": "ellipsis"}
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "Version",
-                "style": {"color": [136, 136, 136]},
-                "common": {"width": 90.0}
-              },
-              {
-                "type": "text",
-                "content": "1.0",
-                "role": "body",
-                "common": {"flex": 1.0, "overflow": "ellipsis"}
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "Status",
-                "style": {"color": [136, 136, 136]},
-                "common": {"width": 90.0}
-              },
-              {
-                "type": "text",
-                "content": "COMPLETED",
-                "style": {"font": "sans-bold", "color": [224, 80, 64]},
-                "common": {"flex": 1.0, "overflow": "ellipsis"}
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "Created",
-                "style": {"color": [136, 136, 136]},
-                "common": {"width": 90.0}
-              },
-              {
-                "type": "text",
-                "content": "02/02/2026",
-                "role": "body",
-                "common": {"flex": 1.0, "overflow": "ellipsis"}
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          }
-        ],
-        "gap": 4.0,
-        "align": "start",
-        "common": {"width": 320.0}
-      },
-      {
-        "type": "spacer",
-        "size": 200.0
-      },
-      {
-        "type": "row",
-        "children": [
-          {
-            "type": "text",
-            "content": "WEBSITE ANALYSIS",
-            "style": {"font": "sans-bold", "size": 8.0, "color": [224, 80, 64]},
-            "common": {"padding": 6.0, "background": [251, 228, 225]}
-          },
-          {
-            "type": "text",
-            "content": "ACCESSIBILITY",
-            "style": {"font": "sans-bold", "size": 8.0, "color": [224, 80, 64]},
-            "common": {"padding": 6.0, "background": [251, 228, 225]}
-          },
-          {
-            "type": "text",
-            "content": "PERFORMANCE",
-            "style": {"font": "sans-bold", "size": 8.0, "color": [224, 80, 64]},
-            "common": {"padding": 6.0, "background": [251, 228, 225]}
-          }
-        ],
-        "gap": 8.0,
-        "align": "start"
-      },
-      {
-        "type": "page_break"
-      },
-      {
-        "type": "text",
-        "content": "Table of Contents",
-        "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
-        "outline_level": 2,
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "spacer",
-        "size": 10.0
-      },
-      {
-        "type": "column",
-        "children": [
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "1  Result",
-                "role": "body",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "text",
-                "content": "3",
-                "role": "body"
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "1.1  Scorecard",
-                "role": "body",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "text",
-                "content": "3",
-                "role": "body"
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "1.2  Top Issues",
-                "role": "body",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "text",
-                "content": "3",
-                "role": "body"
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "2  Quick Wins",
-                "role": "body",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "text",
-                "content": "4",
-                "role": "body"
-              }
-            ],
-            "gap": 0.0,
-            "align": "start"
-          }
-        ],
-        "gap": 4.0,
-        "align": "start"
-      },
-      {
-        "type": "page_break"
-      },
-      {
-        "type": "text",
-        "content": "1 Result",
-        "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
-        "outline_level": 2,
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "text",
-        "content": "The website works in principle — but loses impact in several places (demo text).",
-        "role": "body"
-      },
-      {
-        "type": "spacer",
-        "size": 10.0
-      },
-      {
-        "type": "text",
-        "content": "1.1 Scorecard",
-        "style": {"font": "sans-bold", "size": 14.0},
-        "outline_level": 3,
-        "role": "heading3",
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "spacer",
-        "size": 6.0
-      },
-      {
-        "type": "table",
-        "columns": [
-          {
-            "width": {"flex": 1.0},
-            "align": "start"
-          },
-          {
-            "width": {"fixed": 90.0},
-            "align": "start"
-          },
-          {
-            "width": {"fixed": 180.0},
-            "align": "start"
-          }
-        ],
-        "header": [
+          "colspan": 1,
+          "rowspan": 1
+        }
+      ],
+      "rows": [
+        [
           {
             "element": {
               "type": "text",
-              "content": "Area",
+              "content": "Accessibility",
               "role": "body"
             },
             "colspan": 1,
@@ -421,7 +449,7 @@
           {
             "element": {
               "type": "text",
-              "content": "Score",
+              "content": "58 of 100",
               "role": "body"
             },
             "colspan": 1,
@@ -430,280 +458,249 @@
           {
             "element": {
               "type": "text",
-              "content": "Assessment",
+              "content": "Significant action needed",
               "role": "body"
             },
             "colspan": 1,
             "rowspan": 1
           }
         ],
-        "rows": [
-          [
-            {
-              "element": {
-                "type": "text",
-                "content": "Accessibility",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "58 of 100",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "Significant action needed",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            }
-          ],
-          [
-            {
-              "element": {
-                "type": "text",
-                "content": "Performance",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "74 of 100",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "Solid baseline",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            }
-          ],
-          [
-            {
-              "element": {
-                "type": "text",
-                "content": "SEO",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "81 of 100",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "Professional",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            }
-          ],
-          [
-            {
-              "element": {
-                "type": "text",
-                "content": "Security",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "69 of 100",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "Gaps in headers",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            }
-          ],
-          [
-            {
-              "element": {
-                "type": "text",
-                "content": "Mobile",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "77 of 100",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "Good",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            }
-          ]
-        ],
-        "striped": [245, 245, 245],
-        "cell_padding": 4.0
-      },
-      {
-        "type": "spacer",
-        "size": 14.0
-      },
-      {
-        "type": "text",
-        "content": "1.2 Top Issues",
-        "style": {"font": "sans-bold", "size": 14.0},
-        "outline_level": 3,
-        "role": "heading3",
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "text",
-        "content": "The following points currently have the biggest impact on how the website functions (demo text).",
-        "role": "body"
-      },
-      {
-        "type": "spacer",
-        "size": 10.0
-      },
-      {
-        "type": "text",
-        "content": "1.2.1 1. Some users can't perceive content",
-        "style": {"font": "sans-bold", "size": 14.0},
-        "outline_level": 3,
-        "role": "heading3",
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "text",
-        "content": "42 affected elements (demo)",
-        "style": {"color": [136, 136, 136]}
-      },
-      {
-        "type": "text",
-        "content": "The structure isn't parseable for screen readers (demo text).",
-        "role": "body"
-      },
-      {
-        "type": "text",
-        "content": "Tables and lists are styled visually but not marked up as such in the source code (demo text).",
-        "role": "body"
-      },
-      {
-        "type": "spacer",
-        "size": 10.0
-      },
-      {
-        "type": "text",
-        "content": "1.2.2 2. Text is hard to read under real-world conditions",
-        "style": {"font": "sans-bold", "size": 14.0},
-        "outline_level": 3,
-        "role": "heading3",
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "text",
-        "content": "9 affected elements (demo)",
-        "style": {"color": [136, 136, 136]}
-      },
-      {
-        "type": "text",
-        "content": "Light text on a light background makes reading in sunlight difficult (demo text).",
-        "role": "body"
-      },
-      {
-        "type": "text",
-        "content": "Contrast ratio as low as 2.1:1 in places — the minimum is 4.5:1 (demo text).",
-        "role": "body"
-      },
-      {
-        "type": "spacer",
-        "size": 10.0
-      },
-      {
-        "type": "text",
-        "content": "2 Quick Wins",
-        "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
-        "outline_level": 2,
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "spacer",
-        "size": 6.0
-      },
-      {
-        "type": "list",
-        "items": [
+        [
           {
-            "marker": "bullet",
-            "content": {
+            "element": {
               "type": "text",
-              "content": "Raise contrast ratios to 4.5:1 (effort: low, demo)",
+              "content": "Performance",
               "role": "body"
-            }
+            },
+            "colspan": 1,
+            "rowspan": 1
           },
           {
-            "marker": "bullet",
-            "content": {
+            "element": {
               "type": "text",
-              "content": "Add ARIA labels to interactive elements (effort: medium, demo)",
+              "content": "74 of 100",
               "role": "body"
-            }
+            },
+            "colspan": 1,
+            "rowspan": 1
           },
           {
-            "marker": "bullet",
-            "content": {
+            "element": {
               "type": "text",
-              "content": "Place a visible call-to-action on the homepage (effort: low, demo)",
+              "content": "Solid baseline",
               "role": "body"
-            }
+            },
+            "colspan": 1,
+            "rowspan": 1
           }
         ],
-        "marker_width": 16.0,
-        "gap": 6.0
-      }
-    ]
-  }
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "SEO",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "81 of 100",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "Professional",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          }
+        ],
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "Security",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "69 of 100",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "Gaps in headers",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          }
+        ],
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "Mobile",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "77 of 100",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "Good",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          }
+        ]
+      ],
+      "striped": [245, 245, 245],
+      "cell_padding": 4.0
+    },
+    {
+      "type": "spacer",
+      "size": 14.0
+    },
+    {
+      "type": "text",
+      "content": "1.2 Top Issues",
+      "style": {"font": "sans-bold", "size": 14.0},
+      "outline_level": 3,
+      "role": "heading3",
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "text",
+      "content": "The following points currently have the biggest impact on how the website functions (demo text).",
+      "role": "body"
+    },
+    {
+      "type": "spacer",
+      "size": 10.0
+    },
+    {
+      "type": "text",
+      "content": "1.2.1 1. Some users can't perceive content",
+      "style": {"font": "sans-bold", "size": 14.0},
+      "outline_level": 3,
+      "role": "heading3",
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "text",
+      "content": "42 affected elements (demo)",
+      "style": {"color": [136, 136, 136]}
+    },
+    {
+      "type": "text",
+      "content": "The structure isn't parseable for screen readers (demo text).",
+      "role": "body"
+    },
+    {
+      "type": "text",
+      "content": "Tables and lists are styled visually but not marked up as such in the source code (demo text).",
+      "role": "body"
+    },
+    {
+      "type": "spacer",
+      "size": 10.0
+    },
+    {
+      "type": "text",
+      "content": "1.2.2 2. Text is hard to read under real-world conditions",
+      "style": {"font": "sans-bold", "size": 14.0},
+      "outline_level": 3,
+      "role": "heading3",
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "text",
+      "content": "9 affected elements (demo)",
+      "style": {"color": [136, 136, 136]}
+    },
+    {
+      "type": "text",
+      "content": "Light text on a light background makes reading in sunlight difficult (demo text).",
+      "role": "body"
+    },
+    {
+      "type": "text",
+      "content": "Contrast ratio as low as 2.1:1 in places — the minimum is 4.5:1 (demo text).",
+      "role": "body"
+    },
+    {
+      "type": "spacer",
+      "size": 10.0
+    },
+    {
+      "type": "text",
+      "content": "2 Quick Wins",
+      "style": {"font": "sans-bold", "size": 18.0, "color": [224, 80, 64]},
+      "outline_level": 2,
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "spacer",
+      "size": 6.0
+    },
+    {
+      "type": "list",
+      "items": [
+        {
+          "marker": "bullet",
+          "content": {
+            "type": "text",
+            "content": "Raise contrast ratios to 4.5:1 (effort: low, demo)",
+            "role": "body"
+          }
+        },
+        {
+          "marker": "bullet",
+          "content": {
+            "type": "text",
+            "content": "Add ARIA labels to interactive elements (effort: medium, demo)",
+            "role": "body"
+          }
+        },
+        {
+          "marker": "bullet",
+          "content": {
+            "type": "text",
+            "content": "Place a visible call-to-action on the homepage (effort: low, demo)",
+            "role": "body"
+          }
+        }
+      ],
+      "marker_width": 16.0,
+      "gap": 6.0
+    }
+  ]
 }
