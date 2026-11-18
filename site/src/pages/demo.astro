@@ -1,0 +1,54 @@
+---
+import { Demo, LinkRow, Section, Split } from '@casoon/pages-theme/components';
+import Base from '@casoon/pages-theme/layouts/Base.astro';
+import { url } from '@casoon/pages-theme/lib/url';
+
+// The playground is examples/playground, built by the Pages workflow into public/playground/
+// and served from this site's own origin – no CDN, no server.
+const playground = url('playground/');
+---
+
+<Base title="Live demo" description="Edit a JSON document and watch lightweight-pdf render it to a PDF in your browser, as wasm, without a server.">
+  <Demo
+    title="Edit JSON, get a PDF"
+    lead="The wasm build of lightweight-pdf runs in this page. Pick a template, change the JSON, and the PDF on the right is rendered in your browser – nothing is uploaded."
+    label="lightweight-pdf playground"
+  >
+    <iframe
+      src={playground}
+      title="lightweight-pdf playground"
+      loading="lazy"
+      style="display:block;width:100%;height:min(80vh,760px);border:0;background:#fff"
+    ></iframe>
+    <p slot="note" style="margin:0;padding:14px 20px;font-size:13.5px">
+      Prefer a full tab? <a href={playground}>Open the playground</a>. Source:
+      <a href="https://github.com/casoon/lightweight-pdf/tree/master/examples/playground"><code>examples/playground</code></a>.
+    </p>
+  </Demo>
+
+  <Section
+    title="In use"
+    lead="Public projects that build on lightweight-pdf, running the same wasm module."
+    width="wide"
+  >
+    <Split
+      index="01"
+      title="Solarrechner"
+      lead="A photovoltaic and storage calculator for Germany. The report is laid out in the visitor's browser: charts from chartlet, tables from opengrid, the PDF from lightweight-pdf."
+      points={[
+        'Loads the wasm module from its own origin, on demand, when the report is requested.',
+        'Builds the document from the calculation result, so the PDF always matches the screen.',
+      ]}
+      links={[
+        { label: 'Open the calculator', href: 'https://solarrechner.casoon.de' },
+        { label: 'Source on GitHub', href: 'https://github.com/casoon/web-solarrechner' },
+      ]}
+    />
+    <LinkRow
+      links={[
+        { label: 'Worker starter', href: 'https://github.com/casoon/lightweight-pdf/tree/master/examples/worker' },
+        { label: 'WebAssembly guide', href: '../docs/guides/wasm/' },
+      ]}
+    />
+  </Section>
+</Base>

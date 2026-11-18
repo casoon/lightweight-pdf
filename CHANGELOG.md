@@ -8,6 +8,7 @@ crates.io; all workspace crates share one version.
 
 ### Added
 
+- **Project page:** a live demo page that runs the browser playground on the site, and an "in use" section pointing to the Solarrechner.
 - **JSON:** `header` and `footer` in the document format, with `{page}` and `{total_pages}` in their
   texts, and `Header::from_element` / `Footer::from_element` in Rust. Details:
   [JSON and templates](https://casoon.github.io/lightweight-pdf/docs/guides/json-and-templates/) (#39).

@@ -5,8 +5,8 @@ const title = "lightweight-pdf Playground";
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
+		<link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
+		<link rel="icon" href={`${import.meta.env.BASE_URL}favicon.ico`} />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
@@ -35,7 +35,7 @@ const title = "lightweight-pdf Playground";
 					<button id="download-btn" type="button" disabled>Download PDF</button>
 					<button id="share-btn" type="button">Copy shareable link</button>
 				</div>
-				<textarea id="editor" spellcheck="false"></textarea>
+				<textarea id="editor" aria-label="JSON document" spellcheck="false"></textarea>
 				<p id="status" role="status"></p>
 			</section>
 			<section class="preview-pane">
@@ -175,9 +175,22 @@ const title = "lightweight-pdf Playground";
 				box-sizing: border-box;
 			}
 
+			header a {
+				color: #0b5cad;
+			}
+
+			@media (prefers-color-scheme: dark) {
+				body {
+					background: #1b1b1b;
+					color: #eee;
+				}
+				header a {
+					color: #8ec1ff;
+				}
+			}
+
 			header p {
 				max-width: 60ch;
-				opacity: 0.8;
 			}
 
 			main {
