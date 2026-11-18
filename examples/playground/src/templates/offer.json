@@ -1,658 +1,673 @@
 {
-  "schema_version": 1,
-  "document": {
-    "page_format": "A4",
-    "orientation": "portrait",
-    "margin": {
-      "top": 56.692917,
-      "right": 56.692917,
-      "bottom": 56.692917,
-      "left": 56.692917
-    },
-    "footer": {
-      "height": 62.0,
-      "content": {
-        "type": "column",
-        "children": [
-          {
-            "type": "line",
-            "thickness": 1.0,
-            "color": [0, 0, 0]
-          },
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "column",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Sample Design Studio",
-                    "style": {"font": "sans-bold", "size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "John Doe",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "1 Sample Street",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "12345 Sampletown",
-                    "style": {"size": 8.0}
-                  }
-                ],
-                "gap": 1.0,
-                "align": "start",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "column",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Phone: +1 555 0100",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "Email: hello@sample-design.example",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "Web: www.sample-design.example",
-                    "style": {"size": 8.0}
-                  }
-                ],
-                "gap": 1.0,
-                "align": "start",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "column",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Owner:",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "John Doe",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "VAT ID:",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "EU123456789",
-                    "style": {"size": 8.0}
-                  }
-                ],
-                "gap": 1.0,
-                "align": "start",
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "column",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Bank: Sample Bank",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "Account Holder: John Doe",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "IBAN: DE12 3456 7890 1234 5678 90",
-                    "style": {"size": 8.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "BIC/SWIFT: SMPLUS33",
-                    "style": {"size": 8.0}
-                  }
-                ],
-                "gap": 1.0,
-                "align": "start",
-                "common": {"flex": 1.0}
-              }
-            ],
-            "gap": 16.0,
-            "align": "start"
-          }
-        ],
-        "gap": 4.0,
-        "align": "start"
-      },
-      "visible_from": 1
-    },
-    "metadata": {},
-    "pdf_a3b": false,
-    "pdf_ua": false,
-    "children": [
-      {
-        "type": "column",
-        "children": [
-          {
-            "type": "text",
-            "content": "Sample Design Studio",
-            "style": {"font": "sans-bold", "size": 16.0, "color": [42, 77, 143]}
-          }
-        ],
-        "gap": 0.0,
-        "align": "end"
-      },
-      {
-        "type": "spacer",
-        "size": 28.346458
-      },
-      {
-        "type": "row",
-        "children": [
-          {
-            "type": "column",
-            "children": [
-              {
-                "type": "text",
-                "content": "John Doe · 1 Sample Street · 12345 Sampletown",
-                "style": {"size": 7.0}
-              },
-              {
-                "type": "spacer",
-                "size": 8.0
-              },
-              {
-                "type": "text",
-                "content": "Prospect Inc.",
-                "role": "body"
-              },
-              {
-                "type": "text",
-                "content": "Jane Roe",
-                "role": "body"
-              },
-              {
-                "type": "text",
-                "content": "7 Prospect Avenue",
-                "role": "body"
-              },
-              {
-                "type": "text",
-                "content": "98765 Prospectville",
-                "role": "body"
-              }
-            ],
-            "gap": 2.0,
-            "align": "start",
-            "common": {"flex": 1.0}
-          },
-          {
-            "type": "column",
-            "children": [
-              {
-                "type": "text",
-                "content": "Inquiries to:",
-                "style": {"font": "sans-bold"}
-              },
-              {
-                "type": "text",
-                "content": "Sample Design Studio",
-                "role": "body"
-              },
-              {
-                "type": "text",
-                "content": "+1 555 0100",
-                "role": "body"
-              },
-              {
-                "type": "text",
-                "content": "hello@sample-design.example",
-                "role": "body"
-              },
-              {
-                "type": "spacer",
-                "size": 8.0
-              },
-              {
-                "type": "row",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Quote No.:",
-                    "style": {"font": "sans-bold"},
-                    "common": {"flex": 1.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "QUO-DEMO-0001",
-                    "role": "body"
-                  }
-                ],
-                "gap": 0.0,
-                "align": "start"
-              },
-              {
-                "type": "row",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Customer No.:",
-                    "style": {"font": "sans-bold"},
-                    "common": {"flex": 1.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "C-0002",
-                    "role": "body"
-                  }
-                ],
-                "gap": 0.0,
-                "align": "start"
-              },
-              {
-                "type": "row",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Quote Date:",
-                    "style": {"font": "sans-bold"},
-                    "common": {"flex": 1.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "02/02/2026",
-                    "role": "body"
-                  }
-                ],
-                "gap": 0.0,
-                "align": "start"
-              },
-              {
-                "type": "row",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Valid Until:",
-                    "style": {"font": "sans-bold"},
-                    "common": {"flex": 1.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "03/04/2026",
-                    "role": "body"
-                  }
-                ],
-                "gap": 0.0,
-                "align": "start"
-              }
-            ],
-            "gap": 2.0,
-            "align": "start",
-            "common": {"width": 190.0}
-          }
-        ],
-        "gap": 20.0,
-        "align": "start"
-      },
-      {
-        "type": "spacer",
-        "size": 39.68504
-      },
-      {
-        "type": "text",
-        "content": "Quote",
-        "style": {"font": "sans-bold", "size": 14.0},
-        "outline_level": 3,
-        "role": "heading3",
-        "common": {"keep_with_next": true}
-      },
-      {
-        "type": "spacer",
-        "size": 10.0
-      },
-      {
-        "type": "table",
-        "columns": [
-          {"width": {"fixed": 32.0}, "align": "start"},
-          {"width": {"flex": 1.0}, "align": "start"},
-          {"width": {"fixed": 45.0}, "align": "end"},
-          {"width": {"fixed": 40.0}, "align": "start"},
-          {"width": {"fixed": 80.0}, "align": "end"},
-          {"width": {"fixed": 80.0}, "align": "end"}
-        ],
-        "header": [
-          {
-            "element": {
-              "type": "text",
-              "content": "No.",
-              "role": "body"
-            },
-            "colspan": 1,
-            "rowspan": 1
-          },
-          {
-            "element": {
-              "type": "text",
-              "content": "Description",
-              "role": "body"
-            },
-            "colspan": 1,
-            "rowspan": 1
-          },
-          {
-            "element": {
-              "type": "text",
-              "content": "Qty",
-              "role": "body"
-            },
-            "colspan": 1,
-            "rowspan": 1
-          },
-          {
-            "element": {
-              "type": "text",
-              "content": "Unit",
-              "role": "body"
-            },
-            "colspan": 1,
-            "rowspan": 1
-          },
-          {
-            "element": {
-              "type": "text",
-              "content": "Unit Price",
-              "role": "body"
-            },
-            "colspan": 1,
-            "rowspan": 1
-          },
-          {
-            "element": {
-              "type": "text",
-              "content": "Total",
-              "role": "body"
-            },
-            "colspan": 1,
-            "rowspan": 1
-          }
-        ],
-        "rows": [
-          [
+  "page_format": "A4",
+  "orientation": "portrait",
+  "margin": {
+    "top": 56.692917,
+    "right": 56.692917,
+    "bottom": 56.692917,
+    "left": 56.692917
+  },
+  "footer": {
+    "height": 62.0,
+    "content": {
+      "type": "column",
+      "children": [
+        {
+          "type": "line",
+          "thickness": 1.0,
+          "color": [0, 0, 0]
+        },
+        {
+          "type": "row",
+          "children": [
             {
-              "element": {
-                "type": "text",
-                "content": "1",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "column",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Sample Design Studio",
+                  "style": {"font": "sans-bold", "size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "John Doe",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "1 Sample Street",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "12345 Sampletown",
+                  "style": {"size": 8.0}
+                }
+              ],
+              "gap": 1.0,
+              "align": "start",
+              "common": {"flex": 1.0}
             },
             {
-              "element": {
-                "type": "column",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Website Development",
-                    "style": {"font": "sans-bold"}
-                  },
-                  {
-                    "type": "text",
-                    "content": "Development of a modern, responsive website (demo data)",
-                    "style": {"size": 9.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "Design and concept • Frontend development (HTML, CSS, JavaScript) • Responsive design for all devices",
-                    "style": {"size": 8.0, "color": [102, 102, 102]}
-                  }
-                ],
-                "gap": 2.0,
-                "align": "start"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "column",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Phone: +1 555 0100",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "Email: hello@sample-design.example",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "Web: www.sample-design.example",
+                  "style": {"size": 8.0}
+                }
+              ],
+              "gap": 1.0,
+              "align": "start",
+              "common": {"flex": 1.0}
             },
             {
-              "element": {
-                "type": "text",
-                "content": "1",
-                "style": {"align": "end"},
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "column",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Owner:",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "John Doe",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "VAT ID:",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "EU123456789",
+                  "style": {"size": 8.0}
+                }
+              ],
+              "gap": 1.0,
+              "align": "start",
+              "common": {"flex": 1.0}
             },
             {
-              "element": {
-                "type": "text",
-                "content": "lump",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "EUR 5,000.00",
-                "style": {"align": "end"},
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
-            },
-            {
-              "element": {
-                "type": "text",
-                "content": "EUR 5,000.00",
-                "style": {"font": "sans-bold", "align": "end"}
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "column",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Bank: Sample Bank",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "Account Holder: John Doe",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "IBAN: DE12 3456 7890 1234 5678 90",
+                  "style": {"size": 8.0}
+                },
+                {
+                  "type": "text",
+                  "content": "BIC/SWIFT: SMPLUS33",
+                  "style": {"size": 8.0}
+                }
+              ],
+              "gap": 1.0,
+              "align": "start",
+              "common": {"flex": 1.0}
             }
           ],
-          [
+          "gap": 16.0,
+          "align": "start"
+        }
+      ],
+      "gap": 4.0,
+      "align": "start"
+    },
+    "visible_from": 1
+  },
+  "metadata": {},
+  "pdf_a3b": false,
+  "pdf_ua": false,
+  "children": [
+    {
+      "type": "column",
+      "children": [
+        {
+          "type": "text",
+          "content": "Sample Design Studio",
+          "style": {"font": "sans-bold", "size": 16.0, "color": [42, 77, 143]}
+        }
+      ],
+      "gap": 0.0,
+      "align": "end"
+    },
+    {
+      "type": "spacer",
+      "size": 28.346458
+    },
+    {
+      "type": "row",
+      "children": [
+        {
+          "type": "column",
+          "children": [
             {
-              "element": {
-                "type": "text",
-                "content": "2",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "text",
+              "content": "John Doe · 1 Sample Street · 12345 Sampletown",
+              "style": {"size": 7.0}
             },
             {
-              "element": {
-                "type": "column",
-                "children": [
-                  {
-                    "type": "text",
-                    "content": "Content Management System",
-                    "style": {"font": "sans-bold"}
-                  },
-                  {
-                    "type": "text",
-                    "content": "CMS setup and configuration (demo data)",
-                    "style": {"size": 9.0}
-                  },
-                  {
-                    "type": "text",
-                    "content": "Installation • Theme customization • Editor training",
-                    "style": {"size": 8.0, "color": [102, 102, 102]}
-                  }
-                ],
-                "gap": 2.0,
-                "align": "start"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "spacer",
+              "size": 8.0
             },
             {
-              "element": {
-                "type": "text",
-                "content": "1",
-                "style": {"align": "end"},
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "text",
+              "content": "Prospect Inc.",
+              "role": "body"
             },
             {
-              "element": {
-                "type": "text",
-                "content": "lump",
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "text",
+              "content": "Jane Roe",
+              "role": "body"
             },
             {
-              "element": {
-                "type": "text",
-                "content": "EUR 2,000.00",
-                "style": {"align": "end"},
-                "role": "body"
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "text",
+              "content": "7 Prospect Avenue",
+              "role": "body"
             },
             {
-              "element": {
-                "type": "text",
-                "content": "EUR 2,000.00",
-                "style": {"font": "sans-bold", "align": "end"}
-              },
-              "colspan": 1,
-              "rowspan": 1
+              "type": "text",
+              "content": "98765 Prospectville",
+              "role": "body"
             }
-          ]
-        ],
-        "cell_padding": 4.0
-      },
-      {
-        "type": "spacer",
-        "size": 14.0
-      },
-      {
-        "type": "column",
-        "children": [
-          {
-            "type": "row",
-            "children": [
-              {
-                "type": "text",
-                "content": "Total (net):",
-                "style": {"font": "sans-bold"},
-                "common": {"flex": 1.0}
-              },
-              {
-                "type": "text",
-                "content": "EUR 7,000.00",
-                "style": {"font": "sans-bold"}
-              }
-            ],
-            "gap": 0.0,
-            "align": "start",
-            "common": {"width": 200.0}
-          }
-        ],
-        "gap": 0.0,
-        "align": "end"
-      },
-      {
-        "type": "spacer",
-        "size": 14.0
-      },
-      {
-        "type": "text",
-        "content": "This quote is valid for 30 days from the quote date.",
-        "role": "body"
-      },
-      {
-        "type": "spacer",
-        "size": 10.0
-      },
-      {
-        "type": "row",
-        "children": [
-          {
+          ],
+          "gap": 2.0,
+          "align": "start",
+          "common": {"flex": 1.0}
+        },
+        {
+          "type": "column",
+          "children": [
+            {
+              "type": "text",
+              "content": "Inquiries to:",
+              "style": {"font": "sans-bold"}
+            },
+            {
+              "type": "text",
+              "content": "Sample Design Studio",
+              "role": "body"
+            },
+            {
+              "type": "text",
+              "content": "+1 555 0100",
+              "role": "body"
+            },
+            {
+              "type": "text",
+              "content": "hello@sample-design.example",
+              "role": "body"
+            },
+            {
+              "type": "spacer",
+              "size": 8.0
+            },
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Quote No.:",
+                  "style": {"font": "sans-bold"},
+                  "common": {"flex": 1.0}
+                },
+                {
+                  "type": "text",
+                  "content": "QUO-DEMO-0001",
+                  "role": "body"
+                }
+              ],
+              "gap": 0.0,
+              "align": "start"
+            },
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Customer No.:",
+                  "style": {"font": "sans-bold"},
+                  "common": {"flex": 1.0}
+                },
+                {
+                  "type": "text",
+                  "content": "C-0002",
+                  "role": "body"
+                }
+              ],
+              "gap": 0.0,
+              "align": "start"
+            },
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Quote Date:",
+                  "style": {"font": "sans-bold"},
+                  "common": {"flex": 1.0}
+                },
+                {
+                  "type": "text",
+                  "content": "02/02/2026",
+                  "role": "body"
+                }
+              ],
+              "gap": 0.0,
+              "align": "start"
+            },
+            {
+              "type": "row",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Valid Until:",
+                  "style": {"font": "sans-bold"},
+                  "common": {"flex": 1.0}
+                },
+                {
+                  "type": "text",
+                  "content": "03/04/2026",
+                  "role": "body"
+                }
+              ],
+              "gap": 0.0,
+              "align": "start"
+            }
+          ],
+          "gap": 2.0,
+          "align": "start",
+          "common": {"width": 190.0}
+        }
+      ],
+      "gap": 20.0,
+      "align": "start"
+    },
+    {
+      "type": "spacer",
+      "size": 39.68504
+    },
+    {
+      "type": "text",
+      "content": "Quote",
+      "style": {"font": "sans-bold", "size": 14.0},
+      "outline_level": 3,
+      "role": "heading3",
+      "common": {"keep_with_next": true}
+    },
+    {
+      "type": "spacer",
+      "size": 10.0
+    },
+    {
+      "type": "table",
+      "columns": [
+        {
+          "width": {"fixed": 32.0},
+          "align": "start"
+        },
+        {
+          "width": {"flex": 1.0},
+          "align": "start"
+        },
+        {
+          "width": {"fixed": 45.0},
+          "align": "end"
+        },
+        {
+          "width": {"fixed": 40.0},
+          "align": "start"
+        },
+        {
+          "width": {"fixed": 80.0},
+          "align": "end"
+        },
+        {
+          "width": {"fixed": 80.0},
+          "align": "end"
+        }
+      ],
+      "header": [
+        {
+          "element": {
             "type": "text",
-            "content": "Payment Terms:",
-            "style": {"font": "sans-bold"}
+            "content": "No.",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Description",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Qty",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Unit",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Unit Price",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        },
+        {
+          "element": {
+            "type": "text",
+            "content": "Total",
+            "role": "body"
+          },
+          "colspan": 1,
+          "rowspan": 1
+        }
+      ],
+      "rows": [
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "1",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
           },
           {
-            "type": "text",
-            "content": "50% deposit on order confirmation, 50% on project completion. Payable within 14 days of invoicing, without deduction.",
-            "role": "body",
-            "common": {"flex": 1.0}
-          }
-        ],
-        "gap": 4.0,
-        "align": "start"
-      },
-      {
-        "type": "spacer",
-        "size": 6.0
-      },
-      {
-        "type": "row",
-        "children": [
-          {
-            "type": "text",
-            "content": "Delivery Terms:",
-            "style": {"font": "sans-bold"}
+            "element": {
+              "type": "column",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Website Development",
+                  "style": {"font": "sans-bold"}
+                },
+                {
+                  "type": "text",
+                  "content": "Development of a modern, responsive website (demo data)",
+                  "style": {"size": 9.0}
+                },
+                {
+                  "type": "text",
+                  "content": "Design and concept • Frontend development (HTML, CSS, JavaScript) • Responsive design for all devices",
+                  "style": {"size": 8.0, "color": [102, 102, 102]}
+                }
+              ],
+              "gap": 2.0,
+              "align": "start"
+            },
+            "colspan": 1,
+            "rowspan": 1
           },
           {
-            "type": "text",
-            "content": "Completion within 8 weeks of order confirmation and receipt of all required content and approvals.",
-            "role": "body",
-            "common": {"flex": 1.0}
+            "element": {
+              "type": "text",
+              "content": "1",
+              "style": {"align": "end"},
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "lump",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "EUR 5,000.00",
+              "style": {"align": "end"},
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "EUR 5,000.00",
+              "style": {"font": "sans-bold", "align": "end"}
+            },
+            "colspan": 1,
+            "rowspan": 1
           }
         ],
-        "gap": 4.0,
-        "align": "start"
-      },
-      {
-        "type": "spacer",
-        "size": 10.0
-      },
-      {
-        "type": "text",
-        "content": "Sample document — all names, addresses and amounts are fictional.",
-        "style": {"size": 9.0, "color": [136, 136, 136]}
-      },
-      {
-        "type": "spacer",
-        "size": 20.0
-      },
-      {
-        "type": "text",
-        "content": "Kind regards",
-        "role": "body"
-      },
-      {
-        "type": "spacer",
-        "size": 20.0
-      },
-      {
-        "type": "text",
-        "content": "John Doe",
-        "role": "body"
-      }
-    ]
-  }
+        [
+          {
+            "element": {
+              "type": "text",
+              "content": "2",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "column",
+              "children": [
+                {
+                  "type": "text",
+                  "content": "Content Management System",
+                  "style": {"font": "sans-bold"}
+                },
+                {
+                  "type": "text",
+                  "content": "CMS setup and configuration (demo data)",
+                  "style": {"size": 9.0}
+                },
+                {
+                  "type": "text",
+                  "content": "Installation • Theme customization • Editor training",
+                  "style": {"size": 8.0, "color": [102, 102, 102]}
+                }
+              ],
+              "gap": 2.0,
+              "align": "start"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "1",
+              "style": {"align": "end"},
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "lump",
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "EUR 2,000.00",
+              "style": {"align": "end"},
+              "role": "body"
+            },
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "element": {
+              "type": "text",
+              "content": "EUR 2,000.00",
+              "style": {"font": "sans-bold", "align": "end"}
+            },
+            "colspan": 1,
+            "rowspan": 1
+          }
+        ]
+      ],
+      "cell_padding": 4.0
+    },
+    {
+      "type": "spacer",
+      "size": 14.0
+    },
+    {
+      "type": "column",
+      "children": [
+        {
+          "type": "row",
+          "children": [
+            {
+              "type": "text",
+              "content": "Total (net):",
+              "style": {"font": "sans-bold"},
+              "common": {"flex": 1.0}
+            },
+            {
+              "type": "text",
+              "content": "EUR 7,000.00",
+              "style": {"font": "sans-bold"}
+            }
+          ],
+          "gap": 0.0,
+          "align": "start",
+          "common": {"width": 200.0}
+        }
+      ],
+      "gap": 0.0,
+      "align": "end"
+    },
+    {
+      "type": "spacer",
+      "size": 14.0
+    },
+    {
+      "type": "text",
+      "content": "This quote is valid for 30 days from the quote date.",
+      "role": "body"
+    },
+    {
+      "type": "spacer",
+      "size": 10.0
+    },
+    {
+      "type": "row",
+      "children": [
+        {
+          "type": "text",
+          "content": "Payment Terms:",
+          "style": {"font": "sans-bold"}
+        },
+        {
+          "type": "text",
+          "content": "50% deposit on order confirmation, 50% on project completion. Payable within 14 days of invoicing, without deduction.",
+          "role": "body",
+          "common": {"flex": 1.0}
+        }
+      ],
+      "gap": 4.0,
+      "align": "start"
+    },
+    {
+      "type": "spacer",
+      "size": 6.0
+    },
+    {
+      "type": "row",
+      "children": [
+        {
+          "type": "text",
+          "content": "Delivery Terms:",
+          "style": {"font": "sans-bold"}
+        },
+        {
+          "type": "text",
+          "content": "Completion within 8 weeks of order confirmation and receipt of all required content and approvals.",
+          "role": "body",
+          "common": {"flex": 1.0}
+        }
+      ],
+      "gap": 4.0,
+      "align": "start"
+    },
+    {
+      "type": "spacer",
+      "size": 10.0
+    },
+    {
+      "type": "text",
+      "content": "Sample document — all names, addresses and amounts are fictional.",
+      "style": {"size": 9.0, "color": [136, 136, 136]}
+    },
+    {
+      "type": "spacer",
+      "size": 20.0
+    },
+    {
+      "type": "text",
+      "content": "Kind regards",
+      "role": "body"
+    },
+    {
+      "type": "spacer",
+      "size": 20.0
+    },
+    {
+      "type": "text",
+      "content": "John Doe",
+      "role": "body"
+    }
+  ]
 }
