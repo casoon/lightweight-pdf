@@ -9,7 +9,7 @@
     "type-check": "astro check"
   },
   "dependencies": {
-    "@casoon/pages-theme": "^0.15.0",
+    "@casoon/pages-theme": "^0.17.0",
     "astro": "^7.3.2"
   },
   "devDependencies": {
@@ -20,6 +20,11 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild"
+    ]
+  },
+  "casoonPagesCheck": {
+    "skip": [
+      "playground/"
     ]
   }
 }

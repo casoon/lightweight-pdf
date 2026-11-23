@@ -21,7 +21,7 @@ crates.io; all workspace crates share one version.
 
 ### Changed
 
-- **Pages:** the project site uses the current shared theme (0.12.14).
+- **Pages:** the project site uses the current shared theme (0.17.0).
 - **Project site:** the footer now follows the page language instead of always showing German
   text, and the start page carries a release teaser and an FAQ (theme 0.11.1).
 - **Project site:** the start page shows the demo invoice down to its totals, and the demo PDFs in
